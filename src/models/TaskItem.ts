@@ -4,7 +4,7 @@ import * as path from 'path';
 /**
  * Task type identifiers.
  */
-export type TaskType = 'shell' | 'npm' | 'make' | 'launch' | 'vscode';
+export type TaskType = 'shell' | 'npm' | 'make' | 'launch' | 'vscode' | 'python';
 
 /**
  * Parameter definition for tasks requiring input.
@@ -123,6 +123,9 @@ export class TaskTreeItem extends vscode.TreeItem {
             case 'vscode': {
                 return new vscode.ThemeIcon('gear');
             }
+            case 'python': {
+                return new vscode.ThemeIcon('symbol-misc');
+            }
         }
     }
 
@@ -142,6 +145,9 @@ export class TaskTreeItem extends vscode.TreeItem {
         }
         if (lower.includes('task')) {
             return new vscode.ThemeIcon('gear');
+        }
+        if (lower.includes('python')) {
+            return new vscode.ThemeIcon('symbol-misc');
         }
         return new vscode.ThemeIcon('folder');
     }

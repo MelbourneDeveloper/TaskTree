@@ -1,165 +1,82 @@
 # TaskTree
 
-A VS Code extension that discovers and organizes all runnable tasks in your workspace into a unified, filterable tree view.
+One sidebar. Every task in your workspace.
 
-## Features
+TaskTree scans your project and surfaces all runnable tasks in a single tree view: shell scripts, npm scripts, Makefile targets, VS Code tasks, and launch configurations. Filter by text or tag, run in terminal or debugger.
 
-### Task Discovery
+## What It Finds
 
-TaskTree automatically discovers tasks from multiple sources:
+- **Shell Scripts** - `.sh` files with optional `@param` and `@description` comments
+- **NPM Scripts** - From all `package.json` files including nested projects
+- **Makefile Targets** - From `Makefile` and `makefile`
+- **Launch Configs** - Debug configurations from `.vscode/launch.json`
+- **VS Code Tasks** - From `.vscode/tasks.json` with input variable support
 
-| Source | Description |
-|--------|-------------|
-| **Shell Scripts** | `.sh` files with optional `@param` and `@description` comments |
-| **NPM Scripts** | Scripts defined in `package.json` files (including nested projects) |
-| **Make Targets** | Targets from `Makefile` / `makefile` (excludes `.PHONY` and internal `.targets`) |
-| **Launch Configs** | Debug configurations from `.vscode/launch.json` |
-| **VS Code Tasks** | Tasks from `.vscode/tasks.json` with input variable support |
+## Running Tasks
 
-### Tree Structure
+Click a task or use the inline buttons:
+- **Play** - Run in new terminal
+- **Bug** - Launch with debugger
+- **Circle Play** - Run in current terminal
 
-```
-TaskTree
-├── Shell Scripts (3)
-│   ├── Samples/
-│   │   └── start.sh
-│   └── ICD10CM/.../
-│       ├── run.sh
-│       └── import.sh
-├── NPM Scripts (12)
-│   ├── Website/
-│   │   ├── dev
-│   │   └── build
-│   └── Lql/LqlExtension/
-│       ├── compile
-│       └── watch
-├── Make Targets (5)
-│   └── build, clean, test...
-├── VS Code Launch (3)
-│   ├── Dashboard (Fresh)
-│   └── ICD-10 CLI
-└── VS Code Tasks (27)
-    ├── Build: Solution
-    └── Test: All
-```
+Right-click for the full context menu.
 
-### Task Execution
+## Quick Tasks
 
-Multiple ways to run tasks:
+Star frequently-used tasks to pin them in the Quick Tasks panel at the top. No more hunting through the tree.
 
-| Icon | Action | Description |
-|------|--------|-------------|
-| ▶️ | **Run in New Terminal** | Opens a fresh terminal (inline button) |
-| 🐛 | **Debug** | Launches with debugger attached (inline button) |
-| ⏵ | **Run in Current Terminal** | Reuses the active terminal (inline button) |
+## Tagging
 
-Right-click context menu provides all options plus "Run Task" via VS Code's task system.
-
-### Toolbar Buttons
-
-| Icon | Action |
-|------|--------|
-| 🔍 | **Filter** - Type to search tasks by name/path |
-| 🏷️ | **Tag Filter** - Filter by tag |
-| ✖️ | **Clear** - Remove all filters (only shows when filtering) |
-| 🔄 | **Refresh** - Rescan workspace for tasks |
-
-### Tag Configuration
-
-Create `.vscode/tasktree.json` to define tags with glob patterns:
+Create `.vscode/tasktree.json` to group related tasks:
 
 ```json
 {
   "tags": {
     "build": ["npm:build", "npm:compile", "make:build"],
     "test": ["npm:test*", "Test:*"],
-    "docker": ["**/Dependencies/**"],
     "ci": ["npm:lint", "npm:test", "npm:build"]
   }
 }
 ```
 
-Pattern matching supports:
-- Direct label match: `build.sh`
-- Type:label format: `npm:test`, `make:clean`
-- Glob wildcards: `*` (segment), `**` (any path)
-- Path matching: `**/scripts/**`
+Patterns:
+- `npm:build` - Exact match on type and label
+- `npm:test*` - Wildcard matching
+- `**/scripts/**` - Path matching
+- `type:npm:*` - Match all tasks of a type
 
-Tags appear as badges next to task names.
+Filter by tag from the toolbar to see just what you need.
 
-### Parameter Handling
+## Parameterized Tasks
 
-Tasks with parameters prompt automatically:
+Shell scripts with parameter comments prompt for input:
 
-**Shell scripts** - Add comments:
 ```bash
 #!/bin/bash
-# @description Deploy the application to production
-# @param environment The target environment (staging, production)
-# @param --dry-run Optional flag for dry run mode
+# @description Deploy to environment
+# @param environment Target environment (staging, production)
 
-echo "Deploying to $1..."
+deploy_to "$1"
 ```
 
-**VS Code tasks** - Uses `${input:*}` definitions from tasks.json
+VS Code tasks using `${input:*}` variables work automatically.
 
 ## Settings
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `tasktree.excludePatterns` | `["**/node_modules/**", "**/bin/**", "**/obj/**", "**/.git/**"]` | Glob patterns to exclude from discovery |
-| `tasktree.showEmptyCategories` | `false` | Show categories even when empty |
-| `tasktree.sortOrder` | `"folder"` | Sort order: `folder`, `name`, or `type` |
+| `tasktree.excludePatterns` | node_modules, .git, build dirs | Paths to skip during discovery |
+| `tasktree.showEmptyCategories` | `false` | Show empty category nodes |
+| `tasktree.sortOrder` | `folder` | Sort by `folder`, `name`, or `type` |
 
-## Commands
+## Install
 
-| Command | Description |
-|---------|-------------|
-| `TaskTree: Refresh Tasks` | Reload all tasks |
-| `TaskTree: Filter Tasks` | Open text filter input |
-| `TaskTree: Filter by Tag` | Show tag picker |
-| `TaskTree: Clear Filter` | Remove active filters |
-| `TaskTree: Edit Tags Configuration` | Open/create `tasktree.json` |
-
-## Installation
-
-### From VSIX
-
-```bash
-cd TaskTree
-npm run build-and-install
-```
-
-This runs: clean → install → uninstall old → package → install new
-
-### Manual Steps
-
+From source:
 ```bash
 npm install
 npm run package
 code --install-extension tasktree-*.vsix
 ```
-
-### Development
-
-1. Open `TaskTree/` folder in VS Code
-2. Press **F5** to launch Extension Development Host
-3. Make changes, reload window (Cmd+R) to test
-
-## NPM Scripts
-
-| Script | Description |
-|--------|-------------|
-| `npm run compile` | Compile TypeScript |
-| `npm run watch` | Watch mode |
-| `npm run test` | Run E2E tests in VS Code |
-| `npm run clean` | Delete node_modules, out, *.vsix |
-| `npm run package` | Build .vsix |
-| `npm run build-and-install` | Full rebuild + reinstall |
-
-## Requirements
-
-- VS Code 1.80.0 or later
 
 ## License
 

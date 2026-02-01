@@ -176,6 +176,12 @@ export class TaskTreeProvider implements vscode.TreeDataProvider<TaskTreeItem> {
             categories.push(this.buildFlatCategory('VS Code Tasks', vscodeTasks));
         }
 
+        // Python Scripts - grouped by folder
+        const pythonTasks = filtered.filter(t => t.type === 'python');
+        if (pythonTasks.length > 0 || showEmpty) {
+            categories.push(this.buildCategoryWithFolders('Python Scripts', pythonTasks));
+        }
+
         return categories;
     }
 

@@ -5,6 +5,7 @@ import {
     activateExtension,
     sleep,
     getFixturePath,
+    getExtensionPath,
     getTaskTreeProvider,
     TaskTreeProvider
 } from './helpers';
@@ -88,8 +89,8 @@ suite('Tag Context Menu E2E Tests', () => {
                 `Tag "${newTagName}" should exist in config`
             );
             assert.ok(
-                config.tags[newTagName].includes(testTask.label),
-                `Tag should contain task label "${testTask.label}"`
+                config.tags[newTagName].includes(testTask.id),
+                `Tag should contain task id "${testTask.id}"`
             );
         });
 
@@ -113,7 +114,7 @@ suite('Tag Context Menu E2E Tests', () => {
             let configContent = fs.readFileSync(tagConfigPath, 'utf8');
             let config = JSON.parse(configContent) as TagConfig;
             assert.ok(
-                config.tags[tagName]?.includes(testTask.label),
+                config.tags[tagName]?.includes(testTask.id),
                 'Task should be in tag before removal'
             );
 
@@ -129,7 +130,7 @@ suite('Tag Context Menu E2E Tests', () => {
             const tagPatterns = config.tags[tagName];
             if (tagPatterns !== undefined) {
                 assert.ok(
-                    !tagPatterns.includes(testTask.label),
+                    !tagPatterns.includes(testTask.id),
                     'Task should not be in tag after removal'
                 );
             }
@@ -226,8 +227,8 @@ suite('Tag Context Menu E2E Tests', () => {
 
             const patterns = config.tags[multiTag];
             assert.ok(patterns !== undefined, 'Tag should exist');
-            assert.ok(patterns.includes(task1.label), 'Should contain first task');
-            assert.ok(patterns.includes(task2.label), 'Should contain second task');
+            assert.ok(patterns.includes(task1.id), 'Should contain first task');
+            assert.ok(patterns.includes(task2.id), 'Should contain second task');
         });
 
         test('removing last task from tag removes the tag', async function () {
@@ -273,7 +274,7 @@ suite('Tag Context Menu E2E Tests', () => {
             this.timeout(10000);
 
             // Read package.json to verify menu configuration
-            const packageJsonPath = getFixturePath('../package.json');
+            const packageJsonPath = getExtensionPath('package.json');
             const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8')) as {
                 contributes: {
                     menus: {
@@ -313,7 +314,7 @@ suite('Tag Context Menu E2E Tests', () => {
         test('tag commands are in 3_tagging group', function () {
             this.timeout(10000);
 
-            const packageJsonPath = getFixturePath('../package.json');
+            const packageJsonPath = getExtensionPath('package.json');
             const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8')) as {
                 contributes: {
                     menus: {

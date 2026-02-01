@@ -1,21 +1,34 @@
 {
   "name": "tasktree",
   "displayName": "TaskTree",
-  "description": "Organize all workspace tasks in a filterable tree",
+  "description": "Unified task runner: discover shell scripts, npm scripts, Makefiles, launch configs, and VS Code tasks in one filterable tree",
   "version": "0.1.0",
-  "publisher": "dataprovider",
+  "author": "Christian Findlay",
+  "license": "MIT",
+  "publisher": "nimblesite",
   "engines": {
     "vscode": "^1.80.0"
   },
   "categories": [
-    "Other"
+    "Other",
+    "Debuggers"
+  ],
+  "keywords": [
+    "tasks",
+    "runner",
+    "npm",
+    "makefile",
+    "shell",
+    "scripts",
+    "launch",
+    "debug"
   ],
   "icon": "icon.png",
+  "galleryBanner": {
+    "color": "#1e1e1e",
+    "theme": "dark"
+  },
   "main": "./out/extension.js",
-  "activationEvents": [
-    "onView:tasktree",
-    "onView:tasktree-quick"
-  ],
   "contributes": {
     "viewsContainers": {
       "activitybar": [
@@ -299,7 +312,7 @@
     "test": "vscode-test",
     "clean": "rm -rf node_modules out *.vsix",
     "package": "npm run compile && vsce package --allow-missing-repository --skip-license",
-    "uninstall": "code --uninstall-extension dataprovider.tasktree || true",
+    "uninstall": "code --uninstall-extension nimblesite.tasktree || true",
     "install-ext": "code --install-extension tasktree-*.vsix",
     "build-and-install": "npm run clean && npm install && npm run uninstall && npm run package && npm run install-ext"
   },

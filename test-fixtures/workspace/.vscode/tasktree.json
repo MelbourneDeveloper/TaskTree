@@ -24,8 +24,6 @@
             "type:npm:test",
             "type:npm:build"
         ],
-        "quick": [
-            "build.sh"
-        ]
+        "quick": []
     }
 }

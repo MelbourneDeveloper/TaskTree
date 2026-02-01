@@ -5,6 +5,7 @@ import { discoverNpmScripts } from './npm';
 import { discoverMakeTargets } from './make';
 import { discoverLaunchConfigs } from './launch';
 import { discoverVsCodeTasks } from './tasks';
+import { discoverPythonScripts } from './python';
 
 export interface DiscoveryResult {
     shell: TaskItem[];
@@ -12,6 +13,7 @@ export interface DiscoveryResult {
     make: TaskItem[];
     launch: TaskItem[];
     vscode: TaskItem[];
+    python: TaskItem[];
 }
 
 /**
@@ -22,12 +24,13 @@ export async function discoverAllTasks(
     excludePatterns: string[]
 ): Promise<DiscoveryResult> {
     // Run all discoveries in parallel
-    const [shell, npm, make, launch, vscodeTasks] = await Promise.all([
+    const [shell, npm, make, launch, vscodeTasks, python] = await Promise.all([
         discoverShellScripts(workspaceRoot, excludePatterns),
         discoverNpmScripts(workspaceRoot, excludePatterns),
         discoverMakeTargets(workspaceRoot, excludePatterns),
         discoverLaunchConfigs(workspaceRoot, excludePatterns),
-        discoverVsCodeTasks(workspaceRoot, excludePatterns)
+        discoverVsCodeTasks(workspaceRoot, excludePatterns),
+        discoverPythonScripts(workspaceRoot, excludePatterns)
     ]);
 
     return {
@@ -35,7 +38,8 @@ export async function discoverAllTasks(
         npm,
         make,
         launch,
-        vscode: vscodeTasks
+        vscode: vscodeTasks,
+        python
     };
 }
 
@@ -48,7 +52,8 @@ export function flattenTasks(result: DiscoveryResult): TaskItem[] {
         ...result.npm,
         ...result.make,
         ...result.launch,
-        ...result.vscode
+        ...result.vscode,
+        ...result.python
     ];
 }
 

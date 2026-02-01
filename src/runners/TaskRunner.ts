@@ -66,6 +66,10 @@ export class TaskRunner {
                 await this.runMake(task);
                 break;
             }
+            case 'python': {
+                await this.runPython(task, params);
+                break;
+            }
             case 'launch':
             case 'vscode': {
                 // Already handled above
@@ -185,6 +189,35 @@ export class TaskRunner {
     }
 
     /**
+     * Runs a Python script.
+     */
+    private async runPython(task: TaskItem, params: Map<string, string>): Promise<void> {
+        let command = `python "${task.command}"`;
+        if (params.size > 0) {
+            const args = Array.from(params.values())
+                .map(v => `"${v}"`)
+                .join(' ');
+            command = `${command} ${args}`;
+        }
+
+        const shellOptions: vscode.ShellExecutionOptions = {};
+        if (task.cwd !== undefined) {
+            shellOptions.cwd = task.cwd;
+        }
+        const execution = new vscode.ShellExecution(command, shellOptions);
+
+        const vscodeTask = new vscode.Task(
+            { type: 'tasktree', task: task.id },
+            vscode.TaskScope.Workspace,
+            task.label,
+            'TaskTree',
+            execution
+        );
+
+        await vscode.tasks.executeTask(vscodeTask);
+    }
+
+    /**
      * Runs a VS Code debug configuration.
      */
     private async runLaunch(task: TaskItem): Promise<void> {
@@ -287,6 +320,10 @@ export class TaskRunner {
                 await this.runMake(task);
                 break;
             }
+            case 'python': {
+                await this.debugPython(task, params, workspaceFolder);
+                break;
+            }
             case 'launch':
             case 'vscode': {
                 // Already handled above
@@ -367,6 +404,37 @@ export class TaskRunner {
                 'OK'
             );
             this.runInNewTerminal(task, params);
+        }
+    }
+
+    /**
+     * Debugs a Python script using Python debugger.
+     */
+    private async debugPython(
+        task: TaskItem,
+        params: Map<string, string>,
+        workspaceFolder: vscode.WorkspaceFolder
+    ): Promise<void> {
+        const debugConfig: vscode.DebugConfiguration = {
+            type: 'debugpy',
+            request: 'launch',
+            name: `Debug: ${task.label}`,
+            program: task.command,
+            args: Array.from(params.values()),
+            cwd: task.cwd ?? workspaceFolder.uri.fsPath,
+            console: 'integratedTerminal'
+        };
+
+        const started = await vscode.debug.startDebugging(workspaceFolder, debugConfig);
+        if (!started) {
+            const action = await vscode.window.showWarningMessage(
+                'Python debugging requires the Python extension. Run normally instead?',
+                'Run Normally',
+                'Cancel'
+            );
+            if (action === 'Run Normally') {
+                this.runInNewTerminal(task, params);
+            }
         }
     }
 

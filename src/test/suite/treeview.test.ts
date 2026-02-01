@@ -68,11 +68,11 @@ suite('TreeView Real UI Tests', () => {
             const npmCategory = roots.find(r => getLabelString(r.label).includes('NPM Scripts'));
 
             assert.ok(npmCategory, 'NPM Scripts category should exist');
-            // 6 npm scripts: 4 from root + 2 from subproject
+            // 7 npm scripts: 4 from root + 3 from subproject
             const npmLabel = getLabelString(npmCategory.label);
             assert.ok(
-                npmLabel.includes('(6)'),
-                `NPM Scripts should show count (6), got: ${npmLabel}`
+                npmLabel.includes('(7)'),
+                `NPM Scripts should show count (7), got: ${npmLabel}`
             );
         });
 
