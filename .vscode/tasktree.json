@@ -1,7 +1,6 @@
 {
   "tags": {
     "quick": [
-      "build-and-install",
       "lint"
     ]
   }

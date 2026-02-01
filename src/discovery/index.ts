@@ -61,6 +61,7 @@ export function getExcludePatterns(): string[] {
         '**/node_modules/**',
         '**/bin/**',
         '**/obj/**',
-        '**/.git/**'
+        '**/.git/**',
+        '**/test-fixtures/**'
     ];
 }

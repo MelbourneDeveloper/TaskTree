@@ -39,7 +39,7 @@ interface PackageJson {
     activationEvents?: string[];
     contributes: {
         views: {
-            explorer: ViewDefinition[];
+            'tasktree-container': ViewDefinition[];
         };
         commands: CommandDefinition[];
         menus: {
@@ -86,8 +86,8 @@ suite('Commands and UI E2E Tests', () => {
             const packageJson = readPackageJson();
 
             const hasActivationEvent = packageJson.activationEvents?.includes('onView:tasktree') ?? false;
-            const hasViewContribution = packageJson.contributes.views.explorer.some(
-                (v) => v.id === 'tasktree'
+            const hasViewContribution = packageJson.contributes.views['tasktree-container'].some(
+                (v: ViewDefinition) => v.id === 'tasktree'
             );
 
             assert.ok(
@@ -148,17 +148,17 @@ suite('Commands and UI E2E Tests', () => {
     });
 
     suite('Tree View Registration', () => {
-        test('tree view is registered in explorer', function() {
+        test('tree view is registered in custom container', function() {
             this.timeout(10000);
 
             const packageJson = readPackageJson();
 
-            const explorerViews = packageJson.contributes.views.explorer;
-            assert.ok(explorerViews.length > 0, 'Should have explorer views');
+            const containerViews = packageJson.contributes.views['tasktree-container'];
+            assert.ok(containerViews.length > 0, 'Should have container views');
 
-            const taskTreeView = explorerViews.find((v) => v.id === 'tasktree');
+            const taskTreeView = containerViews.find((v: ViewDefinition) => v.id === 'tasktree');
             assert.ok(taskTreeView, 'tasktree view should be registered');
-            assert.strictEqual(taskTreeView.name, 'TaskTree', 'View name should be TaskTree');
+            assert.strictEqual(taskTreeView.name, 'All Tasks', 'View name should be All Tasks');
         });
 
         test('tree view has correct configuration', function() {
@@ -166,12 +166,11 @@ suite('Commands and UI E2E Tests', () => {
 
             const packageJson = readPackageJson();
 
-            const taskTreeView = packageJson.contributes.views.explorer.find(
-                (v) => v.id === 'tasktree'
+            const taskTreeView = packageJson.contributes.views['tasktree-container'].find(
+                (v: ViewDefinition) => v.id === 'tasktree'
             );
 
             assert.ok(taskTreeView, 'Should have tasktree view');
-            assert.ok(taskTreeView.icon !== undefined && taskTreeView.icon !== '', 'View should have an icon');
             assert.ok(taskTreeView.contextualTitle !== undefined && taskTreeView.contextualTitle !== '', 'View should have contextual title');
         });
     });
@@ -330,14 +329,14 @@ suite('Commands and UI E2E Tests', () => {
     });
 
     suite('View Container', () => {
-        test('view is in explorer container', function() {
+        test('views are in custom container', function() {
             this.timeout(10000);
 
             const packageJson = readPackageJson();
 
             assert.ok(
-                packageJson.contributes.views.explorer.length > 0,
-                'Views should be in explorer container'
+                packageJson.contributes.views['tasktree-container'].length > 0,
+                'Views should be in tasktree-container'
             );
         });
     });

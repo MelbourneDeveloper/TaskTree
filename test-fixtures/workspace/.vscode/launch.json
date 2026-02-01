@@ -5,14 +5,20 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Nested Debug Config",
+            "name": "Debug Application",
             "program": "${workspaceFolder}/index.js"
         },
         {
             /* Multi-line comment */
             "type": "python",
             "request": "launch",
-            "name": "Nested Python Debug",
+            "name": "Debug Tests",
+            "program": "${workspaceFolder}/test.py"
+        },
+        {
+            "type": "python",
+            "request": "launch",
+            "name": "Debug Python",
             "program": "${workspaceFolder}/main.py"
         }
     ]
