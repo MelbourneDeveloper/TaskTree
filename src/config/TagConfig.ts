@@ -1,10 +1,8 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { TaskItem } from '../models/TaskItem';
+import type { TaskItem } from '../models/TaskItem';
 
-interface TagDefinition {
-    [tagName: string]: string[];
-}
+type TagDefinition = Record<string, string[]>;
 
 interface TaskTreeConfig {
     tags?: TagDefinition;
@@ -15,7 +13,7 @@ interface TaskTreeConfig {
  */
 export class TagConfig {
     private config: TaskTreeConfig = {};
-    private configPath: string;
+    private readonly configPath: string;
 
     constructor(workspaceRoot: string) {
         this.configPath = path.join(workspaceRoot, '.vscode', 'tasktree.json');
@@ -29,7 +27,7 @@ export class TagConfig {
             const uri = vscode.Uri.file(this.configPath);
             const bytes = await vscode.workspace.fs.readFile(uri);
             const content = new TextDecoder().decode(bytes);
-            this.config = JSON.parse(content);
+            this.config = JSON.parse(content) as TaskTreeConfig;
         } catch {
             // No config file or invalid - use defaults
             this.config = {};
@@ -40,12 +38,15 @@ export class TagConfig {
      * Applies tags to a list of tasks based on glob patterns.
      */
     applyTags(tasks: TaskItem[]): TaskItem[] {
-        if (!this.config.tags) return tasks;
+        if (this.config.tags === undefined) {
+            return tasks;
+        }
 
+        const tags = this.config.tags;
         return tasks.map(task => {
             const matchedTags: string[] = [];
 
-            for (const [tagName, patterns] of Object.entries(this.config.tags!)) {
+            for (const [tagName, patterns] of Object.entries(tags)) {
                 for (const pattern of patterns) {
                     if (this.matchesPattern(task, pattern)) {
                         matchedTags.push(tagName);
@@ -101,17 +102,25 @@ export class TagConfig {
      */
     private matchesPattern(task: TaskItem, pattern: string): boolean {
         // Direct label match
-        if (this.globMatch(task.label, pattern)) return true;
+        if (this.globMatch(task.label, pattern)) {
+            return true;
+        }
 
         // Path match
-        if (this.globMatch(task.filePath, pattern)) return true;
+        if (this.globMatch(task.filePath, pattern)) {
+            return true;
+        }
 
         // Category match
-        if (this.globMatch(task.category, pattern)) return true;
+        if (this.globMatch(task.category, pattern)) {
+            return true;
+        }
 
         // Type:name match (e.g., "npm:test")
         const typeLabel = `${task.type}:${task.label}`;
-        if (this.globMatch(typeLabel, pattern)) return true;
+        if (this.globMatch(typeLabel, pattern)) {
+            return true;
+        }
 
         return false;
     }
@@ -121,7 +130,7 @@ export class TagConfig {
      */
     private globMatch(text: string, pattern: string): boolean {
         // Convert glob to regex
-        let regex = pattern
+        const regex = pattern
             .replace(/[.+^${}()|[\]\\]/g, '\\$&') // Escape special chars
             .replace(/\*\*/g, '.*') // ** matches anything
             .replace(/\*/g, '[^/]*'); // * matches within segment

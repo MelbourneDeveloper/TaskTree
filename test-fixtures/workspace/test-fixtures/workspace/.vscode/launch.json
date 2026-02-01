@@ -2,16 +2,16 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Nested Debug Config",
             "type": "node",
             "request": "launch",
-            "name": "Debug Application",
-            "program": "${workspaceFolder}/excluded.js"
+            "program": "${workspaceFolder}/app.js"
         },
         {
+            "name": "Nested Python Debug",
             "type": "python",
             "request": "launch",
-            "name": "Debug Python",
-            "program": "${workspaceFolder}/excluded.py"
+            "program": "${workspaceFolder}/app.py"
         }
     ]
 }

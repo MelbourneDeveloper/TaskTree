@@ -2,16 +2,14 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Build Project",
+            "label": "Nested Build Task",
             "type": "shell",
-            "command": "echo excluded",
-            "problemMatcher": []
+            "command": "echo build"
         },
         {
-            "label": "Deploy with Config",
+            "label": "Nested Deploy Task",
             "type": "shell",
-            "command": "echo excluded",
-            "problemMatcher": []
+            "command": "echo deploy"
         }
     ]
 }

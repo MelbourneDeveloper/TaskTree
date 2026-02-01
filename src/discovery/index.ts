@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { TaskItem } from '../models/TaskItem';
+import type { TaskItem } from '../models/TaskItem';
 import { discoverShellScripts } from './shell';
 import { discoverNpmScripts } from './npm';
 import { discoverMakeTargets } from './make';

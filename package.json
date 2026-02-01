@@ -11,10 +11,10 @@
     "Other"
   ],
   "icon": "icon.png",
+  "main": "./out/extension.js",
   "activationEvents": [
     "onView:tasktree"
   ],
-  "main": "./out/extension.js",
   "contributes": {
     "views": {
       "explorer": [

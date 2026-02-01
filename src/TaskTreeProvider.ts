@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
-import { TaskItem, TaskTreeItem } from './models/TaskItem';
-import { discoverAllTasks, flattenTasks, getExcludePatterns, DiscoveryResult } from './discovery';
+import type { TaskItem } from './models/TaskItem';
+import { TaskTreeItem } from './models/TaskItem';
+import type { DiscoveryResult } from './discovery';
+import { discoverAllTasks, flattenTasks, getExcludePatterns } from './discovery';
 import { TagConfig } from './config/TagConfig';
 
 type GroupedTasks = Map<string, TaskItem[]>;
@@ -10,15 +12,15 @@ type SortOrder = 'folder' | 'name' | 'type';
  * Tree data provider for TaskTree view.
  */
 export class TaskTreeProvider implements vscode.TreeDataProvider<TaskTreeItem> {
-    private _onDidChangeTreeData = new vscode.EventEmitter<TaskTreeItem | undefined>();
+    private readonly _onDidChangeTreeData = new vscode.EventEmitter<TaskTreeItem | undefined>();
     readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
     private tasks: TaskItem[] = [];
     private discoveryResult: DiscoveryResult | null = null;
-    private textFilter: string = '';
+    private textFilter = '';
     private tagFilter: string | null = null;
-    private tagConfig: TagConfig;
-    private workspaceRoot: string;
+    private readonly tagConfig: TagConfig;
+    private readonly workspaceRoot: string;
 
     constructor(workspaceRoot: string) {
         this.workspaceRoot = workspaceRoot;
@@ -222,21 +224,27 @@ export class TaskTreeProvider implements vscode.TreeDataProvider<TaskTreeItem> {
 
         sorted.sort((a, b) => {
             switch (sortOrder) {
-                case 'folder':
+                case 'folder': {
                     // Sort by folder first, then by name
                     const folderCmp = a.category.localeCompare(b.category);
-                    if (folderCmp !== 0) return folderCmp;
+                    if (folderCmp !== 0) {
+                        return folderCmp;
+                    }
                     return a.label.localeCompare(b.label);
+                }
 
                 case 'name':
                     // Sort alphabetically by name
                     return a.label.localeCompare(b.label);
 
-                case 'type':
+                case 'type': {
                     // Sort by type first, then by name
                     const typeCmp = a.type.localeCompare(b.type);
-                    if (typeCmp !== 0) return typeCmp;
+                    if (typeCmp !== 0) {
+                        return typeCmp;
+                    }
                     return a.label.localeCompare(b.label);
+                }
 
                 default:
                     return a.label.localeCompare(b.label);
@@ -249,7 +257,7 @@ export class TaskTreeProvider implements vscode.TreeDataProvider<TaskTreeItem> {
     /**
      * Sorts folder entries alphabetically.
      */
-    private sortGroupedTasks(grouped: GroupedTasks): [string, TaskItem[]][] {
+    private sortGroupedTasks(grouped: GroupedTasks): Array<[string, TaskItem[]]> {
         const entries = Array.from(grouped.entries());
         // Sort folders alphabetically
         entries.sort((a, b) => a[0].localeCompare(b[0]));
@@ -267,7 +275,7 @@ export class TaskTreeProvider implements vscode.TreeDataProvider<TaskTreeItem> {
         let result = tasks;
 
         // Apply text filter
-        if (this.textFilter) {
+        if (this.textFilter !== '') {
             result = result.filter(t =>
                 t.label.toLowerCase().includes(this.textFilter) ||
                 t.category.toLowerCase().includes(this.textFilter) ||
@@ -277,8 +285,9 @@ export class TaskTreeProvider implements vscode.TreeDataProvider<TaskTreeItem> {
         }
 
         // Apply tag filter
-        if (this.tagFilter) {
-            result = result.filter(t => t.tags.includes(this.tagFilter!));
+        if (this.tagFilter !== null && this.tagFilter !== '') {
+            const filterTag = this.tagFilter;
+            result = result.filter(t => t.tags.includes(filterTag));
         }
 
         return result;

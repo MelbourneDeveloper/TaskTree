@@ -1,5 +1,15 @@
 import * as vscode from 'vscode';
-import { TaskItem, generateTaskId } from '../models/TaskItem';
+import type { TaskItem, MutableTaskItem } from '../models/TaskItem';
+import { generateTaskId } from '../models/TaskItem';
+
+interface LaunchConfig {
+    name?: string;
+    type?: string;
+}
+
+interface LaunchJson {
+    configurations?: LaunchConfig[];
+}
 
 /**
  * Discovers VS Code launch configurations.
@@ -15,13 +25,15 @@ export async function discoverLaunchConfigs(
             const content = await readFile(file);
             // Remove comments from JSON (VS Code allows JSONC)
             const cleanJson = removeJsonComments(content);
-            const launch = JSON.parse(cleanJson);
+            const launch = JSON.parse(cleanJson) as LaunchJson;
 
-            if (launch.configurations && Array.isArray(launch.configurations)) {
+            if (launch.configurations !== undefined && Array.isArray(launch.configurations)) {
                 for (const config of launch.configurations) {
-                    if (!config.name) continue;
+                    if (config.name === undefined) {
+                        continue;
+                    }
 
-                    const task: TaskItem = {
+                    const task: MutableTaskItem = {
                         id: generateTaskId('launch', file.fsPath, config.name),
                         label: config.name,
                         type: 'launch',
@@ -31,8 +43,8 @@ export async function discoverLaunchConfigs(
                         filePath: file.fsPath,
                         tags: []
                     };
-                    if (config.type) {
-                        (task as { description: string }).description = config.type;
+                    if (config.type !== undefined) {
+                        task.description = config.type;
                     }
                     tasks.push(task);
                 }

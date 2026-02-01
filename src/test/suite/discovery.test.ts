@@ -386,7 +386,7 @@ suite('Task Discovery E2E Tests', () => {
                 const rootChildren = await getTreeChildren(provider);
 
                 // Find VS Code Tasks category
-                const vscodeTasks = rootChildren.find(c => c.label === 'VS Code Tasks');
+                const vscodeTasks = rootChildren.find(c => typeof c.label === 'string' && c.label.startsWith('VS Code Tasks'));
                 assert.ok(vscodeTasks, 'Should have VS Code Tasks category');
 
                 const taskItems = await getTreeChildren(provider, vscodeTasks);
@@ -422,7 +422,7 @@ suite('Task Discovery E2E Tests', () => {
             assert.ok(fs.existsSync(testFixturesTasksPath), 'test-fixtures tasks.json should exist');
 
             const fixtureContent = fs.readFileSync(testFixturesTasksPath, 'utf8');
-            assert.ok(fixtureContent.includes('Build Project'), 'test-fixtures should have Build Project task');
+            assert.ok(fixtureContent.includes('Nested Build Task'), 'test-fixtures should have Nested Build Task');
 
             await vscode.commands.executeCommand('tasktree.refresh');
             await sleep(1500);
@@ -432,14 +432,14 @@ suite('Task Discovery E2E Tests', () => {
             const rootChildren = await getTreeChildren(provider);
 
             // Find VS Code Tasks category
-            const vscodeTasks = rootChildren.find(c => c.label === 'VS Code Tasks');
+            const vscodeTasks = rootChildren.find(c => typeof c.label === 'string' && c.label.startsWith('VS Code Tasks'));
             if (vscodeTasks) {
                 const taskItems = await getTreeChildren(provider, vscodeTasks);
                 const labels = taskItems.map(t => t.label);
 
                 // These tasks are in test-fixtures and should NOT appear
-                assert.ok(!labels.includes('Build Project'), `'Build Project' from test-fixtures should be excluded, got: ${labels.join(', ')}`);
-                assert.ok(!labels.includes('Deploy with Config'), `'Deploy with Config' from test-fixtures should be excluded`);
+                assert.ok(!labels.includes('Nested Build Task'), `'Nested Build Task' from test-fixtures should be excluded, got: ${labels.join(', ')}`);
+                assert.ok(!labels.includes('Nested Deploy Task'), `'Nested Deploy Task' from test-fixtures should be excluded`);
             }
         });
 
@@ -451,7 +451,7 @@ suite('Task Discovery E2E Tests', () => {
             assert.ok(fs.existsSync(testFixturesLaunchPath), 'test-fixtures launch.json should exist');
 
             const fixtureContent = fs.readFileSync(testFixturesLaunchPath, 'utf8');
-            assert.ok(fixtureContent.includes('Debug Application'), 'test-fixtures should have Debug Application config');
+            assert.ok(fixtureContent.includes('Nested Debug Config'), 'test-fixtures should have Nested Debug Config');
 
             await vscode.commands.executeCommand('tasktree.refresh');
             await sleep(1500);
@@ -461,14 +461,14 @@ suite('Task Discovery E2E Tests', () => {
             const rootChildren = await getTreeChildren(provider);
 
             // Find VS Code Launch category
-            const vscodeLaunch = rootChildren.find(c => c.label === 'VS Code Launch');
+            const vscodeLaunch = rootChildren.find(c => typeof c.label === 'string' && c.label.startsWith('VS Code Launch'));
             if (vscodeLaunch) {
                 const launchItems = await getTreeChildren(provider, vscodeLaunch);
                 const labels = launchItems.map(t => t.label);
 
                 // These configs are in test-fixtures and should NOT appear
-                assert.ok(!labels.includes('Debug Application'), `'Debug Application' from test-fixtures should be excluded, got: ${labels.join(', ')}`);
-                assert.ok(!labels.includes('Debug Python'), `'Debug Python' from test-fixtures should be excluded`);
+                assert.ok(!labels.includes('Nested Debug Config'), `'Nested Debug Config' from test-fixtures should be excluded, got: ${labels.join(', ')}`);
+                assert.ok(!labels.includes('Nested Python Debug'), `'Nested Python Debug' from test-fixtures should be excluded`);
             }
         });
 

@@ -3,7 +3,8 @@
         "**/node_modules/**",
         "**/bin/**",
         "**/obj/**",
-        "**/.git/**"
+        "**/.git/**",
+        "**/test-fixtures/**"
     ],
     "tasktree.sortOrder": "folder",
     "tasktree.showEmptyCategories": false

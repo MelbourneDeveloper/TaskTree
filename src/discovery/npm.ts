@@ -1,6 +1,11 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { TaskItem, generateTaskId, simplifyPath } from '../models/TaskItem';
+import type { TaskItem } from '../models/TaskItem';
+import { generateTaskId, simplifyPath } from '../models/TaskItem';
+
+interface PackageJson {
+    scripts?: Record<string, string>;
+}
 
 /**
  * Discovers npm scripts from package.json files.
@@ -16,14 +21,16 @@ export async function discoverNpmScripts(
     for (const file of files) {
         try {
             const content = await readFile(file);
-            const pkg = JSON.parse(content);
+            const pkg = JSON.parse(content) as PackageJson;
 
-            if (pkg.scripts && typeof pkg.scripts === 'object') {
+            if (pkg.scripts !== undefined && typeof pkg.scripts === 'object') {
                 const pkgDir = path.dirname(file.fsPath);
                 const category = simplifyPath(file.fsPath, workspaceRoot);
 
                 for (const [name, command] of Object.entries(pkg.scripts)) {
-                    if (typeof command !== 'string') continue;
+                    if (typeof command !== 'string') {
+                        continue;
+                    }
 
                     tasks.push({
                         id: generateTaskId('npm', file.fsPath, name),
@@ -52,5 +59,5 @@ async function readFile(uri: vscode.Uri): Promise<string> {
 }
 
 function truncate(str: string, max: number): string {
-    return str.length > max ? str.slice(0, max - 3) + '...' : str;
+    return str.length > max ? `${str.slice(0, max - 3)}...` : str;
 }

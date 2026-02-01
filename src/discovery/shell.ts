@@ -62,12 +62,13 @@ function parseShellParams(content: string): ParamDef[] {
             continue;
         }
 
-        const defaultMatch = descText.match(/\(default:\s*([^)]+)\)/i);
+        const defaultRegex = /\(default:\s*([^)]+)\)/i;
+        const defaultMatch = defaultRegex.exec(descText);
         const defaultVal = defaultMatch?.[1]?.trim();
         const param: ParamDef = {
             name: paramName,
             description: descText.replace(/\(default:[^)]+\)/i, '').trim(),
-            ...(defaultVal ? { default: defaultVal } : {})
+            ...(defaultVal !== undefined && defaultVal !== '' ? { default: defaultVal } : {})
         };
         params.push(param);
     }

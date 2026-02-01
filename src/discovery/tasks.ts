@@ -87,10 +87,6 @@ function parseInputs(inputs: TaskInput[] | undefined): Map<string, ParamDef> {
     }
 
     for (const input of inputs) {
-        if (input.id === undefined) {
-            continue;
-        }
-
         const param: ParamDef = {
             name: input.id,
             ...(input.description !== undefined ? { description: input.description } : {}),

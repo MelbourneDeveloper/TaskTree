@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { TaskItem, generateTaskId, simplifyPath } from '../models/TaskItem';
+import type { TaskItem } from '../models/TaskItem';
+import { generateTaskId, simplifyPath } from '../models/TaskItem';
 
 /**
  * Discovers make targets from Makefiles.
@@ -31,7 +32,9 @@ export async function discoverMakeTargets(
 
             for (const target of targets) {
                 // Skip internal targets (start with .)
-                if (target.startsWith('.')) continue;
+                if (target.startsWith('.')) {
+                    continue;
+                }
 
                 tasks.push({
                     id: generateTaskId('make', file.fsPath, target),
@@ -64,7 +67,9 @@ function parseMakeTargets(content: string): string[] {
     let match;
     while ((match = targetRegex.exec(content)) !== null) {
         const target = match[1];
-        if (!target) continue;
+        if (target === undefined || target === '') {
+            continue;
+        }
         // Add target if not already present
         if (!targets.includes(target)) {
             targets.push(target);

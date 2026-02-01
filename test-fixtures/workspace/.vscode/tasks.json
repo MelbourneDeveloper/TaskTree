@@ -1,63 +1,66 @@
 {
-    // VS Code tasks configuration
+    // This is a single-line comment for testing JSONC parsing
     "version": "2.0.0",
+    /*
+     * This is a multi-line comment
+     * for testing JSONC support
+     */
     "tasks": [
         {
             "label": "Build Project",
             "type": "shell",
             "command": "npm run build",
+            "group": "build",
             "problemMatcher": []
         },
         {
             "label": "Run Tests",
             "type": "shell",
             "command": "npm test",
+            "group": "test",
             "problemMatcher": []
         },
         {
-            // Deploy task with input parameters
             "label": "Deploy with Config",
             "type": "shell",
-            "command": "deploy.sh ${input:deployEnv} ${input:buildConfig}",
+            "command": "deploy.sh ${input:deployEnv}",
             "problemMatcher": []
         },
         {
             "label": "Custom Build",
             "type": "shell",
-            "command": "make ${input:buildTarget}",
-            "problemMatcher": []
-        },
-        {
-            "type": "npm",
-            "script": "my-test-script",
-            "problemMatcher": []
-        },
-        {
-            "type": "npm",
-            "script": "another-script",
+            "command": "build.sh --config ${input:buildConfig} --target ${input:buildTarget}",
             "problemMatcher": []
         }
     ],
     "inputs": [
         {
             "id": "deployEnv",
-            "description": "Select deployment environment",
             "type": "pickString",
-            "options": ["development", "staging", "production"],
+            "description": "Select deployment environment",
+            "options": [
+                "development",
+                "staging",
+                "production"
+            ],
             "default": "development"
         },
         {
             "id": "buildConfig",
-            "description": "Build configuration",
             "type": "promptString",
-            "default": "release"
+            "description": "Enter build configuration",
+            "default": "debug"
         },
         {
             "id": "buildTarget",
-            "description": "Make target",
             "type": "pickString",
-            "options": ["all", "clean", "test"],
-            "default": "all"
+            "description": "Select build target",
+            "options": [
+                "x86",
+                "x64",
+                "arm64"
+            ],
+            "default": "x64"
         }
     ]
 }

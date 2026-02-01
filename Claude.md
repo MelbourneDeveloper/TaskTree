@@ -10,10 +10,10 @@ You are working with many other agents. Make sure there is effective cooperation
 
 ## Coding Rules
 
-- **TypeScript strict mode** - No `any`, no implicit types
+- **TypeScript strict mode** - No `any`, no implicit types, turn all lints up to error
 - **Functional style** - Prefer pure functions, avoid classes where possible
-- **PRIVATE BY DEFAULT** - Export only what's needed
 - **No suppressing warnings** - Fix them properly
+- **Ignoring lints = ⛔️ illegal** - Fix violations immediately
 - **No throwing** - Only return `Result<T,E>`
 - **Expressions over assignments** - Prefer const and immutable patterns
 - **Named parameters** - Use object params for functions with 3+ args
@@ -22,6 +22,8 @@ You are working with many other agents. Make sure there is effective cooperation
 - **No placeholders** - If incomplete, leave LOUD compilation error with TODO
 
 ## Testing
+
+⚠️ NEVER KILL VSCODE PROCESSES
 
 ### Testing Process
 
@@ -38,6 +40,11 @@ You are working with many other agents. Make sure there is effective cooperation
 - Run tests: `npm test`
 - NEVER remove assertions
 - FAILING TEST = OK. TEST THAT DOESN'T ENFORCE BEHAVIOR = ILLEGAL
+
+## Critical Docs
+
+[VSCode Extension API](https://code.visualstudio.com/api/)
+[SCode Extension Testing API](https://code.visualstudio.com/api/extension-guides/testing)
 
 ## Project Structure
 

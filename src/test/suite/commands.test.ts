@@ -35,19 +35,25 @@ suite('Commands and UI E2E Tests', () => {
             this.timeout(10000);
 
             // The extension should activate when the tasktree view is shown
-            // This is configured in activationEvents
+            // VS Code auto-generates activation events from view contributions
 
             const extension = vscode.extensions.getExtension(EXTENSION_ID);
             assert.ok(extension, 'Extension should exist');
 
-            // Package.json should have correct activation event
+            // Package.json should have the tasktree view contribution
             const packageJson = JSON.parse(
                 fs.readFileSync(getExtensionPath('package.json'), 'utf8')
             );
 
+            // Either explicit activationEvents or view contribution triggers activation
+            const hasActivationEvent = packageJson.activationEvents?.includes('onView:tasktree') ?? false;
+            const hasViewContribution = packageJson.contributes?.views?.explorer?.some(
+                (v: { id: string }) => v.id === 'tasktree'
+            ) ?? false;
+
             assert.ok(
-                packageJson.activationEvents.includes('onView:tasktree'),
-                'Should activate on view'
+                hasActivationEvent || hasViewContribution,
+                'Should activate on view (via activationEvents or view contribution)'
             );
         });
     });
