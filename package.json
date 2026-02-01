@@ -99,6 +99,16 @@
         "command": "tasktree.refreshQuick",
         "title": "Refresh Quick Tasks",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "tasktree.addTag",
+        "title": "Add Tag",
+        "icon": "$(tag)"
+      },
+      {
+        "command": "tasktree.removeTag",
+        "title": "Remove Tag",
+        "icon": "$(close)"
       }
     ],
     "menus": {
@@ -174,6 +184,16 @@
           "command": "tasktree.addToQuick",
           "when": "view == tasktree && viewItem == task",
           "group": "2_tags@1"
+        },
+        {
+          "command": "tasktree.addTag",
+          "when": "view == tasktree && viewItem == task",
+          "group": "3_tagging@1"
+        },
+        {
+          "command": "tasktree.removeTag",
+          "when": "view == tasktree && viewItem == task",
+          "group": "3_tagging@2"
         },
         {
           "command": "tasktree.runInNewTerminal",

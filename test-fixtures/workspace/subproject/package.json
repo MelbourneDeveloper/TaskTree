@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "build": "echo 'Building subproject'",
-    "test": "echo 'Testing subproject'"
+    "test": "echo 'Testing subproject'",
+    "lint": "echo 'Linting subproject'"
   }
 }

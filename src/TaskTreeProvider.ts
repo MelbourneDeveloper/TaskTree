@@ -95,6 +95,22 @@ export class TaskTreeProvider implements vscode.TreeDataProvider<TaskTreeItem> {
     }
 
     /**
+     * Adds a task to a tag.
+     */
+    async addTaskToTag(task: TaskItem, tagName: string): Promise<void> {
+        await this.tagConfig.addTaskToTag(task, tagName);
+        await this.refresh();
+    }
+
+    /**
+     * Removes a task from a tag.
+     */
+    async removeTaskFromTag(task: TaskItem, tagName: string): Promise<void> {
+        await this.tagConfig.removeTaskFromTag(task, tagName);
+        await this.refresh();
+    }
+
+    /**
      * Gets all discovered tasks (without filters applied).
      */
     getAllTasks(): TaskItem[] {

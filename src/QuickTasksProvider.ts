@@ -77,10 +77,11 @@ export class QuickTasksProvider implements vscode.TreeDataProvider<TaskTreeItem>
         }
 
         // Sort by the order in the tag patterns array for deterministic ordering
+        // Use task.id for matching since patterns now store full task IDs
         const quickPatterns = this.tagConfig.getTagPatterns('quick');
         const sortedTasks = [...quickTasks].sort((a, b) => {
-            const indexA = quickPatterns.indexOf(a.label);
-            const indexB = quickPatterns.indexOf(b.label);
+            const indexA = quickPatterns.indexOf(a.id);
+            const indexB = quickPatterns.indexOf(b.id);
             // If not found in patterns, put at end sorted alphabetically
             if (indexA === -1 && indexB === -1) {
                 return a.label.localeCompare(b.label);
@@ -105,7 +106,8 @@ export class QuickTasksProvider implements vscode.TreeDataProvider<TaskTreeItem>
         if (taskItem?.task === null) {
             return;
         }
-        dataTransfer.set(QUICK_TASK_MIME_TYPE, new vscode.DataTransferItem(taskItem?.task?.label ?? ''));
+        // Use task.id for unique identification during drag/drop
+        dataTransfer.set(QUICK_TASK_MIME_TYPE, new vscode.DataTransferItem(taskItem?.task?.id ?? ''));
     }
 
     /**
@@ -117,18 +119,18 @@ export class QuickTasksProvider implements vscode.TreeDataProvider<TaskTreeItem>
             return;
         }
 
-        const draggedLabel = transferItem.value as string;
-        if (draggedLabel === '') {
+        const draggedId = transferItem.value as string;
+        if (draggedId === '') {
             return;
         }
 
-        // Find the dragged task
-        const draggedTask = this.allTasks.find(t => t.label === draggedLabel && t.tags.includes('quick'));
+        // Find the dragged task by ID for unique identification
+        const draggedTask = this.allTasks.find(t => t.id === draggedId && t.tags.includes('quick'));
         if (draggedTask === undefined) {
             return;
         }
 
-        // Determine drop position
+        // Determine drop position using task IDs
         const quickPatterns = this.tagConfig.getTagPatterns('quick');
         let newIndex: number;
 
@@ -137,8 +139,8 @@ export class QuickTasksProvider implements vscode.TreeDataProvider<TaskTreeItem>
             // Dropped on empty area or placeholder - move to end
             newIndex = quickPatterns.length;
         } else {
-            // Dropped on a task - insert before it
-            const targetIndex = quickPatterns.indexOf(targetTask.label);
+            // Dropped on a task - insert before it (using task ID)
+            const targetIndex = quickPatterns.indexOf(targetTask.id);
             newIndex = targetIndex === -1 ? quickPatterns.length : targetIndex;
         }
 

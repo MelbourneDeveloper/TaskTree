@@ -135,6 +135,78 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
 
         vscode.commands.registerCommand('tasktree.refreshQuick', () => {
             quickTasksProvider.refresh();
+        }),
+
+        vscode.commands.registerCommand('tasktree.addTag', async (item: TaskTreeItem | undefined) => {
+            if (item === undefined || item.task === null) {
+                return;
+            }
+
+            const existingTags = treeProvider.getAllTags();
+            const options: vscode.QuickPickItem[] = existingTags.map(t => ({
+                label: `$(tag) ${t}`,
+                description: 'Existing tag',
+                tag: t
+            } as vscode.QuickPickItem & { tag: string }));
+
+            options.push({
+                label: '$(add) Create new tag...',
+                description: 'Create a new tag',
+                alwaysShow: true
+            });
+
+            const selected = await vscode.window.showQuickPick(options, {
+                placeHolder: `Add tag to "${item.task.label}"`
+            });
+
+            if (selected === undefined) {
+                return;
+            }
+
+            let tagName: string;
+            if (selected.label === '$(add) Create new tag...') {
+                const newTag = await vscode.window.showInputBox({
+                    prompt: 'Enter new tag name',
+                    placeHolder: 'e.g., build, test, deploy'
+                });
+                if (newTag === undefined || newTag.trim() === '') {
+                    return;
+                }
+                tagName = newTag.trim();
+            } else {
+                tagName = (selected as vscode.QuickPickItem & { tag: string }).tag;
+            }
+
+            await treeProvider.addTaskToTag(item.task, tagName);
+            await quickTasksProvider.updateTasks(treeProvider.getAllTasks());
+        }),
+
+        vscode.commands.registerCommand('tasktree.removeTag', async (item: TaskTreeItem | undefined) => {
+            if (item === undefined || item.task === null) {
+                return;
+            }
+
+            const taskTags = item.task.tags;
+            if (taskTags.length === 0) {
+                vscode.window.showInformationMessage('This task has no tags');
+                return;
+            }
+
+            const options = taskTags.map(t => ({
+                label: `$(tag) ${t}`,
+                tag: t
+            }));
+
+            const selected = await vscode.window.showQuickPick(options, {
+                placeHolder: `Remove tag from "${item.task.label}"`
+            });
+
+            if (selected === undefined) {
+                return;
+            }
+
+            await treeProvider.removeTaskFromTag(item.task, selected.tag);
+            await quickTasksProvider.updateTasks(treeProvider.getAllTasks());
         })
     );
 

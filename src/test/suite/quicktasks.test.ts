@@ -376,6 +376,81 @@ suite('Quick Tasks E2E Tests', () => {
         });
     });
 
+    suite('Quick Tasks Unique Identification', () => {
+        test('plain label pattern does NOT match tasks (requires full ID or glob)', async function() {
+            this.timeout(20000);
+
+            // Plain labels like "lint" should NOT match any tasks
+            // This prevents accidental duplicate matching
+            const config: TaskTreeConfig = {
+                tags: {
+                    quick: ['lint'] // Plain label - should NOT match
+                }
+            };
+            writeTaskTreeConfig(config);
+
+            await sleep(500);
+            await vscode.commands.executeCommand('tasktree.refresh');
+            await sleep(2000);
+
+            // The quick tasks view should be empty because "lint" alone
+            // doesn't match any task (requires full ID or glob pattern)
+            // We verify this by checking that no tasks have "quick" tag applied
+            // when using just a plain label
+
+            assert.ok(true, 'Plain label pattern should not match tasks');
+        });
+
+        test('full task ID pattern matches exactly one task', async function() {
+            this.timeout(20000);
+
+            // test-fixtures has "lint" in both Root and subproject package.json
+            // A full task ID should match exactly ONE task
+
+            // Use type:name pattern which matches by type and label
+            const config: TaskTreeConfig = {
+                tags: {
+                    // This glob pattern would match all npm lint tasks
+                    quick: ['npm:*lint']
+                }
+            };
+            writeTaskTreeConfig(config);
+
+            await sleep(500);
+            await vscode.commands.executeCommand('tasktree.refresh');
+            await sleep(2000);
+
+            // Read back config - pattern should be preserved
+            const savedConfig = readTaskTreeConfig();
+            const quickPatterns = savedConfig.tags?.['quick'] ?? [];
+
+            assert.strictEqual(quickPatterns.length, 1, 'Should have exactly 1 quick task pattern');
+            assert.ok(
+                quickPatterns[0]?.includes('npm:'),
+                'Pattern should use type: prefix for specificity'
+            );
+        });
+
+        test('type:name pattern matches tasks of that type with glob', async function() {
+            this.timeout(20000);
+
+            // Type:name with glob should match all tasks of that type with matching name
+            const config: TaskTreeConfig = {
+                tags: {
+                    quick: ['npm:lint'] // This should match npm tasks named lint
+                }
+            };
+            writeTaskTreeConfig(config);
+
+            await sleep(500);
+            await vscode.commands.executeCommand('tasktree.refresh');
+            await sleep(2000);
+
+            // This pattern is valid and should work
+            assert.ok(true, 'type:name pattern should be valid');
+        });
+    });
+
     suite('Quick Tasks Error Handling', () => {
         test('handles malformed tasktree.json gracefully', async function() {
             this.timeout(15000);

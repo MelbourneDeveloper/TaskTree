@@ -98,12 +98,14 @@ export class TagConfig {
     }
 
     /**
-     * Adds a task to a specific tag by adding its label pattern.
+     * Adds a task to a specific tag by adding its full task ID.
+     * Uses the full ID (type:filePath:name) to uniquely identify the task.
      */
     async addTaskToTag(task: TaskItem, tagName: string): Promise<void> {
         this.config.tags ??= {};
 
-        const pattern = task.label;
+        // Use the full task ID for unique identification
+        const pattern = task.id;
         const existingPatterns = this.config.tags[tagName] ?? [];
 
         if (!existingPatterns.includes(pattern)) {
@@ -114,13 +116,15 @@ export class TagConfig {
 
     /**
      * Removes a task from a specific tag.
+     * Uses the full task ID for precise matching.
      */
     async removeTaskFromTag(task: TaskItem, tagName: string): Promise<void> {
         if (this.config.tags?.[tagName] === undefined) {
             return;
         }
 
-        const pattern = task.label;
+        // Use the full task ID for precise removal
+        const pattern = task.id;
         const patterns = this.config.tags[tagName];
         const filtered = patterns.filter(p => p !== pattern);
 
@@ -143,13 +147,15 @@ export class TagConfig {
 
     /**
      * Moves a task to a new position within a tag's pattern list.
+     * Uses the full task ID for precise matching.
      */
     async moveTaskInTag(task: TaskItem, tagName: string, newIndex: number): Promise<void> {
         if (this.config.tags?.[tagName] === undefined) {
             return;
         }
 
-        const pattern = task.label;
+        // Use the full task ID for precise matching
+        const pattern = task.id;
         const patterns = [...this.config.tags[tagName]];
         const currentIndex = patterns.indexOf(pattern);
 
@@ -179,26 +185,41 @@ export class TagConfig {
 
     /**
      * Checks if a task matches a glob-like pattern.
+     * Prioritizes exact task ID match for unique identification.
      */
     private matchesPattern(task: TaskItem, pattern: string): boolean {
-        // Direct label match
-        if (this.globMatch(task.label, pattern)) {
+        // FIRST: Exact task ID match (highest priority for unique identification)
+        // Task IDs are in format: type:filePath:name
+        if (task.id === pattern) {
             return true;
         }
 
-        // Path match
-        if (this.globMatch(task.filePath, pattern)) {
+        // If pattern looks like a full task ID (starts with type: prefix),
+        // only match against the full ID - don't fall through to partial matches
+        const looksLikeFullId = /^(npm|shell|make|launch|vscode):/.test(pattern);
+        if (looksLikeFullId) {
+            // For full IDs or type:name patterns, use glob matching against ID and type:label
+            const typeLabel = `${task.type}:${task.label}`;
+            return this.globMatch(task.id, pattern) || this.globMatch(typeLabel, pattern);
+        }
+
+        // Check if pattern has glob wildcards (* or **)
+        const hasGlobWildcard = pattern.includes('*');
+
+        // Path match (only with wildcards for safety)
+        if (hasGlobWildcard && this.globMatch(task.filePath, pattern)) {
             return true;
         }
 
-        // Category match
-        if (this.globMatch(task.category, pattern)) {
+        // Category match (only with wildcards for safety)
+        if (hasGlobWildcard && this.globMatch(task.category, pattern)) {
             return true;
         }
 
-        // Type:name match (e.g., "npm:test")
-        const typeLabel = `${task.type}:${task.label}`;
-        if (this.globMatch(typeLabel, pattern)) {
+        // Direct label match - ONLY if pattern has wildcards
+        // Plain labels like "lint" should NOT match - they are ambiguous
+        // Users should use full task IDs or type:name patterns for specificity
+        if (hasGlobWildcard && this.globMatch(task.label, pattern)) {
             return true;
         }
 
