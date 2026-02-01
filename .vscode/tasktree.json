@@ -22,7 +22,8 @@
     "ci": [
       "type:npm:lint",
       "type:npm:test",
-      "type:npm:build"
+      "type:npm:build",
+      "python:/Users/christianfindlay/Documents/Code/TaskTree/test-fixtures/workspace/scripts/build_project.py:build_project.py"
     ],
     "quick": [
       "build.sh",

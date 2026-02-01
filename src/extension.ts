@@ -49,12 +49,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
 
         vscode.commands.registerCommand('tasktree.run', async (item: TaskTreeItem | undefined) => {
             if (item !== undefined && item.task !== null) {
-                await taskRunner.run(item.task, 'task');
-            }
-        }),
-
-        vscode.commands.registerCommand('tasktree.runInNewTerminal', async (item: TaskTreeItem | undefined) => {
-            if (item !== undefined && item.task !== null) {
                 await taskRunner.run(item.task, 'newTerminal');
             }
         }),

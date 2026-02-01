@@ -401,15 +401,8 @@ suite('Task Execution E2E Tests', () => {
         });
     });
 
-    suite('Run In New Terminal', () => {
-        test('runInNewTerminal command is registered', async function() {
-            this.timeout(10000);
-
-            const commands = await vscode.commands.getCommands(true);
-            assert.ok(commands.includes('tasktree.runInNewTerminal'), 'runInNewTerminal command should be registered');
-        });
-
-        test('runInNewTerminal creates a new terminal', async function() {
+    suite('Run Task (New Terminal)', () => {
+        test('tasktree.run creates a new terminal', async function() {
             this.timeout(15000);
 
             const terminalsBefore = vscode.window.terminals.length;
@@ -425,14 +418,14 @@ suite('Task Execution E2E Tests', () => {
             // Create a TaskTreeItem wrapper
             const taskTreeItem = { task: shellTask };
 
-            await vscode.commands.executeCommand('tasktree.runInNewTerminal', taskTreeItem);
+            await vscode.commands.executeCommand('tasktree.run', taskTreeItem);
             await sleep(1500);
 
             const terminalsAfter = vscode.window.terminals.length;
             assert.ok(terminalsAfter >= terminalsBefore, 'Should have at least as many terminals');
         });
 
-        test('runInNewTerminal terminal has descriptive name', async function() {
+        test('tasktree.run terminal has descriptive name', async function() {
             this.timeout(15000);
 
             const shellTask = createMockTaskItem({
@@ -445,7 +438,7 @@ suite('Task Execution E2E Tests', () => {
 
             const taskTreeItem = { task: shellTask };
 
-            await vscode.commands.executeCommand('tasktree.runInNewTerminal', taskTreeItem);
+            await vscode.commands.executeCommand('tasktree.run', taskTreeItem);
             await sleep(1500);
 
             // Check if a terminal with TaskTree in the name exists
@@ -453,11 +446,11 @@ suite('Task Execution E2E Tests', () => {
             assert.ok(taskTreeTerminal !== undefined, 'Should create terminal with TaskTree in name');
         });
 
-        test('runInNewTerminal handles undefined gracefully', async function() {
+        test('tasktree.run handles undefined gracefully', async function() {
             this.timeout(10000);
 
             try {
-                await vscode.commands.executeCommand('tasktree.runInNewTerminal', undefined);
+                await vscode.commands.executeCommand('tasktree.run', undefined);
             } catch {
                 // Expected behavior
             }
@@ -465,11 +458,11 @@ suite('Task Execution E2E Tests', () => {
             assert.ok(true, 'Should handle undefined task');
         });
 
-        test('runInNewTerminal handles null task property gracefully', async function() {
+        test('tasktree.run handles null task property gracefully', async function() {
             this.timeout(10000);
 
             try {
-                await vscode.commands.executeCommand('tasktree.runInNewTerminal', { task: null });
+                await vscode.commands.executeCommand('tasktree.run', { task: null });
             } catch {
                 // Expected behavior
             }

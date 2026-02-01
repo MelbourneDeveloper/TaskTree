@@ -135,9 +135,24 @@
           "group": "navigation@4"
         },
         {
-          "command": "tasktree.refreshQuick",
+          "command": "tasktree.filter",
           "when": "view == tasktree-quick",
           "group": "navigation@1"
+        },
+        {
+          "command": "tasktree.filterByTag",
+          "when": "view == tasktree-quick",
+          "group": "navigation@2"
+        },
+        {
+          "command": "tasktree.clearFilter",
+          "when": "view == tasktree-quick && tasktree.hasFilter",
+          "group": "navigation@3"
+        },
+        {
+          "command": "tasktree.refreshQuick",
+          "when": "view == tasktree-quick",
+          "group": "navigation@4"
         }
       ],
       "view/item/context": [

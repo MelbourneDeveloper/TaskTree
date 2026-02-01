@@ -228,6 +228,96 @@ suite('Commands and UI E2E Tests', () => {
                 'clearFilter should require hasFilter context'
             );
         });
+
+        test('no duplicate commands in tasktree view/title menu', function() {
+            this.timeout(10000);
+
+            const packageJson = readPackageJson();
+
+            const viewTitleMenus = packageJson.contributes.menus['view/title'];
+            const taskTreeMenus = viewTitleMenus.filter(
+                (m) => m.when?.includes('view == tasktree') === true && !m.when.includes('tasktree-quick')
+            );
+
+            const commands = taskTreeMenus.map((m) => m.command);
+            const uniqueCommands = new Set(commands);
+
+            assert.strictEqual(
+                commands.length,
+                uniqueCommands.size,
+                `Duplicate commands in tasktree view/title: ${commands.filter((c, i) => commands.indexOf(c) !== i).join(', ')}`
+            );
+        });
+
+        test('no duplicate commands in tasktree-quick view/title menu', function() {
+            this.timeout(10000);
+
+            const packageJson = readPackageJson();
+
+            const viewTitleMenus = packageJson.contributes.menus['view/title'];
+            const quickMenus = viewTitleMenus.filter(
+                (m) => m.when?.includes('view == tasktree-quick') === true
+            );
+
+            const commands = quickMenus.map((m) => m.command);
+            const uniqueCommands = new Set(commands);
+
+            assert.strictEqual(
+                commands.length,
+                uniqueCommands.size,
+                `Duplicate commands in tasktree-quick view/title: ${commands.filter((c, i) => commands.indexOf(c) !== i).join(', ')}`
+            );
+        });
+
+        test('tasktree view has exactly 4 title bar icons', function() {
+            this.timeout(10000);
+
+            const packageJson = readPackageJson();
+
+            const viewTitleMenus = packageJson.contributes.menus['view/title'];
+            const taskTreeMenus = viewTitleMenus.filter(
+                (m) => m.when?.includes('view == tasktree') === true && !m.when.includes('tasktree-quick')
+            );
+
+            assert.strictEqual(
+                taskTreeMenus.length,
+                4,
+                `Expected exactly 4 view/title items for tasktree, got ${taskTreeMenus.length}: ${taskTreeMenus.map(m => m.command).join(', ')}`
+            );
+
+            const expectedCommands = ['tasktree.filter', 'tasktree.filterByTag', 'tasktree.clearFilter', 'tasktree.refresh'];
+            for (const cmd of expectedCommands) {
+                assert.ok(
+                    taskTreeMenus.some(m => m.command === cmd),
+                    `Missing expected command: ${cmd}`
+                );
+            }
+        });
+
+        test('tasktree-quick view has exactly 4 title bar icons', function() {
+            this.timeout(10000);
+
+            const packageJson = readPackageJson();
+
+            const viewTitleMenus = packageJson.contributes.menus['view/title'];
+            const quickMenus = viewTitleMenus.filter(
+                (m) => m.when?.includes('view == tasktree-quick') === true
+            );
+
+            assert.strictEqual(
+                quickMenus.length,
+                4,
+                `Expected exactly 4 view/title items for tasktree-quick, got ${quickMenus.length}: ${quickMenus.map(m => m.command).join(', ')}`
+            );
+
+            const expectedCommands = ['tasktree.filter', 'tasktree.filterByTag', 'tasktree.clearFilter', 'tasktree.refreshQuick'];
+            for (const cmd of expectedCommands) {
+                assert.ok(
+                    quickMenus.some(m => m.command === cmd),
+                    `Missing expected command: ${cmd}`
+                );
+            }
+        });
     });
 
     suite('Command Icons', () => {

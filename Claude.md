@@ -105,8 +105,7 @@ Result<T,E>
 | Command ID | Description |
 |------------|-------------|
 | `tasktree.refresh` | Reload all tasks |
-| `tasktree.run` | Run task via VS Code task system |
-| `tasktree.runInNewTerminal` | Run in new terminal |
+| `tasktree.run` | Run task in new terminal |
 | `tasktree.runInCurrentTerminal` | Run in active terminal |
 | `tasktree.debug` | Launch with debugger |
 | `tasktree.filter` | Text filter input |
