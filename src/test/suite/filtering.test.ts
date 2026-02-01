@@ -8,6 +8,10 @@ import {
     deleteFile
 } from './helpers';
 
+interface TagConfig {
+    tags: Record<string, string[]>;
+}
+
 suite('Task Filtering E2E Tests', () => {
     suiteSetup(async function() {
         this.timeout(30000);
@@ -56,47 +60,48 @@ suite('Task Filtering E2E Tests', () => {
             assert.ok(commands.includes('tasktree.filterByTag'), 'filterByTag command should be registered');
         });
 
-        test('tag configuration file exists in fixtures', async function() {
+        test('tag configuration file exists in fixtures', function() {
             this.timeout(10000);
 
             const tagConfigPath = getFixturePath('.vscode/tasktree.json');
             assert.ok(fs.existsSync(tagConfigPath), 'tasktree.json should exist');
         });
 
-        test('tag configuration has expected structure', async function() {
+        test('tag configuration has expected structure', function() {
             this.timeout(10000);
 
             const tagConfigPath = getFixturePath('.vscode/tasktree.json');
-            const content = JSON.parse(fs.readFileSync(tagConfigPath, 'utf8'));
+            const content = JSON.parse(fs.readFileSync(tagConfigPath, 'utf8')) as TagConfig;
 
-            assert.ok(content.tags, 'Should have tags property');
-            assert.ok(content.tags.build, 'Should have build tag');
-            assert.ok(content.tags.test, 'Should have test tag');
-            assert.ok(content.tags.deploy, 'Should have deploy tag');
-            assert.ok(content.tags.debug, 'Should have debug tag');
-            assert.ok(content.tags.scripts, 'Should have scripts tag');
-            assert.ok(content.tags.ci, 'Should have ci tag');
+            assert.ok('build' in content.tags, 'Should have build tag');
+            assert.ok(content.tags['test'], 'Should have test tag');
+            assert.ok(content.tags['deploy'], 'Should have deploy tag');
+            assert.ok(content.tags['debug'], 'Should have debug tag');
+            assert.ok(content.tags['scripts'], 'Should have scripts tag');
+            assert.ok(content.tags['ci'], 'Should have ci tag');
         });
 
-        test('tag patterns include glob wildcards', async function() {
+        test('tag patterns include glob wildcards', function() {
             this.timeout(10000);
 
-            const tagConfig = JSON.parse(fs.readFileSync(getFixturePath('.vscode/tasktree.json'), 'utf8'));
+            const tagConfig = JSON.parse(fs.readFileSync(getFixturePath('.vscode/tasktree.json'), 'utf8')) as TagConfig;
 
             // Check build tag patterns
-            const buildPatterns = tagConfig.tags.build;
+            const buildPatterns = tagConfig.tags['build'];
+            assert.ok(buildPatterns, 'build tag should exist');
             assert.ok(buildPatterns.includes('*build*'), 'build tag should have wildcard pattern');
             assert.ok(buildPatterns.includes('type:make:build'), 'build tag should have type:make:build');
             assert.ok(buildPatterns.includes('type:npm:build'), 'build tag should have type:npm:build');
         });
 
-        test('tag patterns support type:tasktype:label format', async function() {
+        test('tag patterns support type:tasktype:label format', function() {
             this.timeout(10000);
 
-            const tagConfig = JSON.parse(fs.readFileSync(getFixturePath('.vscode/tasktree.json'), 'utf8'));
+            const tagConfig = JSON.parse(fs.readFileSync(getFixturePath('.vscode/tasktree.json'), 'utf8')) as TagConfig;
 
             // Check debug tag patterns - should match launch configs
-            const debugPatterns = tagConfig.tags.debug;
+            const debugPatterns = tagConfig.tags['debug'];
+            assert.ok(debugPatterns, 'debug tag should exist');
             assert.ok(debugPatterns.includes('type:launch:*'), 'debug tag should have type:launch:* pattern');
         });
 
@@ -113,18 +118,16 @@ suite('Task Filtering E2E Tests', () => {
 
             // Check if an editor was opened
             const activeEditor = vscode.window.activeTextEditor;
-            assert.ok(activeEditor, 'editTags should open an editor');
+            assert.ok(activeEditor !== undefined, 'editTags should open an editor');
 
-            if (activeEditor) {
-                const fileName = activeEditor.document.fileName;
-                assert.ok(fileName.includes('tasktree.json'), 'Should open tasktree.json');
-            }
+            const fileName = activeEditor.document.fileName;
+            assert.ok(fileName.includes('tasktree.json'), 'Should open tasktree.json');
 
             // Clean up
             await vscode.commands.executeCommand('workbench.action.closeAllEditors');
         });
 
-        test('editTags creates config file if missing', async function() {
+        test('editTags creates config file if missing', function(this: Mocha.Context) {
             this.timeout(15000);
 
             const newDir = 'new-config-test/.vscode';
@@ -143,7 +146,7 @@ suite('Task Filtering E2E Tests', () => {
                 assert.ok(true, 'Should handle missing config gracefully');
             } finally {
                 // Cleanup
-                await deleteFile(newConfigPath);
+                deleteFile(newConfigPath);
                 const vscodedir = getFixturePath(newDir);
                 if (fs.existsSync(vscodedir)) {
                     fs.rmdirSync(vscodedir);
@@ -157,10 +160,10 @@ suite('Task Filtering E2E Tests', () => {
     });
 
     suite('Tag Pattern Matching', () => {
-        test('wildcard * matches any characters within segment', async function() {
+        test('wildcard * matches any characters within segment', function() {
             this.timeout(10000);
 
-            const tagConfig = JSON.parse(fs.readFileSync(getFixturePath('.vscode/tasktree.json'), 'utf8'));
+            const tagConfig = JSON.parse(fs.readFileSync(getFixturePath('.vscode/tasktree.json'), 'utf8')) as TagConfig;
 
             // Pattern *build* should match:
             // - "build" (exact)
@@ -168,33 +171,39 @@ suite('Task Filtering E2E Tests', () => {
             // - "build-prod"
             // - "my-build-task"
 
-            const buildPatterns = tagConfig.tags.build;
+            const buildPatterns = tagConfig.tags['build'];
+            assert.ok(buildPatterns, 'build tag should exist');
             assert.ok(buildPatterns.some((p: string) => p.includes('*')), 'Should have wildcard patterns');
         });
 
-        test('type: prefix pattern format is supported', async function() {
+        test('type: prefix pattern format is supported', function() {
             this.timeout(10000);
 
-            const tagConfig = JSON.parse(fs.readFileSync(getFixturePath('.vscode/tasktree.json'), 'utf8'));
+            const tagConfig = JSON.parse(fs.readFileSync(getFixturePath('.vscode/tasktree.json'), 'utf8')) as TagConfig;
 
             // Check various type patterns
+            const scriptsPatterns = tagConfig.tags['scripts'];
+            assert.ok(scriptsPatterns, 'scripts tag should exist');
             assert.ok(
-                tagConfig.tags.scripts.includes('type:shell:*'),
+                scriptsPatterns.includes('type:shell:*'),
                 'scripts tag should match all shell scripts'
             );
 
+            const debugPatterns = tagConfig.tags['debug'];
+            assert.ok(debugPatterns, 'debug tag should exist');
             assert.ok(
-                tagConfig.tags.debug.includes('type:launch:*'),
+                debugPatterns.includes('type:launch:*'),
                 'debug tag should match all launch configs'
             );
         });
 
-        test('ci tag matches multiple npm scripts', async function() {
+        test('ci tag matches multiple npm scripts', function() {
             this.timeout(10000);
 
-            const tagConfig = JSON.parse(fs.readFileSync(getFixturePath('.vscode/tasktree.json'), 'utf8'));
+            const tagConfig = JSON.parse(fs.readFileSync(getFixturePath('.vscode/tasktree.json'), 'utf8')) as TagConfig;
 
-            const ciPatterns = tagConfig.tags.ci;
+            const ciPatterns = tagConfig.tags['ci'];
+            assert.ok(ciPatterns, 'ci tag should exist');
             assert.ok(ciPatterns.includes('type:npm:lint'), 'ci should include lint');
             assert.ok(ciPatterns.includes('type:npm:test'), 'ci should include test');
             assert.ok(ciPatterns.includes('type:npm:build'), 'ci should include build');
@@ -298,16 +307,16 @@ suite('Task Filtering E2E Tests', () => {
             assert.ok(true, 'Should handle non-existent tags');
         });
 
-        test('case insensitive filtering', async function() {
+        test('case insensitive filtering', function() {
             this.timeout(10000);
 
             // The filter implementation should be case-insensitive
             // Verified by the implementation using toLowerCase()
 
-            const tagConfig = JSON.parse(fs.readFileSync(getFixturePath('.vscode/tasktree.json'), 'utf8'));
+            const tagConfig = JSON.parse(fs.readFileSync(getFixturePath('.vscode/tasktree.json'), 'utf8')) as TagConfig;
 
             // Tags are defined in lowercase
-            assert.ok(tagConfig.tags.build, 'Tags should be lowercase');
+            assert.ok(tagConfig.tags['build'], 'Tags should be lowercase');
 
             assert.ok(true, 'Filter should be case-insensitive');
         });
@@ -322,8 +331,8 @@ suite('Task Filtering E2E Tests', () => {
 
             try {
                 // Modify tag configuration
-                const config = JSON.parse(originalContent);
-                config.tags.newTag = ['*new*'];
+                const config = JSON.parse(originalContent) as TagConfig;
+                config.tags['newTag'] = ['*new*'];
                 fs.writeFileSync(tagConfigPath, JSON.stringify(config, null, 4));
 
                 // Wait for file watcher to trigger refresh

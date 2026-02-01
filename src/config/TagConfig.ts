@@ -101,9 +101,7 @@ export class TagConfig {
      * Adds a task to a specific tag by adding its label pattern.
      */
     async addTaskToTag(task: TaskItem, tagName: string): Promise<void> {
-        if (this.config.tags === undefined) {
-            this.config.tags = {};
-        }
+        this.config.tags ??= {};
 
         const pattern = task.label;
         const existingPatterns = this.config.tags[tagName] ?? [];
@@ -118,7 +116,7 @@ export class TagConfig {
      * Removes a task from a specific tag.
      */
     async removeTaskFromTag(task: TaskItem, tagName: string): Promise<void> {
-        if (this.config.tags === undefined || this.config.tags[tagName] === undefined) {
+        if (this.config.tags?.[tagName] === undefined) {
             return;
         }
 
@@ -133,6 +131,40 @@ export class TagConfig {
             this.config.tags[tagName] = filtered;
         }
 
+        await this.save();
+    }
+
+    /**
+     * Gets the patterns for a specific tag in order.
+     */
+    getTagPatterns(tagName: string): string[] {
+        return this.config.tags?.[tagName] ?? [];
+    }
+
+    /**
+     * Moves a task to a new position within a tag's pattern list.
+     */
+    async moveTaskInTag(task: TaskItem, tagName: string, newIndex: number): Promise<void> {
+        if (this.config.tags?.[tagName] === undefined) {
+            return;
+        }
+
+        const pattern = task.label;
+        const patterns = [...this.config.tags[tagName]];
+        const currentIndex = patterns.indexOf(pattern);
+
+        if (currentIndex === -1) {
+            return;
+        }
+
+        // Remove from current position
+        patterns.splice(currentIndex, 1);
+
+        // Insert at new position
+        const insertAt = newIndex > currentIndex ? newIndex - 1 : newIndex;
+        patterns.splice(Math.max(0, Math.min(insertAt, patterns.length)), 0, pattern);
+
+        this.config.tags[tagName] = patterns;
         await this.save();
     }
 

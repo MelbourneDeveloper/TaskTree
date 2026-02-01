@@ -25,7 +25,7 @@ suite('TreeView Real UI Tests', () => {
     suiteSetup(async function() {
         this.timeout(30000);
         context = await activateExtension();
-        provider = await getTaskTreeProvider();
+        provider = getTaskTreeProvider();
         await provider.refresh();
         await sleep(2000);
     });
@@ -287,7 +287,7 @@ suite('TreeView Real UI Tests', () => {
                 assert.strictEqual(
                     category.collapsibleState,
                     vscode.TreeItemCollapsibleState.Collapsed,
-                    `Category ${category.label} should be collapsible`
+                    `Category ${getLabelString(category.label)} should be collapsible`
                 );
             }
         });
@@ -320,7 +320,7 @@ suite('TreeView Real UI Tests', () => {
                 assert.strictEqual(
                     category.contextValue,
                     'category',
-                    `Category ${category.label} should have 'category' contextValue`
+                    `Category ${getLabelString(category.label)} should have 'category' contextValue`
                 );
             }
         });
@@ -353,13 +353,14 @@ suite('TreeView Real UI Tests', () => {
                 const allTasks = flattenTaskItems(category.children);
                 for (const task of allTasks) {
                     assert.ok(task.command, `Task ${task.task?.label} should have a command`);
+                    const cmd = task.command;
                     assert.strictEqual(
-                        task.command?.command,
+                        cmd.command,
                         'tasktree.run',
                         `Task ${task.task?.label} command should be tasktree.run`
                     );
                     assert.ok(
-                        task.command?.arguments?.length === 1,
+                        cmd.arguments?.length === 1,
                         `Task ${task.task?.label} command should have 1 argument (the task item)`
                     );
                 }
@@ -402,17 +403,21 @@ suite('TreeView Real UI Tests', () => {
 
             // All visible tasks should contain "deploy" in label, path, or description
             for (const task of allTasks) {
-                const label = task.task?.label?.toLowerCase() ?? '';
-                const path = task.task?.filePath?.toLowerCase() ?? '';
-                const desc = task.task?.description?.toLowerCase() ?? '';
-                const category = task.task?.category?.toLowerCase() ?? '';
+                const taskData = task.task;
+                if (!taskData) {
+                    continue;
+                }
+                const label = taskData.label.toLowerCase();
+                const path = taskData.filePath.toLowerCase();
+                const desc = (taskData.description ?? '').toLowerCase();
+                const cat = taskData.category.toLowerCase();
 
                 const matches = label.includes('deploy') ||
                     path.includes('deploy') ||
                     desc.includes('deploy') ||
-                    category.includes('deploy');
+                    cat.includes('deploy');
 
-                assert.ok(matches, `Task "${task.task?.label}" should match filter "deploy"`);
+                assert.ok(matches, `Task "${taskData.label}" should match filter "deploy"`);
             }
         });
 
@@ -445,7 +450,7 @@ suite('TreeView Real UI Tests', () => {
             assert.strictEqual(total, 0, 'Non-matching filter should show 0 tasks');
         });
 
-        test('hasFilter returns correct state', async function() {
+        test('hasFilter returns correct state', function() {
             this.timeout(10000);
 
             provider.clearFilters();
@@ -495,9 +500,11 @@ suite('TreeView Real UI Tests', () => {
             provider.clearFilters();
 
             for (const task of allTasks) {
+                const taskData = task.task;
+                assert.ok(taskData, 'Task should have task data');
                 assert.ok(
-                    task.task?.tags.includes('build'),
-                    `Task "${task.task?.label}" should have 'build' tag when filtered by build`
+                    taskData.tags.includes('build'),
+                    `Task "${taskData.label}" should have 'build' tag when filtered by build`
                 );
             }
         });
@@ -534,13 +541,15 @@ suite('TreeView Real UI Tests', () => {
                     `Task ${task.task?.label} should have MarkdownString tooltip`
                 );
 
-                const md = task.tooltip as vscode.MarkdownString;
+                const md = task.tooltip;
+                const taskData = task.task;
+                assert.ok(taskData, 'Task should have task data');
                 assert.ok(
-                    md.value.includes(task.task?.label ?? ''),
+                    md.value.includes(taskData.label),
                     `Tooltip should contain task label`
                 );
                 assert.ok(
-                    md.value.includes(task.task?.type ?? ''),
+                    md.value.includes(taskData.type),
                     `Tooltip should contain task type`
                 );
             }
@@ -577,14 +586,16 @@ suite('TreeView Real UI Tests', () => {
 
             const allTasks = flattenTaskItems(shellCategory.children);
             for (const item of allTasks) {
+                const taskData = item.task;
+                assert.ok(taskData, 'Task should have task data');
                 assert.ok(
-                    item.task?.cwd,
-                    `Shell task ${item.task?.label} should have cwd`
+                    taskData.cwd !== undefined && taskData.cwd !== '',
+                    `Shell task ${taskData.label} should have cwd`
                 );
                 assert.ok(
-                    item.task?.cwd?.includes(context.workspaceRoot) ||
-                    context.workspaceRoot.includes(item.task?.cwd ?? ''),
-                    `Shell task ${item.task?.label} cwd should be related to workspace`
+                    taskData.cwd.includes(context.workspaceRoot) ||
+                    context.workspaceRoot.includes(taskData.cwd),
+                    `Shell task ${taskData.label} cwd should be related to workspace`
                 );
             }
         });
@@ -598,9 +609,11 @@ suite('TreeView Real UI Tests', () => {
 
             const allTasks = flattenTaskItems(npmCategory.children);
             for (const item of allTasks) {
+                const taskData = item.task;
+                assert.ok(taskData, 'Task should have task data');
                 assert.ok(
-                    item.task?.filePath?.endsWith('package.json'),
-                    `NPM task ${item.task?.label} filePath should end with package.json`
+                    taskData.filePath.endsWith('package.json'),
+                    `NPM task ${taskData.label} filePath should end with package.json`
                 );
             }
         });

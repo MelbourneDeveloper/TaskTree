@@ -31,10 +31,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
     });
     context.subscriptions.push(treeView);
 
-    // Register quick tasks tree view
+    // Register quick tasks tree view with drag-and-drop support
     const quickTreeView = vscode.window.createTreeView('tasktree-quick', {
         treeDataProvider: quickTasksProvider,
-        showCollapseAll: true
+        showCollapseAll: true,
+        dragAndDropController: quickTasksProvider
     });
     context.subscriptions.push(quickTreeView);
 
@@ -158,7 +159,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
     // Export for testing
     return {
         taskTreeProvider: treeProvider,
-        quickTasksProvider: quickTasksProvider
+        quickTasksProvider
     };
 }
 

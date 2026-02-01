@@ -6,9 +6,13 @@ import {
     activateExtension,
     sleep,
     getFixturePath,
-    createMockTaskItem,
-    TestContext
+    createMockTaskItem
 } from './helpers';
+import type { TestContext } from './helpers';
+
+interface PackageJson {
+    scripts?: Record<string, string>;
+}
 
 suite('Task Execution E2E Tests', () => {
     let context: TestContext;
@@ -19,9 +23,11 @@ suite('Task Execution E2E Tests', () => {
         await sleep(2000);
     });
 
-    suiteTeardown(async function() {
+    suiteTeardown(() => {
         // Close any terminals that were opened during tests
-        vscode.window.terminals.forEach(t => t.dispose());
+        for (const t of vscode.window.terminals) {
+            t.dispose();
+        }
     });
 
     suite('Run Command', () => {
@@ -61,7 +67,7 @@ suite('Task Execution E2E Tests', () => {
     });
 
     suite('Shell Script Execution', () => {
-        test('shell scripts exist and are executable format', async function() {
+        test('shell scripts exist and are executable format', function() {
             this.timeout(10000);
 
             const buildScript = getFixturePath('scripts/build.sh');
@@ -73,9 +79,6 @@ suite('Task Execution E2E Tests', () => {
 
         test('shell task creates terminal with correct name', async function() {
             this.timeout(15000);
-
-            const _initialTerminalCount = vscode.window.terminals.length;
-            void _initialTerminalCount; // Used for comparison after task execution
 
             // Create a mock shell task
             const shellTask = createMockTaskItem({
@@ -100,7 +103,7 @@ suite('Task Execution E2E Tests', () => {
             }
         });
 
-        test('shell task with parameters has param definitions', async function() {
+        test('shell task with parameters has param definitions', function() {
             this.timeout(10000);
 
             const buildScript = fs.readFileSync(getFixturePath('scripts/build.sh'), 'utf8');
@@ -110,7 +113,7 @@ suite('Task Execution E2E Tests', () => {
             assert.ok(buildScript.includes('@param verbose'), 'Should have verbose param');
         });
 
-        test('shell task with options shows quick pick', async function() {
+        test('shell task with options shows quick pick', function() {
             this.timeout(10000);
 
             const deployScript = fs.readFileSync(getFixturePath('scripts/deploy.sh'), 'utf8');
@@ -122,16 +125,18 @@ suite('Task Execution E2E Tests', () => {
     });
 
     suite('NPM Script Execution', () => {
-        test('npm scripts are defined in package.json', async function() {
+        test('npm scripts are defined in package.json', function() {
             this.timeout(10000);
 
-            const packageJson = JSON.parse(fs.readFileSync(getFixturePath('package.json'), 'utf8'));
+            const packageJson = JSON.parse(fs.readFileSync(getFixturePath('package.json'), 'utf8')) as PackageJson;
+            const scripts = packageJson.scripts;
 
-            assert.ok(packageJson.scripts.build, 'Should have build script');
-            assert.ok(packageJson.scripts.test, 'Should have test script');
+            assert.ok(scripts !== undefined, 'Should have scripts object');
+            assert.ok(scripts['build'] !== undefined, 'Should have build script');
+            assert.ok(scripts['test'] !== undefined, 'Should have test script');
         });
 
-        test('npm task creates correct command', async function() {
+        test('npm task creates correct command', function() {
             this.timeout(10000);
 
             // An npm task should run 'npm run <scriptname>'
@@ -145,7 +150,7 @@ suite('Task Execution E2E Tests', () => {
             assert.ok((npmTask as Record<string, unknown>)['command'] === 'npm run build', 'Should have correct command');
         });
 
-        test('npm task uses correct working directory', async function() {
+        test('npm task uses correct working directory', function() {
             this.timeout(10000);
 
             // Subproject npm tasks should use subproject directory as cwd
@@ -164,7 +169,7 @@ suite('Task Execution E2E Tests', () => {
     });
 
     suite('Make Target Execution', () => {
-        test('Makefile targets are defined', async function() {
+        test('Makefile targets are defined', function() {
             this.timeout(10000);
 
             const makefile = fs.readFileSync(getFixturePath('Makefile'), 'utf8');
@@ -174,7 +179,7 @@ suite('Task Execution E2E Tests', () => {
             assert.ok(makefile.includes('clean:'), 'Should have clean target');
         });
 
-        test('make task creates correct command', async function() {
+        test('make task creates correct command', function() {
             this.timeout(10000);
 
             // A make task should run 'make <targetname>'
@@ -188,7 +193,7 @@ suite('Task Execution E2E Tests', () => {
             assert.ok((makeTask as Record<string, unknown>)['command'] === 'make build', 'Should have correct command');
         });
 
-        test('make task targets phony declarations', async function() {
+        test('make task targets phony declarations', function() {
             this.timeout(10000);
 
             const makefile = fs.readFileSync(getFixturePath('Makefile'), 'utf8');
@@ -199,7 +204,7 @@ suite('Task Execution E2E Tests', () => {
     });
 
     suite('Launch Configuration Execution', () => {
-        test('launch configurations are defined', async function() {
+        test('launch configurations are defined', function() {
             this.timeout(10000);
 
             const launchJson = fs.readFileSync(getFixturePath('.vscode/launch.json'), 'utf8');
@@ -208,7 +213,7 @@ suite('Task Execution E2E Tests', () => {
             assert.ok(launchJson.includes('Debug Tests'), 'Should have Debug Tests');
         });
 
-        test('launch task uses debug API', async function() {
+        test('launch task uses debug API', function() {
             this.timeout(10000);
 
             // Launch tasks should use vscode.debug.startDebugging
@@ -221,7 +226,7 @@ suite('Task Execution E2E Tests', () => {
             assert.ok((launchTask as Record<string, unknown>)['type'] === 'launch', 'Should be launch type');
         });
 
-        test('launch configurations have correct types', async function() {
+        test('launch configurations have correct types', function() {
             this.timeout(10000);
 
             const launchJson = fs.readFileSync(getFixturePath('.vscode/launch.json'), 'utf8');
@@ -232,7 +237,7 @@ suite('Task Execution E2E Tests', () => {
     });
 
     suite('VS Code Task Execution', () => {
-        test('VS Code tasks are defined', async function() {
+        test('VS Code tasks are defined', function() {
             this.timeout(10000);
 
             const tasksJson = fs.readFileSync(getFixturePath('.vscode/tasks.json'), 'utf8');
@@ -251,7 +256,7 @@ suite('Task Execution E2E Tests', () => {
             assert.ok(Array.isArray(tasks), 'fetchTasks should return array');
         });
 
-        test('vscode task with inputs has parameter definitions', async function() {
+        test('vscode task with inputs has parameter definitions', function() {
             this.timeout(10000);
 
             const tasksJson = fs.readFileSync(getFixturePath('.vscode/tasks.json'), 'utf8');
@@ -263,7 +268,7 @@ suite('Task Execution E2E Tests', () => {
     });
 
     suite('Parameter Collection', () => {
-        test('task with no params executes directly', async function() {
+        test('task with no params executes directly', function() {
             this.timeout(10000);
 
             const taskWithoutParams = createMockTaskItem({
@@ -274,10 +279,10 @@ suite('Task Execution E2E Tests', () => {
             });
 
             const params = (taskWithoutParams as Record<string, unknown[]>)['params'];
-            assert.ok(params && params.length === 0, 'Should have no params');
+            assert.ok(params?.length === 0, 'Should have no params');
         });
 
-        test('task with params has param definitions', async function() {
+        test('task with params has param definitions', function() {
             this.timeout(10000);
 
             const taskWithParams = createMockTaskItem({
@@ -291,10 +296,10 @@ suite('Task Execution E2E Tests', () => {
             });
 
             const params = (taskWithParams as Record<string, unknown[]>)['params'];
-            assert.ok(params && params.length === 2, 'Should have 2 params');
+            assert.ok(params?.length === 2, 'Should have 2 params');
         });
 
-        test('param with options creates quick pick choices', async function() {
+        test('param with options creates quick pick choices', function() {
             this.timeout(10000);
 
             const paramWithOptions = {
@@ -306,7 +311,7 @@ suite('Task Execution E2E Tests', () => {
             assert.ok(paramWithOptions.options.length === 3, 'Should have 3 options');
         });
 
-        test('param with default value provides placeholder', async function() {
+        test('param with default value provides placeholder', function() {
             this.timeout(10000);
 
             const paramWithDefault = {
@@ -360,7 +365,7 @@ suite('Task Execution E2E Tests', () => {
             assert.ok(true, 'Should handle invalid task type');
         });
 
-        test('handles task cancellation gracefully', async function() {
+        test('handles task cancellation gracefully', function() {
             this.timeout(10000);
 
             // When user cancels parameter input, task should not execute
@@ -371,14 +376,14 @@ suite('Task Execution E2E Tests', () => {
     });
 
     suite('Terminal Management', () => {
-        test('terminals are created for shell tasks', async function() {
+        test('terminals are created for shell tasks', function() {
             this.timeout(10000);
 
             // Verify terminal API is available
-            assert.ok(vscode.window.terminals !== undefined, 'Terminals API should be available');
+            assert.ok(vscode.window.terminals.length >= 0, 'Terminals API should be available');
         });
 
-        test('terminal names are descriptive', async function() {
+        test('terminal names are descriptive', function() {
             this.timeout(10000);
 
             // Terminal names should include task label for identification
@@ -387,36 +392,36 @@ suite('Task Execution E2E Tests', () => {
             assert.ok(true, 'Terminal names should be descriptive');
         });
 
-        test('task execution creates VS Code task', async function() {
+        test('task execution creates VS Code task', function() {
             this.timeout(15000);
 
-            // VS Code tasks API
-            const taskExecution = vscode.tasks;
-            assert.ok(taskExecution !== undefined, 'Tasks API should be available');
-            assert.ok(typeof taskExecution.fetchTasks === 'function', 'fetchTasks should be a function');
-            assert.ok(typeof taskExecution.executeTask === 'function', 'executeTask should be a function');
+            // VS Code tasks API - verify methods exist
+            assert.strictEqual(typeof vscode.tasks.fetchTasks, 'function', 'fetchTasks should be a function');
+            assert.strictEqual(typeof vscode.tasks.executeTask, 'function', 'executeTask should be a function');
         });
     });
 
     suite('Debug Session Management', () => {
-        test('debug API is available for launch tasks', async function() {
+        test('debug API is available for launch tasks', function() {
             this.timeout(10000);
 
-            assert.ok(vscode.debug !== undefined, 'Debug API should be available');
-            assert.ok(typeof vscode.debug.startDebugging === 'function', 'startDebugging should be a function');
+            assert.strictEqual(typeof vscode.debug.startDebugging, 'function', 'startDebugging should be a function');
         });
 
-        test('active debug sessions can be queried', async function() {
+        test('active debug sessions can be queried', function() {
             this.timeout(10000);
 
-            const _activeSession = vscode.debug.activeDebugSession;
-            void _activeSession; // Check access doesn't throw
-            assert.ok(true, 'Active session query should not throw');
+            // Access active session - should not throw (may return undefined if no session)
+            const session = vscode.debug.activeDebugSession;
+            if (session !== undefined) {
+                assert.strictEqual(typeof session.name, 'string', 'Active session should have name');
+            }
+            assert.ok(true, 'Active session query should work');
         });
     });
 
     suite('Working Directory Handling', () => {
-        test('shell tasks use correct cwd', async function() {
+        test('shell tasks use correct cwd', function() {
             this.timeout(10000);
 
             const task = createMockTaskItem({
@@ -427,7 +432,7 @@ suite('Task Execution E2E Tests', () => {
             assert.ok((task as Record<string, unknown>)['cwd'] === context.workspaceRoot, 'Should have workspace root as cwd');
         });
 
-        test('npm tasks use package.json directory as cwd', async function() {
+        test('npm tasks use package.json directory as cwd', function() {
             this.timeout(10000);
 
             const subprojectDir = path.join(context.workspaceRoot, 'subproject');
@@ -440,7 +445,7 @@ suite('Task Execution E2E Tests', () => {
             assert.ok((task as Record<string, unknown>)['cwd'] === subprojectDir, 'Should have subproject dir as cwd');
         });
 
-        test('make tasks use Makefile directory as cwd', async function() {
+        test('make tasks use Makefile directory as cwd', function() {
             this.timeout(10000);
 
             const task = createMockTaskItem({

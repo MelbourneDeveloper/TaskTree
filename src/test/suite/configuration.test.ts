@@ -144,9 +144,9 @@ suite('Configuration and File Watchers E2E Tests', () => {
 
             assert.ok(enumDescriptions, 'enumDescriptions should exist');
             assert.ok(enumDescriptions.length === 3, 'Should have 3 descriptions');
-            assert.ok(enumDescriptions[0]?.includes('folder'), 'First should describe folder');
-            assert.ok(enumDescriptions[1]?.includes('name'), 'Second should describe name');
-            assert.ok(enumDescriptions[2]?.includes('type'), 'Third should describe type');
+            assert.ok(enumDescriptions[0]?.includes('folder') === true, 'First should describe folder');
+            assert.ok(enumDescriptions[1]?.includes('name') === true, 'Second should describe name');
+            assert.ok(enumDescriptions[2]?.includes('type') === true, 'Third should describe type');
         });
     });
 
@@ -429,8 +429,7 @@ suite('Configuration and File Watchers E2E Tests', () => {
                 fs.readFileSync(getFixturePath('.vscode/tasktree.json'), 'utf8')
             ) as TagConfig;
 
-            assert.ok(tagConfig.tags, 'Should have tags property');
-            assert.ok(typeof tagConfig.tags === 'object', 'tags should be an object');
+            assert.ok(typeof tagConfig.tags === 'object', 'Should have tags property as object');
         });
 
         test('tag patterns are arrays', function() {

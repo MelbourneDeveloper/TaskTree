@@ -1,4 +1,5 @@
 {
+    // VS Code launch configurations
     "version": "0.2.0",
     "configurations": [
         {
@@ -14,10 +15,17 @@
             "preLaunchTask": "npm: compile"
         },
         {
-            "name": "Claude Added This Launch",
+            "name": "Debug Application",
             "type": "node",
             "request": "launch",
             "program": "${workspaceFolder}/out/extension.js"
+        },
+        {
+            /* Multi-line comment for test */
+            "name": "Debug Python",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/main.py"
         }
     ]
 }

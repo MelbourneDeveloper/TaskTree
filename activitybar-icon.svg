@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+  <!-- Stylized tree with task nodes - designed for monochrome activity bar -->
+  
+  <!-- Tree trunk -->
+  <path d="M11 22 L11 14 L13 14 L13 22 Z"/>
+  
+  <!-- Main canopy shape with cutouts for task circles -->
+  <path d="
+    M12 2
+    C6 2 2 6 2 10
+    C2 12 3 14 5 15
+    C5 16 6 17 8 17
+    L8 14 L16 14 L16 17
+    C18 17 19 16 19 15
+    C21 14 22 12 22 10
+    C22 6 18 2 12 2
+    Z
+    
+    M7 8 
+    A2.5 2.5 0 1 0 7 8.01 Z
+    
+    M12 5
+    A2.5 2.5 0 1 0 12 5.01 Z
+    
+    M17 8
+    A2.5 2.5 0 1 0 17 8.01 Z
+    
+    M9.5 12
+    A2 2 0 1 0 9.5 12.01 Z
+    
+    M14.5 12
+    A2 2 0 1 0 14.5 12.01 Z
+  " fill-rule="evenodd"/>
+</svg>

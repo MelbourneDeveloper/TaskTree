@@ -1,4 +1,5 @@
 {
+    // This is a JSONC file with comments
     "version": "2.0.0",
     "tasks": [
         {
@@ -18,10 +19,48 @@
             "group": "build"
         },
         {
-            "label": "Claude Was Here",
+            "label": "Build Project",
             "type": "shell",
-            "command": "echo 'Hello from Claude'",
+            "command": "npm run compile",
+            "group": "build"
+        },
+        {
+            "label": "Run Tests",
+            "type": "shell",
+            "command": "npm test",
             "group": "test"
+        },
+        {
+            "label": "Deploy with Config",
+            "type": "shell",
+            "command": "echo Deploying to ${input:deployEnv}",
+            "group": "none"
+        },
+        {
+            "label": "Custom Build",
+            "type": "shell",
+            "command": "echo Building ${input:buildConfig} for ${input:buildTarget}",
+            "group": "build"
+        }
+    ],
+    "inputs": [
+        {
+            "id": "deployEnv",
+            "type": "pickString",
+            "description": "Select deployment environment",
+            "options": ["dev", "staging", "prod"],
+            "default": "dev"
+        },
+        {
+            "id": "buildConfig",
+            "type": "promptString",
+            "description": "Enter build configuration"
+        },
+        {
+            "id": "buildTarget",
+            "type": "pickString",
+            "description": "Select build target",
+            "options": ["x86", "x64", "arm64"]
         }
     ]
 }

@@ -12,6 +12,20 @@ import {
     getTreeChildren
 } from './helpers';
 
+interface PackageJson {
+    scripts?: Record<string, string>;
+}
+
+function getLabelString(label: string | vscode.TreeItemLabel | undefined): string {
+    if (typeof label === 'string') {
+        return label;
+    }
+    if (label && typeof label === 'object' && 'label' in label) {
+        return label.label;
+    }
+    return '';
+}
+
 suite('Task Discovery E2E Tests', () => {
     suiteSetup(async function() {
         this.timeout(30000);
@@ -21,7 +35,7 @@ suite('Task Discovery E2E Tests', () => {
     });
 
     suite('Shell Script Discovery', () => {
-        test('discovers shell scripts in workspace', async function() {
+        test('discovers shell scripts in workspace', function() {
             this.timeout(10000);
 
             // Verify shell scripts exist in fixtures
@@ -35,7 +49,7 @@ suite('Task Discovery E2E Tests', () => {
             assert.ok(fs.existsSync(testScriptPath), 'test.sh should exist');
         });
 
-        test('parses @param comments from shell scripts', async function() {
+        test('parses @param comments from shell scripts', function() {
             this.timeout(10000);
 
             const buildScript = fs.readFileSync(getFixturePath('scripts/build.sh'), 'utf8');
@@ -45,7 +59,7 @@ suite('Task Discovery E2E Tests', () => {
             assert.ok(buildScript.includes('@param verbose'), 'Should have verbose param');
         });
 
-        test('extracts description from first comment line', async function() {
+        test('extracts description from first comment line', function() {
             this.timeout(10000);
 
             const buildScript = fs.readFileSync(getFixturePath('scripts/build.sh'), 'utf8');
@@ -53,7 +67,7 @@ suite('Task Discovery E2E Tests', () => {
 
             // Second line should be the description (after shebang)
             const secondLine = lines[1];
-            assert.ok(secondLine && secondLine.includes('Build the project'), 'Should have description');
+            assert.ok(secondLine?.includes('Build the project') === true, 'Should have description');
         });
 
         test('discovers newly added shell scripts on refresh', async function() {
@@ -64,7 +78,7 @@ suite('Task Discovery E2E Tests', () => {
 
             try {
                 // Create new script
-                await writeFile(newScriptPath, '#!/bin/bash\n# New script for testing\necho "Hello"');
+                writeFile(newScriptPath, '#!/bin/bash\n# New script for testing\necho "Hello"');
 
                 // Trigger refresh
                 await vscode.commands.executeCommand('tasktree.refresh');
@@ -74,7 +88,7 @@ suite('Task Discovery E2E Tests', () => {
                 assert.ok(fs.existsSync(fullPath), 'New script should be created');
             } finally {
                 // Cleanup
-                await deleteFile(newScriptPath);
+                deleteFile(newScriptPath);
             }
         });
 
@@ -106,30 +120,30 @@ suite('Task Discovery E2E Tests', () => {
     });
 
     suite('NPM Script Discovery', () => {
-        test('discovers npm scripts from root package.json', async function() {
+        test('discovers npm scripts from root package.json', function() {
             this.timeout(10000);
 
             const packageJsonPath = getFixturePath('package.json');
             assert.ok(fs.existsSync(packageJsonPath), 'package.json should exist');
 
-            const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+            const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8')) as PackageJson;
             assert.ok(packageJson.scripts, 'Should have scripts section');
-            assert.ok(packageJson.scripts.build, 'Should have build script');
-            assert.ok(packageJson.scripts.test, 'Should have test script');
-            assert.ok(packageJson.scripts.lint, 'Should have lint script');
-            assert.ok(packageJson.scripts.start, 'Should have start script');
+            assert.ok(packageJson.scripts['build'] !== undefined, 'Should have build script');
+            assert.ok(packageJson.scripts['test'] !== undefined, 'Should have test script');
+            assert.ok(packageJson.scripts['lint'] !== undefined, 'Should have lint script');
+            assert.ok(packageJson.scripts['start'] !== undefined, 'Should have start script');
         });
 
-        test('discovers npm scripts from subproject package.json', async function() {
+        test('discovers npm scripts from subproject package.json', function() {
             this.timeout(10000);
 
             const subprojectPackageJsonPath = getFixturePath('subproject/package.json');
             assert.ok(fs.existsSync(subprojectPackageJsonPath), 'subproject/package.json should exist');
 
-            const packageJson = JSON.parse(fs.readFileSync(subprojectPackageJsonPath, 'utf8'));
+            const packageJson = JSON.parse(fs.readFileSync(subprojectPackageJsonPath, 'utf8')) as PackageJson;
             assert.ok(packageJson.scripts, 'Should have scripts section');
-            assert.ok(packageJson.scripts.build, 'Should have build script');
-            assert.ok(packageJson.scripts.test, 'Should have test script');
+            assert.ok(packageJson.scripts['build'] !== undefined, 'Should have build script');
+            assert.ok(packageJson.scripts['test'] !== undefined, 'Should have test script');
         });
 
         test('handles package.json without scripts section', async function() {
@@ -139,7 +153,7 @@ suite('Task Discovery E2E Tests', () => {
             const dir = getFixturePath('empty-scripts');
 
             try {
-                await writeFile(emptyScriptsPath, JSON.stringify({
+                writeFile(emptyScriptsPath, JSON.stringify({
                     name: 'no-scripts',
                     version: '1.0.0'
                 }, null, 2));
@@ -182,7 +196,7 @@ suite('Task Discovery E2E Tests', () => {
     });
 
     suite('Makefile Target Discovery', () => {
-        test('discovers Makefile targets', async function() {
+        test('discovers Makefile targets', function() {
             this.timeout(10000);
 
             const makefilePath = getFixturePath('Makefile');
@@ -198,7 +212,7 @@ suite('Task Discovery E2E Tests', () => {
             assert.ok(makefile.includes('install:'), 'Should have install target');
         });
 
-        test('skips internal targets starting with dot', async function() {
+        test('skips internal targets starting with dot', function() {
             this.timeout(10000);
 
             const makefile = fs.readFileSync(getFixturePath('Makefile'), 'utf8');
@@ -226,7 +240,7 @@ suite('Task Discovery E2E Tests', () => {
 
                 assert.ok(fs.existsSync(getFixturePath(lowercasePath)), 'lowercase makefile should exist');
             } finally {
-                await deleteFile(lowercasePath);
+                deleteFile(lowercasePath);
                 const dir = getFixturePath('lowercase-make');
                 if (fs.existsSync(dir)) {
                     fs.rmdirSync(dir);
@@ -252,7 +266,7 @@ suite('Task Discovery E2E Tests', () => {
 
                 assert.ok(true, 'Should handle duplicate targets');
             } finally {
-                await deleteFile(dupePath);
+                deleteFile(dupePath);
                 const dir = getFixturePath('dupe-make');
                 if (fs.existsSync(dir)) {
                     fs.rmdirSync(dir);
@@ -262,7 +276,7 @@ suite('Task Discovery E2E Tests', () => {
     });
 
     suite('VS Code Launch Configuration Discovery', () => {
-        test('discovers launch configurations from launch.json', async function() {
+        test('discovers launch configurations from launch.json', function() {
             this.timeout(10000);
 
             const launchJsonPath = getFixturePath('.vscode/launch.json');
@@ -291,7 +305,7 @@ suite('Task Discovery E2E Tests', () => {
             assert.ok(true, 'Should parse launch.json with comments');
         });
 
-        test('extracts configuration type as description', async function() {
+        test('extracts configuration type as description', function() {
             this.timeout(10000);
 
             const launchJson = fs.readFileSync(getFixturePath('.vscode/launch.json'), 'utf8');
@@ -331,7 +345,7 @@ suite('Task Discovery E2E Tests', () => {
     });
 
     suite('VS Code Tasks Discovery', () => {
-        test('discovers tasks from tasks.json', async function() {
+        test('discovers tasks from tasks.json', function() {
             this.timeout(10000);
 
             const tasksJsonPath = getFixturePath('.vscode/tasks.json');
@@ -353,7 +367,7 @@ suite('Task Discovery E2E Tests', () => {
 
             try {
                 // Create tasks.json with npm tasks that have no explicit label
-                await writeFile(npmTasksPath, JSON.stringify({
+                writeFile(npmTasksPath, JSON.stringify({
                     version: '2.0.0',
                     tasks: [
                         {
@@ -379,15 +393,15 @@ suite('Task Discovery E2E Tests', () => {
                 await sleep(1500);
 
                 // Get the tree provider and check contents
-                const provider = await getTaskTreeProvider();
+                const provider = getTaskTreeProvider();
                 const rootChildren = await getTreeChildren(provider);
 
                 // Find VS Code Tasks category
-                const vscodeTasks = rootChildren.find(c => typeof c.label === 'string' && c.label.startsWith('VS Code Tasks'));
+                const vscodeTasks = rootChildren.find(c => getLabelString(c.label).startsWith('VS Code Tasks'));
                 assert.ok(vscodeTasks, 'Should have VS Code Tasks category');
 
                 const taskItems = await getTreeChildren(provider, vscodeTasks);
-                const labels = taskItems.map(t => t.label);
+                const labels = taskItems.map(t => getLabelString(t.label));
 
                 // Verify auto-generated labels
                 assert.ok(labels.includes('npm: my-test-script'), `Should have 'npm: my-test-script', got: ${labels.join(', ')}`);
@@ -398,7 +412,7 @@ suite('Task Discovery E2E Tests', () => {
                 fs.renameSync(backupPath, realTasksPath);
             } finally {
                 // Cleanup
-                await deleteFile(npmTasksPath);
+                deleteFile(npmTasksPath);
                 const backupPath = getFixturePath('.vscode/tasks.json.bak');
                 if (fs.existsSync(backupPath)) {
                     const realTasksPath = getFixturePath('.vscode/tasks.json');
@@ -425,14 +439,14 @@ suite('Task Discovery E2E Tests', () => {
             await sleep(1500);
 
             // Get tree contents
-            const provider = await getTaskTreeProvider();
+            const provider = getTaskTreeProvider();
             const rootChildren = await getTreeChildren(provider);
 
             // Find VS Code Tasks category
-            const vscodeTasks = rootChildren.find(c => typeof c.label === 'string' && c.label.startsWith('VS Code Tasks'));
+            const vscodeTasks = rootChildren.find(c => getLabelString(c.label).startsWith('VS Code Tasks'));
             if (vscodeTasks) {
                 const taskItems = await getTreeChildren(provider, vscodeTasks);
-                const labels = taskItems.map(t => t.label);
+                const labels = taskItems.map(t => getLabelString(t.label));
 
                 // These tasks are in test-fixtures and should NOT appear
                 assert.ok(!labels.includes('Nested Build Task'), `'Nested Build Task' from test-fixtures should be excluded, got: ${labels.join(', ')}`);
@@ -454,14 +468,14 @@ suite('Task Discovery E2E Tests', () => {
             await sleep(1500);
 
             // Get tree contents
-            const provider = await getTaskTreeProvider();
+            const provider = getTaskTreeProvider();
             const rootChildren = await getTreeChildren(provider);
 
             // Find VS Code Launch category
-            const vscodeLaunch = rootChildren.find(c => typeof c.label === 'string' && c.label.startsWith('VS Code Launch'));
+            const vscodeLaunch = rootChildren.find(c => getLabelString(c.label).startsWith('VS Code Launch'));
             if (vscodeLaunch) {
                 const launchItems = await getTreeChildren(provider, vscodeLaunch);
-                const labels = launchItems.map(t => t.label);
+                const labels = launchItems.map(t => getLabelString(t.label));
 
                 // These configs are in test-fixtures and should NOT appear
                 assert.ok(!labels.includes('Nested Debug Config'), `'Nested Debug Config' from test-fixtures should be excluded, got: ${labels.join(', ')}`);
@@ -469,7 +483,7 @@ suite('Task Discovery E2E Tests', () => {
             }
         });
 
-        test('parses input definitions from tasks.json', async function() {
+        test('parses input definitions from tasks.json', function() {
             this.timeout(10000);
 
             const tasksJson = fs.readFileSync(getFixturePath('.vscode/tasks.json'), 'utf8');
@@ -481,7 +495,7 @@ suite('Task Discovery E2E Tests', () => {
             assert.ok(tasksJson.includes('buildTarget'), 'Should have buildTarget input');
         });
 
-        test('finds ${input:xxx} references in task definitions', async function() {
+        test('finds ${input:xxx} references in task definitions', function() {
             this.timeout(10000);
 
             const tasksJson = fs.readFileSync(getFixturePath('.vscode/tasks.json'), 'utf8');
@@ -506,7 +520,7 @@ suite('Task Discovery E2E Tests', () => {
             assert.ok(true, 'Should parse tasks.json with comments');
         });
 
-        test('handles pickString input type with options', async function() {
+        test('handles pickString input type with options', function() {
             this.timeout(10000);
 
             const tasksJson = fs.readFileSync(getFixturePath('.vscode/tasks.json'), 'utf8');
@@ -519,7 +533,7 @@ suite('Task Discovery E2E Tests', () => {
             assert.ok(tasksJson.includes('production'), 'Should have production option');
         });
 
-        test('handles promptString input type', async function() {
+        test('handles promptString input type', function() {
             this.timeout(10000);
 
             const tasksJson = fs.readFileSync(getFixturePath('.vscode/tasks.json'), 'utf8');

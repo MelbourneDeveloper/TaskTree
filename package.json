@@ -22,7 +22,7 @@
         {
           "id": "tasktree-container",
           "title": "TaskTree",
-          "icon": "icon.png"
+          "icon": "activitybar-icon.svg"
         }
       ]
     },
@@ -54,7 +54,7 @@
       {
         "command": "tasktree.runInNewTerminal",
         "title": "Run in New Terminal",
-        "icon": "$(terminal)"
+        "icon": "$(play)"
       },
       {
         "command": "tasktree.runInCurrentTerminal",
@@ -176,9 +176,24 @@
           "group": "2_tags@1"
         },
         {
-          "command": "tasktree.removeFromQuick",
+          "command": "tasktree.runInNewTerminal",
           "when": "view == tasktree-quick && viewItem == task",
           "group": "inline@1"
+        },
+        {
+          "command": "tasktree.debug",
+          "when": "view == tasktree-quick && viewItem == task",
+          "group": "inline@2"
+        },
+        {
+          "command": "tasktree.runInCurrentTerminal",
+          "when": "view == tasktree-quick && viewItem == task",
+          "group": "inline@3"
+        },
+        {
+          "command": "tasktree.removeFromQuick",
+          "when": "view == tasktree-quick && viewItem == task",
+          "group": "inline@4"
         },
         {
           "command": "tasktree.run",

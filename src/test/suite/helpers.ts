@@ -60,7 +60,7 @@ export async function filterTasks(_filterText: string): Promise<void> {
 }
 
 export async function filterByTag(_tag: string): Promise<void> {
-    _tag; // Used for API compatibility
+    // _tag is used for API compatibility - the actual tag filtering happens via UI
     await executeCommand('tasktree.filterByTag');
 }
 
@@ -140,7 +140,7 @@ export async function waitForCondition(
 export function getTaskTreeProvider(): TaskTreeProvider {
     // Access the tree data provider through the extension's exports
     const extension = vscode.extensions.getExtension(EXTENSION_ID);
-    if (!extension?.isActive) {
+    if (extension === undefined || extension.isActive !== true) {
         throw new Error('Extension not active');
     }
     const exports = extension.exports as { taskTreeProvider?: TaskTreeProvider } | undefined;
