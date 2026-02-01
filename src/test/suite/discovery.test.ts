@@ -712,7 +712,7 @@ suite('Task Discovery E2E Tests', () => {
                 // Rename all Python scripts to .bak
                 for (const pyFile of pythonFiles) {
                     const fullPath = getFixturePath(pyFile);
-                    const bakPath = fullPath + '.bak';
+                    const bakPath = `${fullPath  }.bak`;
                     if (fs.existsSync(fullPath)) {
                         fs.renameSync(fullPath, bakPath);
                         tempRenames.push({ from: fullPath, to: bakPath });

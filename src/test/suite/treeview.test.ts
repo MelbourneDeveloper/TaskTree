@@ -787,8 +787,8 @@ suite('TreeView Real UI Tests', () => {
             for (const category of roots) {
                 const label = getLabelString(category.label);
                 // Extract count from label like "NPM Scripts (7)"
-                const countMatch = label.match(/\((\d+)\)/);
-                if (countMatch !== null && countMatch[1] !== undefined) {
+                const countMatch = /\((\d+)\)/.exec(label);
+                if (countMatch?.[1] !== undefined) {
                     const count = parseInt(countMatch[1], 10);
                     assert.ok(count > 0, `Category "${label}" should not appear with 0 tasks`);
                 }
@@ -812,9 +812,10 @@ suite('TreeView Real UI Tests', () => {
                 const allTasks = flattenTaskItems(category.children);
                 // If category is visible, it should have matching tasks
                 if (allTasks.length > 0) {
-                    const hasMatchingTask = allTasks.some(t =>
-                        t.task?.label?.toLowerCase().includes('deploy.sh') === true
-                    );
+                    const hasMatchingTask = allTasks.some(t => {
+                        const task = t.task;
+                        return task !== undefined && task !== null && task.label.toLowerCase().includes('deploy.sh');
+                    });
                     assert.ok(
                         hasMatchingTask,
                         `Category "${getLabelString(category.label)}" should only contain matching tasks`

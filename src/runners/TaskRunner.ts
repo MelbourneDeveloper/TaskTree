@@ -2,6 +2,16 @@ import * as vscode from 'vscode';
 import type { TaskItem, ParamDef } from '../models/TaskItem';
 
 /**
+ * Shows error message without blocking (fire and forget).
+ */
+function showError(message: string): void {
+    vscode.window.showErrorMessage(message).then(
+        () => { /* dismissed */ },
+        () => { /* error showing message */ }
+    );
+}
+
+/**
  * Execution mode for tasks.
  */
 export type RunMode = 'task' | 'newTerminal' | 'currentTerminal';
@@ -219,7 +229,7 @@ export class TaskRunner {
     private async runLaunch(task: TaskItem): Promise<void> {
         const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
         if (workspaceFolder === undefined) {
-            void vscode.window.showErrorMessage('No workspace folder found');
+            showError('No workspace folder found');
             return;
         }
 
@@ -229,7 +239,7 @@ export class TaskRunner {
         );
 
         if (!started) {
-            void vscode.window.showErrorMessage(`Failed to start: ${task.label}`);
+            showError(`Failed to start: ${task.label}`);
         }
     }
 
@@ -243,7 +253,7 @@ export class TaskRunner {
         if (matchingTask !== undefined) {
             await vscode.tasks.executeTask(matchingTask);
         } else {
-            void vscode.window.showErrorMessage(`Task not found: ${task.label}`);
+            showError(`Task not found: ${task.label}`);
         }
     }
 
