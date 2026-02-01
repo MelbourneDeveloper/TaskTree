@@ -1,0 +1,13 @@
+desc 'Build the project'
+task :build do
+  puts 'Building...'
+end
+
+desc 'Run tests'
+task :test do
+  puts 'Testing...'
+end
+
+task :deploy do
+  puts 'Deploying...'
+end

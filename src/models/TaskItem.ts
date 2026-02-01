@@ -40,7 +40,24 @@ export function err<E>(error: E): Err<E> {
 /**
  * Task type identifiers.
  */
-export type TaskType = 'shell' | 'npm' | 'make' | 'launch' | 'vscode' | 'python';
+export type TaskType =
+    | 'shell'
+    | 'npm'
+    | 'make'
+    | 'launch'
+    | 'vscode'
+    | 'python'
+    | 'powershell'
+    | 'gradle'
+    | 'cargo'
+    | 'maven'
+    | 'ant'
+    | 'just'
+    | 'taskfile'
+    | 'deno'
+    | 'rake'
+    | 'composer'
+    | 'docker';
 
 /**
  * Parameter definition for tasks requiring input.
@@ -166,6 +183,39 @@ export class TaskTreeItem extends vscode.TreeItem {
             case 'python': {
                 return new vscode.ThemeIcon('symbol-misc', new vscode.ThemeColor('terminal.ansiCyan'));
             }
+            case 'powershell': {
+                return new vscode.ThemeIcon('terminal-powershell', new vscode.ThemeColor('terminal.ansiBlue'));
+            }
+            case 'gradle': {
+                return new vscode.ThemeIcon('symbol-property', new vscode.ThemeColor('terminal.ansiGreen'));
+            }
+            case 'cargo': {
+                return new vscode.ThemeIcon('package', new vscode.ThemeColor('terminal.ansiRed'));
+            }
+            case 'maven': {
+                return new vscode.ThemeIcon('library', new vscode.ThemeColor('terminal.ansiRed'));
+            }
+            case 'ant': {
+                return new vscode.ThemeIcon('symbol-constructor', new vscode.ThemeColor('terminal.ansiYellow'));
+            }
+            case 'just': {
+                return new vscode.ThemeIcon('checklist', new vscode.ThemeColor('terminal.ansiMagenta'));
+            }
+            case 'taskfile': {
+                return new vscode.ThemeIcon('tasklist', new vscode.ThemeColor('terminal.ansiCyan'));
+            }
+            case 'deno': {
+                return new vscode.ThemeIcon('symbol-namespace', new vscode.ThemeColor('terminal.ansiWhite'));
+            }
+            case 'rake': {
+                return new vscode.ThemeIcon('ruby', new vscode.ThemeColor('terminal.ansiRed'));
+            }
+            case 'composer': {
+                return new vscode.ThemeIcon('symbol-interface', new vscode.ThemeColor('terminal.ansiYellow'));
+            }
+            case 'docker': {
+                return new vscode.ThemeIcon('server-environment', new vscode.ThemeColor('terminal.ansiBlue'));
+            }
         }
     }
 
@@ -188,6 +238,39 @@ export class TaskTreeItem extends vscode.TreeItem {
         }
         if (lower.includes('python')) {
             return new vscode.ThemeIcon('symbol-misc', new vscode.ThemeColor('terminal.ansiCyan'));
+        }
+        if (lower.includes('powershell') || lower.includes('batch')) {
+            return new vscode.ThemeIcon('terminal-powershell', new vscode.ThemeColor('terminal.ansiBlue'));
+        }
+        if (lower.includes('gradle')) {
+            return new vscode.ThemeIcon('symbol-property', new vscode.ThemeColor('terminal.ansiGreen'));
+        }
+        if (lower.includes('cargo') || lower.includes('rust')) {
+            return new vscode.ThemeIcon('package', new vscode.ThemeColor('terminal.ansiRed'));
+        }
+        if (lower.includes('maven')) {
+            return new vscode.ThemeIcon('library', new vscode.ThemeColor('terminal.ansiRed'));
+        }
+        if (lower.includes('ant')) {
+            return new vscode.ThemeIcon('symbol-constructor', new vscode.ThemeColor('terminal.ansiYellow'));
+        }
+        if (lower.includes('just')) {
+            return new vscode.ThemeIcon('checklist', new vscode.ThemeColor('terminal.ansiMagenta'));
+        }
+        if (lower.includes('taskfile')) {
+            return new vscode.ThemeIcon('tasklist', new vscode.ThemeColor('terminal.ansiCyan'));
+        }
+        if (lower.includes('deno')) {
+            return new vscode.ThemeIcon('symbol-namespace', new vscode.ThemeColor('terminal.ansiWhite'));
+        }
+        if (lower.includes('rake') || lower.includes('ruby')) {
+            return new vscode.ThemeIcon('ruby', new vscode.ThemeColor('terminal.ansiRed'));
+        }
+        if (lower.includes('composer') || lower.includes('php')) {
+            return new vscode.ThemeIcon('symbol-interface', new vscode.ThemeColor('terminal.ansiYellow'));
+        }
+        if (lower.includes('docker')) {
+            return new vscode.ThemeIcon('server-environment', new vscode.ThemeColor('terminal.ansiBlue'));
         }
         return new vscode.ThemeIcon('folder');
     }

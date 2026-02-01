@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="TestProject" default="build" basedir=".">
+    <description>Test Ant build file</description>
+
+    <target name="build" description="Build the project">
+        <echo message="Building..."/>
+    </target>
+
+    <target name="clean" description="Clean build artifacts">
+        <echo message="Cleaning..."/>
+    </target>
+
+    <target name="test" description="Run tests">
+        <echo message="Running tests..."/>
+    </target>
+</project>

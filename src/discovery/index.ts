@@ -6,6 +6,17 @@ import { discoverMakeTargets } from './make';
 import { discoverLaunchConfigs } from './launch';
 import { discoverVsCodeTasks } from './tasks';
 import { discoverPythonScripts } from './python';
+import { discoverPowerShellScripts } from './powershell';
+import { discoverGradleTasks } from './gradle';
+import { discoverCargoTasks } from './cargo';
+import { discoverMavenGoals } from './maven';
+import { discoverAntTargets } from './ant';
+import { discoverJustRecipes } from './just';
+import { discoverTaskfileTasks } from './taskfile';
+import { discoverDenoTasks } from './deno';
+import { discoverRakeTasks } from './rake';
+import { discoverComposerScripts } from './composer';
+import { discoverDockerComposeServices } from './docker';
 
 export interface DiscoveryResult {
     shell: TaskItem[];
@@ -14,6 +25,17 @@ export interface DiscoveryResult {
     launch: TaskItem[];
     vscode: TaskItem[];
     python: TaskItem[];
+    powershell: TaskItem[];
+    gradle: TaskItem[];
+    cargo: TaskItem[];
+    maven: TaskItem[];
+    ant: TaskItem[];
+    just: TaskItem[];
+    taskfile: TaskItem[];
+    deno: TaskItem[];
+    rake: TaskItem[];
+    composer: TaskItem[];
+    docker: TaskItem[];
 }
 
 /**
@@ -24,13 +46,28 @@ export async function discoverAllTasks(
     excludePatterns: string[]
 ): Promise<DiscoveryResult> {
     // Run all discoveries in parallel
-    const [shell, npm, make, launch, vscodeTasks, python] = await Promise.all([
+    const [
+        shell, npm, make, launch, vscodeTasks, python,
+        powershell, gradle, cargo, maven, ant, just,
+        taskfile, deno, rake, composer, docker
+    ] = await Promise.all([
         discoverShellScripts(workspaceRoot, excludePatterns),
         discoverNpmScripts(workspaceRoot, excludePatterns),
         discoverMakeTargets(workspaceRoot, excludePatterns),
         discoverLaunchConfigs(workspaceRoot, excludePatterns),
         discoverVsCodeTasks(workspaceRoot, excludePatterns),
-        discoverPythonScripts(workspaceRoot, excludePatterns)
+        discoverPythonScripts(workspaceRoot, excludePatterns),
+        discoverPowerShellScripts(workspaceRoot, excludePatterns),
+        discoverGradleTasks(workspaceRoot, excludePatterns),
+        discoverCargoTasks(workspaceRoot, excludePatterns),
+        discoverMavenGoals(workspaceRoot, excludePatterns),
+        discoverAntTargets(workspaceRoot, excludePatterns),
+        discoverJustRecipes(workspaceRoot, excludePatterns),
+        discoverTaskfileTasks(workspaceRoot, excludePatterns),
+        discoverDenoTasks(workspaceRoot, excludePatterns),
+        discoverRakeTasks(workspaceRoot, excludePatterns),
+        discoverComposerScripts(workspaceRoot, excludePatterns),
+        discoverDockerComposeServices(workspaceRoot, excludePatterns)
     ]);
 
     return {
@@ -39,7 +76,18 @@ export async function discoverAllTasks(
         make,
         launch,
         vscode: vscodeTasks,
-        python
+        python,
+        powershell,
+        gradle,
+        cargo,
+        maven,
+        ant,
+        just,
+        taskfile,
+        deno,
+        rake,
+        composer,
+        docker
     };
 }
 
@@ -53,7 +101,18 @@ export function flattenTasks(result: DiscoveryResult): TaskItem[] {
         ...result.make,
         ...result.launch,
         ...result.vscode,
-        ...result.python
+        ...result.python,
+        ...result.powershell,
+        ...result.gradle,
+        ...result.cargo,
+        ...result.maven,
+        ...result.ant,
+        ...result.just,
+        ...result.taskfile,
+        ...result.deno,
+        ...result.rake,
+        ...result.composer,
+        ...result.docker
     ];
 }
 
@@ -66,7 +125,6 @@ export function getExcludePatterns(): string[] {
         '**/node_modules/**',
         '**/bin/**',
         '**/obj/**',
-        '**/.git/**',
-        '**/test-fixtures/**'
+        '**/.git/**'
     ];
 }

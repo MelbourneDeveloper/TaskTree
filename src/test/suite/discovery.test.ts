@@ -782,6 +782,317 @@ suite('Task Discovery E2E Tests', () => {
         });
     });
 
+    suite('PowerShell/Batch Script Discovery', () => {
+        test('discovers PowerShell scripts', function() {
+            this.timeout(10000);
+
+            const ps1Path = getFixturePath('scripts/build.ps1');
+            assert.ok(fs.existsSync(ps1Path), 'build.ps1 should exist');
+
+            const content = fs.readFileSync(ps1Path, 'utf8');
+            assert.ok(content.includes('param('), 'Should have param block');
+        });
+
+        test('discovers Batch scripts', function() {
+            this.timeout(10000);
+
+            const batPath = getFixturePath('scripts/deploy.bat');
+            assert.ok(fs.existsSync(batPath), 'deploy.bat should exist');
+
+            const content = fs.readFileSync(batPath, 'utf8');
+            assert.ok(content.includes('REM'), 'Should have REM comment');
+        });
+
+        test('discovers CMD scripts', function() {
+            this.timeout(10000);
+
+            const cmdPath = getFixturePath('scripts/test.cmd');
+            assert.ok(fs.existsSync(cmdPath), 'test.cmd should exist');
+
+            const content = fs.readFileSync(cmdPath, 'utf8');
+            assert.ok(content.includes('::'), 'Should have :: comment');
+        });
+
+        test('shows PowerShell/Batch in tree view', async function() {
+            this.timeout(15000);
+
+            await vscode.commands.executeCommand('tasktree.refresh');
+            await sleep(1500);
+
+            const provider = getTaskTreeProvider();
+            const rootChildren = await getTreeChildren(provider);
+
+            const psCategory = rootChildren.find(c => getLabelString(c.label).includes('PowerShell'));
+            assert.ok(psCategory, `Should have PowerShell/Batch category, got: ${rootChildren.map(c => getLabelString(c.label)).join(', ')}`);
+        });
+    });
+
+    suite('Gradle Task Discovery', () => {
+        test('discovers Gradle tasks from build.gradle', function() {
+            this.timeout(10000);
+
+            const gradlePath = getFixturePath('build.gradle');
+            assert.ok(fs.existsSync(gradlePath), 'build.gradle should exist');
+
+            const content = fs.readFileSync(gradlePath, 'utf8');
+            assert.ok(content.includes('task hello'), 'Should have hello task');
+            assert.ok(content.includes('task customBuild'), 'Should have customBuild task');
+        });
+
+        test('shows Gradle Tasks in tree view', async function() {
+            this.timeout(15000);
+
+            await vscode.commands.executeCommand('tasktree.refresh');
+            await sleep(1500);
+
+            const provider = getTaskTreeProvider();
+            const rootChildren = await getTreeChildren(provider);
+
+            const gradleCategory = rootChildren.find(c => getLabelString(c.label).includes('Gradle'));
+            assert.ok(gradleCategory, `Should have Gradle Tasks category, got: ${rootChildren.map(c => getLabelString(c.label)).join(', ')}`);
+        });
+    });
+
+    suite('Cargo Task Discovery', () => {
+        test('discovers Cargo.toml files', function() {
+            this.timeout(10000);
+
+            const cargoPath = getFixturePath('Cargo.toml');
+            assert.ok(fs.existsSync(cargoPath), 'Cargo.toml should exist');
+
+            const content = fs.readFileSync(cargoPath, 'utf8');
+            assert.ok(content.includes('[package]'), 'Should have package section');
+            assert.ok(content.includes('[[bin]]'), 'Should have binary targets');
+        });
+
+        test('shows Cargo (Rust) in tree view', async function() {
+            this.timeout(15000);
+
+            await vscode.commands.executeCommand('tasktree.refresh');
+            await sleep(1500);
+
+            const provider = getTaskTreeProvider();
+            const rootChildren = await getTreeChildren(provider);
+
+            const cargoCategory = rootChildren.find(c => getLabelString(c.label).includes('Cargo'));
+            assert.ok(cargoCategory, `Should have Cargo (Rust) category, got: ${rootChildren.map(c => getLabelString(c.label)).join(', ')}`);
+        });
+    });
+
+    suite('Maven Goal Discovery', () => {
+        test('discovers pom.xml files', function() {
+            this.timeout(10000);
+
+            const pomPath = getFixturePath('pom.xml');
+            assert.ok(fs.existsSync(pomPath), 'pom.xml should exist');
+
+            const content = fs.readFileSync(pomPath, 'utf8');
+            assert.ok(content.includes('<project'), 'Should have project element');
+        });
+
+        test('shows Maven Goals in tree view', async function() {
+            this.timeout(15000);
+
+            await vscode.commands.executeCommand('tasktree.refresh');
+            await sleep(1500);
+
+            const provider = getTaskTreeProvider();
+            const rootChildren = await getTreeChildren(provider);
+
+            const mavenCategory = rootChildren.find(c => getLabelString(c.label).includes('Maven'));
+            assert.ok(mavenCategory, `Should have Maven Goals category, got: ${rootChildren.map(c => getLabelString(c.label)).join(', ')}`);
+        });
+    });
+
+    suite('Ant Target Discovery', () => {
+        test('discovers build.xml files', function() {
+            this.timeout(10000);
+
+            const antPath = getFixturePath('build.xml');
+            assert.ok(fs.existsSync(antPath), 'build.xml should exist');
+
+            const content = fs.readFileSync(antPath, 'utf8');
+            assert.ok(content.includes('<target name="build"'), 'Should have build target');
+            assert.ok(content.includes('<target name="clean"'), 'Should have clean target');
+            assert.ok(content.includes('<target name="test"'), 'Should have test target');
+        });
+
+        test('shows Ant Targets in tree view', async function() {
+            this.timeout(15000);
+
+            await vscode.commands.executeCommand('tasktree.refresh');
+            await sleep(1500);
+
+            const provider = getTaskTreeProvider();
+            const rootChildren = await getTreeChildren(provider);
+
+            const antCategory = rootChildren.find(c => getLabelString(c.label).includes('Ant'));
+            assert.ok(antCategory, `Should have Ant Targets category, got: ${rootChildren.map(c => getLabelString(c.label)).join(', ')}`);
+        });
+    });
+
+    suite('Just Recipe Discovery', () => {
+        test('discovers justfile recipes', function() {
+            this.timeout(10000);
+
+            const justPath = getFixturePath('justfile');
+            assert.ok(fs.existsSync(justPath), 'justfile should exist');
+
+            const content = fs.readFileSync(justPath, 'utf8');
+            assert.ok(content.includes('build:'), 'Should have build recipe');
+            assert.ok(content.includes('test:'), 'Should have test recipe');
+            assert.ok(content.includes('deploy env='), 'Should have deploy recipe with param');
+        });
+
+        test('shows Just Recipes in tree view', async function() {
+            this.timeout(15000);
+
+            await vscode.commands.executeCommand('tasktree.refresh');
+            await sleep(1500);
+
+            const provider = getTaskTreeProvider();
+            const rootChildren = await getTreeChildren(provider);
+
+            const justCategory = rootChildren.find(c => getLabelString(c.label).includes('Just'));
+            assert.ok(justCategory, `Should have Just Recipes category, got: ${rootChildren.map(c => getLabelString(c.label)).join(', ')}`);
+        });
+    });
+
+    suite('Taskfile Discovery', () => {
+        test('discovers Taskfile.yml tasks', function() {
+            this.timeout(10000);
+
+            const taskfilePath = getFixturePath('Taskfile.yml');
+            assert.ok(fs.existsSync(taskfilePath), 'Taskfile.yml should exist');
+
+            const content = fs.readFileSync(taskfilePath, 'utf8');
+            assert.ok(content.includes('tasks:'), 'Should have tasks section');
+            assert.ok(content.includes('build:'), 'Should have build task');
+            assert.ok(content.includes('test:'), 'Should have test task');
+        });
+
+        test('shows Taskfile in tree view', async function() {
+            this.timeout(15000);
+
+            await vscode.commands.executeCommand('tasktree.refresh');
+            await sleep(1500);
+
+            const provider = getTaskTreeProvider();
+            const rootChildren = await getTreeChildren(provider);
+
+            const taskfileCategory = rootChildren.find(c => getLabelString(c.label).includes('Taskfile'));
+            assert.ok(taskfileCategory, `Should have Taskfile category, got: ${rootChildren.map(c => getLabelString(c.label)).join(', ')}`);
+        });
+    });
+
+    suite('Deno Task Discovery', () => {
+        test('discovers deno.json tasks', function() {
+            this.timeout(10000);
+
+            const denoPath = getFixturePath('deno.json');
+            assert.ok(fs.existsSync(denoPath), 'deno.json should exist');
+
+            const content = fs.readFileSync(denoPath, 'utf8');
+            assert.ok(content.includes('"tasks"'), 'Should have tasks section');
+            assert.ok(content.includes('"dev"'), 'Should have dev task');
+            assert.ok(content.includes('"build"'), 'Should have build task');
+        });
+
+        test('shows Deno Tasks in tree view', async function() {
+            this.timeout(15000);
+
+            await vscode.commands.executeCommand('tasktree.refresh');
+            await sleep(1500);
+
+            const provider = getTaskTreeProvider();
+            const rootChildren = await getTreeChildren(provider);
+
+            const denoCategory = rootChildren.find(c => getLabelString(c.label).includes('Deno'));
+            assert.ok(denoCategory, `Should have Deno Tasks category, got: ${rootChildren.map(c => getLabelString(c.label)).join(', ')}`);
+        });
+    });
+
+    suite('Rake Task Discovery', () => {
+        test('discovers Rakefile tasks', function() {
+            this.timeout(10000);
+
+            const rakePath = getFixturePath('Rakefile');
+            assert.ok(fs.existsSync(rakePath), 'Rakefile should exist');
+
+            const content = fs.readFileSync(rakePath, 'utf8');
+            assert.ok(content.includes("desc 'Build"), 'Should have build task with desc');
+            assert.ok(content.includes('task :build'), 'Should have build task');
+            assert.ok(content.includes('task :test'), 'Should have test task');
+        });
+
+        test('shows Rake Tasks in tree view', async function() {
+            this.timeout(15000);
+
+            await vscode.commands.executeCommand('tasktree.refresh');
+            await sleep(1500);
+
+            const provider = getTaskTreeProvider();
+            const rootChildren = await getTreeChildren(provider);
+
+            const rakeCategory = rootChildren.find(c => getLabelString(c.label).includes('Rake'));
+            assert.ok(rakeCategory, `Should have Rake Tasks category, got: ${rootChildren.map(c => getLabelString(c.label)).join(', ')}`);
+        });
+    });
+
+    suite('Composer Script Discovery', () => {
+        test('discovers composer.json scripts', function() {
+            this.timeout(10000);
+
+            const composerPath = getFixturePath('composer.json');
+            assert.ok(fs.existsSync(composerPath), 'composer.json should exist');
+
+            const content = fs.readFileSync(composerPath, 'utf8');
+            assert.ok(content.includes('"scripts"'), 'Should have scripts section');
+            assert.ok(content.includes('"test"'), 'Should have test script');
+            assert.ok(content.includes('"lint"'), 'Should have lint script');
+        });
+
+        test('shows Composer Scripts in tree view', async function() {
+            this.timeout(15000);
+
+            await vscode.commands.executeCommand('tasktree.refresh');
+            await sleep(1500);
+
+            const provider = getTaskTreeProvider();
+            const rootChildren = await getTreeChildren(provider);
+
+            const composerCategory = rootChildren.find(c => getLabelString(c.label).includes('Composer'));
+            assert.ok(composerCategory, `Should have Composer Scripts category, got: ${rootChildren.map(c => getLabelString(c.label)).join(', ')}`);
+        });
+    });
+
+    suite('Docker Compose Discovery', () => {
+        test('discovers docker-compose.yml services', function() {
+            this.timeout(10000);
+
+            const dockerPath = getFixturePath('docker-compose.yml');
+            assert.ok(fs.existsSync(dockerPath), 'docker-compose.yml should exist');
+
+            const content = fs.readFileSync(dockerPath, 'utf8');
+            assert.ok(content.includes('services:'), 'Should have services section');
+            assert.ok(content.includes('web:'), 'Should have web service');
+            assert.ok(content.includes('db:'), 'Should have db service');
+        });
+
+        test('shows Docker Compose in tree view', async function() {
+            this.timeout(15000);
+
+            await vscode.commands.executeCommand('tasktree.refresh');
+            await sleep(1500);
+
+            const provider = getTaskTreeProvider();
+            const rootChildren = await getTreeChildren(provider);
+
+            const dockerCategory = rootChildren.find(c => getLabelString(c.label).includes('Docker'));
+            assert.ok(dockerCategory, `Should have Docker Compose category, got: ${rootChildren.map(c => getLabelString(c.label)).join(', ')}`);
+        });
+    });
+
     suite('Discovery Error Handling', () => {
         test('handles file read errors gracefully', async function() {
             this.timeout(10000);

@@ -1,12 +1,27 @@
 {
+    "tasktree.sortOrder": "folder",
+    "tasktree.showEmptyCategories": false,
     "tasktree.excludePatterns": [
         "**/node_modules/**",
+        "**/.vscode-test/**",
+        "**/vendor/**",
+        "**/dist/**",
+        "**/build/**",
+        "**/out/**",
         "**/bin/**",
         "**/obj/**",
         "**/.git/**",
-        "**/test-fixtures/**",
-        "**/scripts/**"
-    ],
-    "tasktree.sortOrder": "folder",
-    "tasktree.showEmptyCategories": false
+        "**/.hg/**",
+        "**/.svn/**",
+        "**/coverage/**",
+        "**/__pycache__/**",
+        "**/venv/**",
+        "**/.venv/**",
+        "**/env/**",
+        "**/target/**",
+        "**/Pods/**",
+        "**/.gradle/**",
+        "**/.idea/**",
+        "**/.vs/**"
+    ]
 }

@@ -1,0 +1,15 @@
+# Build the project
+build:
+    echo "Building..."
+
+# Run tests
+test:
+    echo "Testing..."
+
+# Deploy with environment
+deploy env="staging":
+    echo "Deploying to {{env}}..."
+
+# Private task (won't be shown)
+_internal:
+    echo "Internal task"

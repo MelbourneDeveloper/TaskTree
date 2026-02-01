@@ -298,6 +298,68 @@ suite('Quick Tasks E2E Tests', () => {
                 `from Quick Tasks after refresh!`
             );
         });
+
+        test('PROOF: Config with task ID MUST show task in Quick Tasks view', async function() {
+            this.timeout(30000);
+
+            // Step 1: Discover tasks to get a REAL task ID
+            await treeProvider.refresh();
+            await sleep(1000);
+            const allTasks = treeProvider.getAllTasks();
+            assert.ok(allTasks.length > 0, 'Must have discovered tasks');
+
+            const targetTask = allTasks[0];
+            assert.ok(targetTask !== undefined, 'First task must exist');
+            assert.ok(targetTask.id !== '', 'Task must have a valid ID');
+
+            // Step 2: Write task ID DIRECTLY to config file (simulating user's config)
+            const config: TaskTreeConfig = {
+                tags: {
+                    quick: [targetTask.id]
+                }
+            };
+            writeTaskTreeConfig(config);
+            await sleep(500);
+
+            // Step 3: Verify config was written correctly
+            const savedConfig = readTaskTreeConfig();
+            const quickTags = savedConfig.tags?.['quick'] ?? [];
+            assert.ok(
+                quickTags.includes(targetTask.id),
+                `Config MUST contain task ID: ${targetTask.id}`
+            );
+
+            // Step 4: Refresh everything (this is what happens when user clicks refresh)
+            await vscode.commands.executeCommand('tasktree.refresh');
+            await sleep(2000);
+
+            // Step 5: Get fresh tasks and update quick provider
+            await treeProvider.refresh();
+            await quickProvider.updateTasks(treeProvider.getAllTasks());
+            await sleep(500);
+
+            // Step 6: CRITICAL PROOF - task MUST appear in Quick Tasks view
+            const quickChildren = quickProvider.getChildren(undefined);
+            const taskInView = quickChildren.find(c => c.task?.id === targetTask.id);
+
+            assert.ok(
+                taskInView !== undefined,
+                `PROOF FAILED: Config has task ID "${targetTask.id}" but task does NOT appear ` +
+                `in Quick Tasks view! This is the EXACT bug reported by user. ` +
+                `Quick view contains: [${quickChildren.map(c => c.task?.id ?? 'placeholder').join(', ')}]`
+            );
+
+            assert.ok(
+                taskInView.task !== null,
+                'Task in Quick Tasks view must have non-null task'
+            );
+
+            assert.strictEqual(
+                taskInView.task.id,
+                targetTask.id,
+                'Task ID in view must match config task ID'
+            );
+        });
     });
 
     suite('Quick Tasks Storage', () => {

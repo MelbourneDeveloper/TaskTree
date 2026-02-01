@@ -1,0 +1,15 @@
+plugins {
+    id 'java'
+}
+
+task hello {
+    doLast {
+        println 'Hello from Gradle!'
+    }
+}
+
+task customBuild {
+    doLast {
+        println 'Custom build task'
+    }
+}

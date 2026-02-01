@@ -1,0 +1,12 @@
+{
+  "name": "test/project",
+  "scripts": {
+    "test": "phpunit",
+    "lint": "phpcs",
+    "build": "echo Building..."
+  },
+  "scripts-descriptions": {
+    "test": "Run PHPUnit tests",
+    "lint": "Run PHP CodeSniffer"
+  }
+}

@@ -1,0 +1,3 @@
+@echo off
+:: Runs all tests
+echo Running tests...

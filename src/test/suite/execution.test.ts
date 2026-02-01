@@ -675,16 +675,10 @@ suite('Task Execution E2E Tests', () => {
     });
 
     suite('Python Task Execution', () => {
-        test('python task executes and creates VS Code task', async function() {
+        test('python task executes in terminal', async function() {
             this.timeout(20000);
 
-            // Get initial task execution count
-            let taskExecuted = false;
-            const disposable = vscode.tasks.onDidStartTask(e => {
-                if (e.execution.task.source === 'TaskTree') {
-                    taskExecuted = true;
-                }
-            });
+            const terminalsBefore = vscode.window.terminals.length;
 
             const pythonTask = createMockTaskItem({
                 type: 'python',
@@ -697,12 +691,15 @@ suite('Task Execution E2E Tests', () => {
             const taskTreeItem = { task: pythonTask };
 
             await vscode.commands.executeCommand('tasktree.run', taskTreeItem);
-            await sleep(2000);
+            await sleep(1000);
 
-            disposable.dispose();
+            const terminalsAfter = vscode.window.terminals.length;
 
-            // Verify a TaskTree task was started
-            assert.ok(taskExecuted, 'Python task should trigger VS Code task execution');
+            // Python tasks execute in terminal (not via VS Code task API)
+            assert.ok(terminalsAfter > terminalsBefore, 'Python task should create a terminal');
+
+            // Verify there's an active terminal
+            assert.ok(vscode.window.activeTerminal !== undefined, 'Should have active terminal');
         });
 
         test('python task discovered from workspace has correct structure', async function() {

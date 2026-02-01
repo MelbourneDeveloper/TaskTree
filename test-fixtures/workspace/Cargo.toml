@@ -1,0 +1,14 @@
+[package]
+name = "test-project"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "myapp"
+path = "src/main.rs"
+
+[[example]]
+name = "demo"
+path = "examples/demo.rs"
+
+[dependencies]

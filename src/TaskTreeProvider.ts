@@ -184,6 +184,72 @@ export class TaskTreeProvider implements vscode.TreeDataProvider<TaskTreeItem> {
             categories.push(this.buildCategoryWithFolders('Python Scripts', pythonTasks));
         }
 
+        // PowerShell/Batch Scripts - grouped by folder
+        const powershellTasks = filtered.filter(t => t.type === 'powershell');
+        if (powershellTasks.length > 0) {
+            categories.push(this.buildCategoryWithFolders('PowerShell/Batch', powershellTasks));
+        }
+
+        // Gradle Tasks - grouped by project
+        const gradleTasks = filtered.filter(t => t.type === 'gradle');
+        if (gradleTasks.length > 0) {
+            categories.push(this.buildCategoryWithFolders('Gradle Tasks', gradleTasks));
+        }
+
+        // Cargo Tasks - grouped by project
+        const cargoTasks = filtered.filter(t => t.type === 'cargo');
+        if (cargoTasks.length > 0) {
+            categories.push(this.buildCategoryWithFolders('Cargo (Rust)', cargoTasks));
+        }
+
+        // Maven Goals - grouped by project
+        const mavenTasks = filtered.filter(t => t.type === 'maven');
+        if (mavenTasks.length > 0) {
+            categories.push(this.buildCategoryWithFolders('Maven Goals', mavenTasks));
+        }
+
+        // Ant Targets - grouped by project
+        const antTasks = filtered.filter(t => t.type === 'ant');
+        if (antTasks.length > 0) {
+            categories.push(this.buildCategoryWithFolders('Ant Targets', antTasks));
+        }
+
+        // Just Recipes - grouped by location
+        const justTasks = filtered.filter(t => t.type === 'just');
+        if (justTasks.length > 0) {
+            categories.push(this.buildCategoryWithFolders('Just Recipes', justTasks));
+        }
+
+        // Taskfile Tasks - grouped by location
+        const taskfileTasks = filtered.filter(t => t.type === 'taskfile');
+        if (taskfileTasks.length > 0) {
+            categories.push(this.buildCategoryWithFolders('Taskfile', taskfileTasks));
+        }
+
+        // Deno Tasks - grouped by project
+        const denoTasks = filtered.filter(t => t.type === 'deno');
+        if (denoTasks.length > 0) {
+            categories.push(this.buildCategoryWithFolders('Deno Tasks', denoTasks));
+        }
+
+        // Rake Tasks - grouped by project
+        const rakeTasks = filtered.filter(t => t.type === 'rake');
+        if (rakeTasks.length > 0) {
+            categories.push(this.buildCategoryWithFolders('Rake Tasks', rakeTasks));
+        }
+
+        // Composer Scripts - grouped by project
+        const composerTasks = filtered.filter(t => t.type === 'composer');
+        if (composerTasks.length > 0) {
+            categories.push(this.buildCategoryWithFolders('Composer Scripts', composerTasks));
+        }
+
+        // Docker Compose - grouped by project
+        const dockerTasks = filtered.filter(t => t.type === 'docker');
+        if (dockerTasks.length > 0) {
+            categories.push(this.buildCategoryWithFolders('Docker Compose', dockerTasks));
+        }
+
         return categories;
     }
 
