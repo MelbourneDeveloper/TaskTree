@@ -70,9 +70,9 @@ export class TagConfig {
 
             for (const [tagName, patterns] of Object.entries(tags)) {
                 for (const pattern of patterns) {
-                    // String = exact ID match
+                    // String patterns: check exact ID match first, then type:label format
                     const matches = typeof pattern === 'string'
-                        ? task.id === pattern
+                        ? this.matchesStringPattern(task, pattern)
                         : this.matchesPattern(task, pattern);
 
                     if (matches) {
@@ -232,6 +232,27 @@ export class TagConfig {
             const message = e instanceof Error ? e.message : 'Unknown error saving config';
             return err(message);
         }
+    }
+
+    /**
+     * Checks if a task matches a string pattern.
+     * Supports exact ID match or type:label format.
+     */
+    private matchesStringPattern(task: TaskItem, pattern: string): boolean {
+        // Exact ID match first
+        if (task.id === pattern) {
+            return true;
+        }
+
+        // Try type:label format (e.g., "npm:build")
+        const colonIndex = pattern.indexOf(':');
+        if (colonIndex > 0) {
+            const patternType = pattern.substring(0, colonIndex);
+            const patternLabel = pattern.substring(colonIndex + 1);
+            return task.type === patternType && task.label === patternLabel;
+        }
+
+        return false;
     }
 
     /**

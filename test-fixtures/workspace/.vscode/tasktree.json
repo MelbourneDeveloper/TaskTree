@@ -2,6 +2,28 @@
     "tags": {
         "quick": [
             "shell:/Users/christianfindlay/Documents/Code/TaskTree/test-fixtures/workspace/scripts/deploy.sh:deploy.sh"
+        ],
+        "build": [
+            { "label": "build" },
+            { "type": "npm" }
+        ],
+        "test": [
+            { "label": "test" },
+            { "type": "npm", "label": "test" }
+        ],
+        "deploy": [
+            { "label": "deploy" }
+        ],
+        "debug": [
+            { "type": "launch" }
+        ],
+        "scripts": [
+            { "type": "shell" }
+        ],
+        "ci": [
+            { "type": "npm", "label": "lint" },
+            { "type": "npm", "label": "test" },
+            { "type": "npm", "label": "build" }
         ]
     }
 }
