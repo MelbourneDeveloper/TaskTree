@@ -775,6 +775,84 @@ suite('TreeView Real UI Tests', () => {
             }
         });
     });
+
+    suite('Empty Category Hiding', () => {
+        test('categories with no tasks do not appear when showEmptyCategories is false', async function() {
+            this.timeout(15000);
+
+            // By default showEmptyCategories is false
+            // Verify that all root categories have at least one task
+            const roots = await getTreeChildren(provider);
+
+            for (const category of roots) {
+                const label = getLabelString(category.label);
+                // Extract count from label like "NPM Scripts (7)"
+                const countMatch = label.match(/\((\d+)\)/);
+                if (countMatch !== null && countMatch[1] !== undefined) {
+                    const count = parseInt(countMatch[1], 10);
+                    assert.ok(count > 0, `Category "${label}" should not appear with 0 tasks`);
+                }
+                // If no count in label, check children exist
+                const allTasks = flattenTaskItems(category.children);
+                assert.ok(allTasks.length > 0, `Category "${label}" should have tasks when visible`);
+            }
+        });
+
+        test('filtering that removes all tasks from category hides the category', async function() {
+            this.timeout(15000);
+
+            // Apply a filter that will match only specific types
+            provider.setTextFilter('deploy.sh');
+            await sleep(500);
+
+            const roots = await getTreeChildren(provider);
+
+            // Should have fewer categories or tasks
+            for (const category of roots) {
+                const allTasks = flattenTaskItems(category.children);
+                // If category is visible, it should have matching tasks
+                if (allTasks.length > 0) {
+                    const hasMatchingTask = allTasks.some(t =>
+                        t.task?.label?.toLowerCase().includes('deploy.sh') === true
+                    );
+                    assert.ok(
+                        hasMatchingTask,
+                        `Category "${getLabelString(category.label)}" should only contain matching tasks`
+                    );
+                }
+            }
+
+            // Clear filter for other tests
+            provider.clearFilters();
+            await sleep(300);
+        });
+
+        test('showEmptyCategories setting controls empty category visibility', async function() {
+            this.timeout(15000);
+
+            // First apply filter that removes all tasks from a category
+            provider.setTextFilter('xyznonexistent123');
+            await sleep(500);
+
+            // With showEmptyCategories=false (default), should have no or fewer categories
+            const roots = await getTreeChildren(provider);
+
+            // No categories should be visible with no matching tasks
+            for (const category of roots) {
+                const allTasks = flattenTaskItems(category.children);
+                // If category appears, it should be because showEmptyCategories=true
+                // or there's a bug. Default is false, so assert no tasks = no category
+                if (allTasks.length === 0) {
+                    // This indicates a bug - empty category should be hidden
+                    assert.fail(`Category "${getLabelString(category.label)}" should be hidden when empty`);
+                }
+            }
+
+            // Clear filter
+            provider.clearFilters();
+            await sleep(300);
+        });
+    });
 });
 
 /**

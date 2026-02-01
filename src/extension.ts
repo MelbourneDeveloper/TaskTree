@@ -202,7 +202,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
 
     // Watch for file changes that might affect tasks
     const watcher = vscode.workspace.createFileSystemWatcher(
-        '**/{package.json,Makefile,makefile,tasks.json,launch.json,tasktree.json,*.sh}'
+        '**/{package.json,Makefile,makefile,tasks.json,launch.json,tasktree.json,*.sh,*.py}'
     );
 
     const syncQuickTasks = async (): Promise<void> => {

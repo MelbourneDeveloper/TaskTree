@@ -219,7 +219,7 @@ export class TaskRunner {
     private async runLaunch(task: TaskItem): Promise<void> {
         const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
         if (workspaceFolder === undefined) {
-            await vscode.window.showErrorMessage('No workspace folder found');
+            void vscode.window.showErrorMessage('No workspace folder found');
             return;
         }
 
@@ -229,7 +229,7 @@ export class TaskRunner {
         );
 
         if (!started) {
-            await vscode.window.showErrorMessage(`Failed to start: ${task.label}`);
+            void vscode.window.showErrorMessage(`Failed to start: ${task.label}`);
         }
     }
 
@@ -243,7 +243,7 @@ export class TaskRunner {
         if (matchingTask !== undefined) {
             await vscode.tasks.executeTask(matchingTask);
         } else {
-            await vscode.window.showErrorMessage(`Task not found: ${task.label}`);
+            void vscode.window.showErrorMessage(`Task not found: ${task.label}`);
         }
     }
 

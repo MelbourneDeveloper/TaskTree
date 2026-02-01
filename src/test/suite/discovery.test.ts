@@ -686,6 +686,59 @@ suite('Task Discovery E2E Tests', () => {
                 }
             }
         });
+
+        test('Python category disappears when all Python scripts are removed', async function() {
+            this.timeout(20000);
+
+            // First verify Python category exists
+            await vscode.commands.executeCommand('tasktree.refresh');
+            await sleep(1500);
+
+            const provider = getTaskTreeProvider();
+            let roots = await getTreeChildren(provider);
+            const pythonCategoryBefore = roots.find(c => getLabelString(c.label).includes('Python Scripts'));
+            assert.ok(pythonCategoryBefore, 'Python Scripts category should exist initially');
+
+            // Temporarily hide all Python scripts by renaming them
+            const pythonFiles = [
+                'scripts/deploy.py',
+                'scripts/run_tests.py',
+                'scripts/build_project.py'
+            ];
+
+            const tempRenames: Array<{ from: string; to: string }> = [];
+
+            try {
+                // Rename all Python scripts to .bak
+                for (const pyFile of pythonFiles) {
+                    const fullPath = getFixturePath(pyFile);
+                    const bakPath = fullPath + '.bak';
+                    if (fs.existsSync(fullPath)) {
+                        fs.renameSync(fullPath, bakPath);
+                        tempRenames.push({ from: fullPath, to: bakPath });
+                    }
+                }
+
+                // Refresh and check category is gone
+                await vscode.commands.executeCommand('tasktree.refresh');
+                await sleep(1500);
+
+                roots = await getTreeChildren(provider);
+                const pythonCategoryAfter = roots.find(c => getLabelString(c.label).includes('Python Scripts'));
+                assert.ok(pythonCategoryAfter === undefined, 'Python Scripts category should be hidden when no Python scripts exist');
+            } finally {
+                // Restore all renamed files
+                for (const rename of tempRenames) {
+                    if (fs.existsSync(rename.to)) {
+                        fs.renameSync(rename.to, rename.from);
+                    }
+                }
+
+                // Refresh to restore state
+                await vscode.commands.executeCommand('tasktree.refresh');
+                await sleep(500);
+            }
+        });
     });
 
     suite('Discovery Error Handling', () => {
