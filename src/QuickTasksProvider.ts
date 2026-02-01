@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import type { TaskItem, Result } from './models/TaskItem';
 import { TaskTreeItem } from './models/TaskItem';
 import { TagConfig } from './config/TagConfig';
+import { logger } from './utils/logger';
 
 const QUICK_TASK_MIME_TYPE = 'application/vnd.tasktree.quicktask';
 
@@ -29,8 +30,15 @@ export class QuickTasksProvider implements vscode.TreeDataProvider<TaskTreeItem>
      * Updates the list of all tasks and refreshes the view.
      */
     async updateTasks(tasks: TaskItem[]): Promise<void> {
+        logger.quick('updateTasks called', { taskCount: tasks.length });
         await this.tagConfig.load();
         this.allTasks = this.tagConfig.applyTags(tasks);
+        const quickCount = this.allTasks.filter(t => t.tags.includes('quick')).length;
+        logger.quick('updateTasks complete', {
+            taskCount: this.allTasks.length,
+            quickTaskCount: quickCount,
+            quickTasks: this.allTasks.filter(t => t.tags.includes('quick')).map(t => t.id)
+        });
         this.onDidChangeTreeDataEmitter.fire(undefined);
     }
 
@@ -76,15 +84,28 @@ export class QuickTasksProvider implements vscode.TreeDataProvider<TaskTreeItem>
             return element.children;
         }
 
+        logger.quick('getChildren called', {
+            allTasksCount: this.allTasks.length,
+            allTasksWithTags: this.allTasks.map(t => ({ id: t.id, label: t.label, tags: t.tags }))
+        });
+
         const quickTasks = this.allTasks.filter(task => task.tags.includes('quick'));
 
+        logger.quick('Filtered quick tasks', {
+            quickTaskCount: quickTasks.length,
+            quickTaskIds: quickTasks.map(t => t.id)
+        });
+
         if (quickTasks.length === 0) {
+            logger.quick('No quick tasks found', {});
             return [new TaskTreeItem(null, 'No quick tasks - star tasks to add them here', [])];
         }
 
         // Sort by the order in the tag patterns array for deterministic ordering
         // Use task.id for matching since patterns now store full task IDs
         const quickPatterns = this.tagConfig.getTagPatterns('quick');
+        logger.quick('Quick patterns from config', { patterns: quickPatterns });
+
         const sortedTasks = [...quickTasks].sort((a, b) => {
             const indexA = quickPatterns.indexOf(a.id);
             const indexB = quickPatterns.indexOf(b.id);
@@ -99,6 +120,11 @@ export class QuickTasksProvider implements vscode.TreeDataProvider<TaskTreeItem>
                 return -1;
             }
             return indexA - indexB;
+        });
+
+        logger.quick('Returning sorted quick tasks', {
+            count: sortedTasks.length,
+            tasks: sortedTasks.map(t => t.label)
         });
 
         return sortedTasks.map(task => new TaskTreeItem(task, null, []));

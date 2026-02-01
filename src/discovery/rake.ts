@@ -6,12 +6,20 @@ import { readFile } from '../utils/fileUtils';
 
 /**
  * Discovers Rake tasks from Rakefile.
+ * Only returns tasks if Ruby source files (.rb) exist in the workspace.
  */
 export async function discoverRakeTasks(
     workspaceRoot: string,
     excludePatterns: string[]
 ): Promise<TaskItem[]> {
     const exclude = `{${excludePatterns.join(',')}}`;
+
+    // Check if any Ruby source files exist before processing
+    const rubyFiles = await vscode.workspace.findFiles('**/*.rb', exclude);
+    if (rubyFiles.length === 0) {
+        return []; // No Ruby source code, skip Rake tasks
+    }
+
     // Rake supports: Rakefile, rakefile, Rakefile.rb, rakefile.rb
     const [rakefiles, lcRakefiles, rbRakefiles, lcRbRakefiles] = await Promise.all([
         vscode.workspace.findFiles('**/Rakefile', exclude),

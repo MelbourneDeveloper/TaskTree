@@ -779,7 +779,7 @@ suite('Task Execution E2E Tests', () => {
         });
     });
 
-    suite('VS Code Task Execution', () => {
+    suite('VS Code Task Runner', () => {
         test('vscode task executes matching task from tasks.json', async function() {
             this.timeout(20000);
 

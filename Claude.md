@@ -13,6 +13,7 @@ You are working with many other agents. Make sure there is effective cooperation
 - **TypeScript strict mode** - No `any`, no implicit types, turn all lints up to error
 - **Functional style** - Prefer pure functions, avoid classes where possible
 - **No suppressing warnings** - Fix them properly
+- **No REGEX** It is absolutely ⛔️ illegal
 - **Ignoring lints = ⛔️ illegal** - Fix violations immediately
 - **No throwing** - Only return `Result<T,E>`
 - **Expressions over assignments** - Prefer const and immutable patterns

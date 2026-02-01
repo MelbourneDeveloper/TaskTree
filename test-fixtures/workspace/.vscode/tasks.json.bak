@@ -1,0 +1,56 @@
+{
+  // This is a comment that should be handled
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build Project",
+      "type": "shell",
+      "command": "npm run build --config ${input:buildConfig}",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Tests",
+      "type": "shell",
+      "command": "npm test",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      /* Multi-line comment
+         that spans multiple lines */
+      "label": "Deploy with Config",
+      "type": "shell",
+      "command": "deploy.sh ${input:deployEnv} --target ${input:buildTarget}",
+      "problemMatcher": []
+    },
+    {
+      "label": "Custom Build",
+      "type": "shell",
+      "command": "make build",
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "deployEnv",
+      "type": "pickString",
+      "description": "Select deployment environment",
+      "options": ["development", "staging", "production"],
+      "default": "development"
+    },
+    {
+      "id": "buildConfig",
+      "type": "promptString",
+      "description": "Enter build configuration",
+      "default": "release"
+    },
+    {
+      "id": "buildTarget",
+      "type": "pickString",
+      "description": "Select build target",
+      "options": ["web", "mobile", "desktop"],
+      "default": "web"
+    }
+  ]
+}

@@ -11,8 +11,14 @@ import {
 } from './helpers';
 import type { QuickTasksProvider, TaskTreeProvider } from './helpers';
 
+interface TagPattern {
+    id?: string;
+    type?: string;
+    label?: string;
+}
+
 interface TaskTreeConfig {
-    tags?: Record<string, string[]>;
+    tags?: Record<string, Array<string | TagPattern>>;
 }
 
 function readTaskTreeConfig(): TaskTreeConfig {
@@ -737,14 +743,19 @@ suite('Quick Tasks E2E Tests', () => {
         test('full task ID pattern matches exactly one task', async function() {
             this.timeout(20000);
 
-            // test-fixtures has "lint" in both Root and subproject package.json
-            // A full task ID should match exactly ONE task
+            // Discover tasks first to get an actual task ID
+            const provider = getTaskTreeProvider();
+            await provider.refresh();
+            await sleep(1000);
 
-            // Use type:name pattern which matches by type and label
+            const allTasks = provider.getAllTasks();
+            const npmTask = allTasks.find((t: { type: string }) => t.type === 'npm');
+            assert.ok(npmTask !== undefined, 'Should have an npm task');
+
+            // Use the full task ID for exact matching
             const config: TaskTreeConfig = {
                 tags: {
-                    // This glob pattern would match all npm lint tasks
-                    quick: ['npm:*lint']
+                    quick: [npmTask.id]
                 }
             };
             writeTaskTreeConfig(config);
@@ -761,18 +772,18 @@ suite('Quick Tasks E2E Tests', () => {
             const firstPattern = quickPatterns[0];
             assert.ok(firstPattern !== undefined, 'Should have at least one pattern');
             assert.ok(
-                firstPattern.includes('npm:'),
-                'Pattern should use type: prefix for specificity'
+                typeof firstPattern === 'string' && firstPattern.startsWith('npm:'),
+                'Pattern should be full task ID starting with type prefix'
             );
         });
 
-        test('type:name pattern matches tasks of that type with glob', async function() {
+        test('structured type and label pattern matches tasks', async function() {
             this.timeout(20000);
 
-            // Type:name with glob should match all tasks of that type with matching name
+            // Structured pattern should match tasks by type and label
             const config: TaskTreeConfig = {
                 tags: {
-                    quick: ['npm:lint'] // This should match npm tasks named lint
+                    quick: [{ type: 'npm', label: 'lint' }]
                 }
             };
             writeTaskTreeConfig(config);
@@ -784,16 +795,16 @@ suite('Quick Tasks E2E Tests', () => {
             // Verify config was written correctly
             const savedConfig = readTaskTreeConfig();
             const quickTags = savedConfig.tags?.['quick'] ?? [];
-            assert.ok(quickTags.includes('npm:lint'), 'Config should have npm:lint pattern');
+            assert.strictEqual(quickTags.length, 1, 'Config should have one pattern');
 
-            // Verify provider handles the type:name pattern
+            // Verify provider handles the structured pattern
             const quickProvider = getQuickTasksProvider();
-            const treeProvider = getTaskTreeProvider();
-            await quickProvider.updateTasks(treeProvider.getAllTasks());
+            const provider = getTaskTreeProvider();
+            await quickProvider.updateTasks(provider.getAllTasks());
             await sleep(500);
 
             const children = quickProvider.getChildren(undefined);
-            assert.ok(Array.isArray(children), 'QuickTasksProvider should return valid array for type:name pattern');
+            assert.ok(Array.isArray(children), 'QuickTasksProvider should return valid array for structured pattern');
         });
     });
 

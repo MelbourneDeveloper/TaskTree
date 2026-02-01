@@ -6,12 +6,25 @@ import { readFile } from '../utils/fileUtils';
 
 /**
  * Discovers Gradle tasks from build.gradle and build.gradle.kts files.
+ * Only returns tasks if Java, Kotlin, or Groovy source files exist in the workspace.
  */
 export async function discoverGradleTasks(
     workspaceRoot: string,
     excludePatterns: string[]
 ): Promise<TaskItem[]> {
     const exclude = `{${excludePatterns.join(',')}}`;
+
+    // Check if any JVM source files exist before processing
+    const [javaFiles, kotlinSourceFiles, groovySourceFiles] = await Promise.all([
+        vscode.workspace.findFiles('**/*.java', exclude),
+        vscode.workspace.findFiles('**/*.kt', exclude),
+        vscode.workspace.findFiles('**/*.groovy', exclude)
+    ]);
+    const totalSourceFiles = javaFiles.length + kotlinSourceFiles.length + groovySourceFiles.length;
+    if (totalSourceFiles === 0) {
+        return []; // No JVM source code, skip Gradle tasks
+    }
+
     const [groovyFiles, kotlinFiles] = await Promise.all([
         vscode.workspace.findFiles('**/build.gradle', exclude),
         vscode.workspace.findFiles('**/build.gradle.kts', exclude)

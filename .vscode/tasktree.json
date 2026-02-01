@@ -1,34 +1,8 @@
 {
   "tags": {
-    "build": [
-      "*build*",
-      "type:make:build",
-      "type:npm:build"
-    ],
-    "test": [
-      "*test*",
-      "type:npm:test"
-    ],
-    "deploy": [
-      "*deploy*",
-      "type:shell:deploy*"
-    ],
-    "debug": [
-      "type:launch:*"
-    ],
-    "scripts": [
-      "type:shell:*"
-    ],
-    "ci": [
-      "type:npm:lint",
-      "type:npm:test",
-      "type:npm:build",
-      "python:/Users/christianfindlay/Documents/Code/TaskTree/test-fixtures/workspace/scripts/build_project.py:build_project.py"
-    ],
     "quick": [
-      "shell:/Users/christianfindlay/Documents/Code/TaskTree/test-fixtures/workspace/scripts/build.sh:build.sh",
       "npm:/Users/christianfindlay/Documents/Code/TaskTree/package.json:build-and-install",
-      "npm:/Users/christianfindlay/Documents/Code/TaskTree/package.json:clean"
+      "shell:/Users/christianfindlay/Documents/Code/TaskTree/test-fixtures/workspace/scripts/build.sh:build.sh"
     ]
   }
 }

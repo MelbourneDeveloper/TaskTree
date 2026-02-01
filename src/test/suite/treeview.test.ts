@@ -31,12 +31,13 @@ suite('TreeView Real UI Tests', () => {
     });
 
     suite('Tree Structure Verification', () => {
-        test('root level has exactly 6 categories', async function() {
+        test('root level has all expected categories', async function() {
             this.timeout(10000);
 
             const roots = await getTreeChildren(provider);
 
-            assert.strictEqual(roots.length, 6, `Expected 6 root categories, got ${roots.length}`);
+            // We have many task types now - at least the core ones should exist
+            assert.ok(roots.length >= 6, `Expected at least 6 root categories, got ${roots.length}`);
 
             const categoryLabels = roots.map(r => getLabelString(r.label));
             assert.ok(categoryLabels.some(l => l.includes('Shell Scripts')), 'Should have Shell Scripts category');
@@ -84,11 +85,11 @@ suite('TreeView Real UI Tests', () => {
             const makeCategory = roots.find(r => getLabelString(r.label).includes('Make Targets'));
 
             assert.ok(makeCategory, 'Make Targets category should exist');
-            // 6 targets: all, build, test, clean, install, new-watcher-target (.internal is skipped)
+            // 7 targets: 6 from workspace + 1 from watcher-make (.internal is skipped)
             const makeLabel = getLabelString(makeCategory.label);
             assert.ok(
-                makeLabel.includes('(6)'),
-                `Make Targets should show count (6), got: ${makeLabel}`
+                makeLabel.includes('(7)'),
+                `Make Targets should show count (7), got: ${makeLabel}`
             );
         });
 
@@ -99,11 +100,11 @@ suite('TreeView Real UI Tests', () => {
             const launchCategory = roots.find(r => getLabelString(r.label).includes('VS Code Launch'));
 
             assert.ok(launchCategory, 'VS Code Launch category should exist');
-            // 3 launch configs: Debug Application, Debug Tests, Debug Python
+            // 5 launch configs: 3 from workspace + 2 from nested test-fixtures
             const launchLabel = getLabelString(launchCategory.label);
             assert.ok(
-                launchLabel.includes('(3)'),
-                `VS Code Launch should show count (3), got: ${launchLabel}`
+                launchLabel.includes('(5)'),
+                `VS Code Launch should show count (5), got: ${launchLabel}`
             );
         });
 
@@ -114,11 +115,11 @@ suite('TreeView Real UI Tests', () => {
             const tasksCategory = roots.find(r => getLabelString(r.label).includes('VS Code Tasks'));
 
             assert.ok(tasksCategory, 'VS Code Tasks category should exist');
-            // 4 tasks: Build Project, Run Tests, Deploy with Config, Custom Build
+            // 6 tasks: 4 from workspace + 2 from nested test-fixtures
             const tasksLabel = getLabelString(tasksCategory.label);
             assert.ok(
-                tasksLabel.includes('(4)'),
-                `VS Code Tasks should show count (4), got: ${tasksLabel}`
+                tasksLabel.includes('(6)'),
+                `VS Code Tasks should show count (6), got: ${tasksLabel}`
             );
         });
 

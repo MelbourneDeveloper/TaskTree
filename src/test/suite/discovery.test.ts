@@ -460,15 +460,15 @@ suite('Task Discovery E2E Tests', () => {
             }
         });
 
-        test('excludes tasks from test-fixtures directory', async function() {
+        test('discovers tasks from nested directories', async function() {
             this.timeout(15000);
 
-            // Verify test-fixtures has tasks that should be excluded
+            // Verify nested test-fixtures has tasks
             const testFixturesTasksPath = getFixturePath('test-fixtures/workspace/.vscode/tasks.json');
-            assert.ok(fs.existsSync(testFixturesTasksPath), 'test-fixtures tasks.json should exist');
+            assert.ok(fs.existsSync(testFixturesTasksPath), 'nested tasks.json should exist');
 
             const fixtureContent = fs.readFileSync(testFixturesTasksPath, 'utf8');
-            assert.ok(fixtureContent.includes('Nested Build Task'), 'test-fixtures should have Nested Build Task');
+            assert.ok(fixtureContent.includes('Nested Build Task'), 'nested fixture should have Nested Build Task');
 
             await vscode.commands.executeCommand('tasktree.refresh');
             await sleep(1500);
@@ -479,25 +479,25 @@ suite('Task Discovery E2E Tests', () => {
 
             // Find VS Code Tasks category
             const vscodeTasks = rootChildren.find(c => getLabelString(c.label).startsWith('VS Code Tasks'));
-            if (vscodeTasks) {
-                const taskItems = await getTreeChildren(provider, vscodeTasks);
-                const labels = taskItems.map(t => getLabelString(t.label));
+            assert.ok(vscodeTasks, 'VS Code Tasks category should exist');
 
-                // These tasks are in test-fixtures and should NOT appear
-                assert.ok(!labels.includes('Nested Build Task'), `'Nested Build Task' from test-fixtures should be excluded, got: ${labels.join(', ')}`);
-                assert.ok(!labels.includes('Nested Deploy Task'), `'Nested Deploy Task' from test-fixtures should be excluded`);
-            }
+            const taskItems = await getTreeChildren(provider, vscodeTasks);
+            const labels = taskItems.map(t => getLabelString(t.label));
+
+            // Nested tasks should be discovered
+            assert.ok(labels.includes('Nested Build Task'), `'Nested Build Task' should be discovered, got: ${labels.join(', ')}`);
+            assert.ok(labels.includes('Nested Deploy Task'), `'Nested Deploy Task' should be discovered`);
         });
 
-        test('excludes launch configs from test-fixtures directory', async function() {
+        test('discovers launch configs from nested directories', async function() {
             this.timeout(15000);
 
-            // Verify test-fixtures has launch configs that should be excluded
+            // Verify nested test-fixtures has launch configs
             const testFixturesLaunchPath = getFixturePath('test-fixtures/workspace/.vscode/launch.json');
-            assert.ok(fs.existsSync(testFixturesLaunchPath), 'test-fixtures launch.json should exist');
+            assert.ok(fs.existsSync(testFixturesLaunchPath), 'nested launch.json should exist');
 
             const fixtureContent = fs.readFileSync(testFixturesLaunchPath, 'utf8');
-            assert.ok(fixtureContent.includes('Nested Debug Config'), 'test-fixtures should have Nested Debug Config');
+            assert.ok(fixtureContent.includes('Nested Debug Config'), 'nested fixture should have Nested Debug Config');
 
             await vscode.commands.executeCommand('tasktree.refresh');
             await sleep(1500);
@@ -508,14 +508,14 @@ suite('Task Discovery E2E Tests', () => {
 
             // Find VS Code Launch category
             const vscodeLaunch = rootChildren.find(c => getLabelString(c.label).startsWith('VS Code Launch'));
-            if (vscodeLaunch) {
-                const launchItems = await getTreeChildren(provider, vscodeLaunch);
-                const labels = launchItems.map(t => getLabelString(t.label));
+            assert.ok(vscodeLaunch, 'VS Code Launch category should exist');
 
-                // These configs are in test-fixtures and should NOT appear
-                assert.ok(!labels.includes('Nested Debug Config'), `'Nested Debug Config' from test-fixtures should be excluded, got: ${labels.join(', ')}`);
-                assert.ok(!labels.includes('Nested Python Debug'), `'Nested Python Debug' from test-fixtures should be excluded`);
-            }
+            const launchItems = await getTreeChildren(provider, vscodeLaunch);
+            const labels = launchItems.map(t => getLabelString(t.label));
+
+            // Nested configs should be discovered
+            assert.ok(labels.includes('Nested Debug Config'), `'Nested Debug Config' should be discovered, got: ${labels.join(', ')}`);
+            assert.ok(labels.includes('Nested Python Debug'), `'Nested Python Debug' should be discovered`);
         });
 
         test('parses input definitions from tasks.json', function() {

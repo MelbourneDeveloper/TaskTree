@@ -20,12 +20,20 @@ const STANDARD_MAVEN_GOALS = [
 
 /**
  * Discovers Maven goals from pom.xml files.
+ * Only returns tasks if Java source files (.java) exist in the workspace.
  */
 export async function discoverMavenGoals(
     workspaceRoot: string,
     excludePatterns: string[]
 ): Promise<TaskItem[]> {
     const exclude = `{${excludePatterns.join(',')}}`;
+
+    // Check if any Java source files exist before processing
+    const javaFiles = await vscode.workspace.findFiles('**/*.java', exclude);
+    if (javaFiles.length === 0) {
+        return []; // No Java source code, skip Maven goals
+    }
+
     const files = await vscode.workspace.findFiles('**/pom.xml', exclude);
     const tasks: TaskItem[] = [];
 

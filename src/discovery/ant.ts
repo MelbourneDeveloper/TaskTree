@@ -6,12 +6,20 @@ import { readFile } from '../utils/fileUtils';
 
 /**
  * Discovers Ant targets from build.xml files.
+ * Only returns tasks if Java source files (.java) exist in the workspace.
  */
 export async function discoverAntTargets(
     workspaceRoot: string,
     excludePatterns: string[]
 ): Promise<TaskItem[]> {
     const exclude = `{${excludePatterns.join(',')}}`;
+
+    // Check if any Java source files exist before processing
+    const javaFiles = await vscode.workspace.findFiles('**/*.java', exclude);
+    if (javaFiles.length === 0) {
+        return []; // No Java source code, skip Ant targets
+    }
+
     const files = await vscode.workspace.findFiles('**/build.xml', exclude);
     const tasks: TaskItem[] = [];
 

@@ -8,8 +8,14 @@ import {
     getTaskTreeProvider
 } from './helpers';
 
+interface TagPattern {
+    id?: string;
+    type?: string;
+    label?: string;
+}
+
 interface TagConfig {
-    tags: Record<string, string[]>;
+    tags: Record<string, Array<string | TagPattern>>;
 }
 
 suite('Task Filtering E2E Tests', () => {
@@ -78,28 +84,36 @@ suite('Task Filtering E2E Tests', () => {
             assert.ok(content.tags['ci'], 'Should have ci tag');
         });
 
-        test('tag patterns include glob wildcards', function() {
+        test('tag patterns use structured objects with label', function() {
             this.timeout(10000);
 
             const tagConfig = JSON.parse(fs.readFileSync(getFixturePath('.vscode/tasktree.json'), 'utf8')) as TagConfig;
 
-            // Check build tag patterns
+            // Check build tag patterns - should have structured patterns
             const buildPatterns = tagConfig.tags['build'];
             assert.ok(buildPatterns, 'build tag should exist');
-            assert.ok(buildPatterns.includes('*build*'), 'build tag should have wildcard pattern');
-            assert.ok(buildPatterns.includes('type:make:build'), 'build tag should have type:make:build');
-            assert.ok(buildPatterns.includes('type:npm:build'), 'build tag should have type:npm:build');
+            assert.ok(
+                buildPatterns.some(p => typeof p === 'object' && 'label' in p && p.label === 'build'),
+                'build tag should have label pattern'
+            );
+            assert.ok(
+                buildPatterns.some(p => typeof p === 'object' && 'type' in p && p.type === 'npm'),
+                'build tag should have npm type pattern'
+            );
         });
 
-        test('tag patterns support type:tasktype:label format', function() {
+        test('tag patterns use structured objects with type', function() {
             this.timeout(10000);
 
             const tagConfig = JSON.parse(fs.readFileSync(getFixturePath('.vscode/tasktree.json'), 'utf8')) as TagConfig;
 
-            // Check debug tag patterns - should match launch configs
+            // Check debug tag patterns - should have type pattern for launch
             const debugPatterns = tagConfig.tags['debug'];
             assert.ok(debugPatterns, 'debug tag should exist');
-            assert.ok(debugPatterns.includes('type:launch:*'), 'debug tag should have type:launch:* pattern');
+            assert.ok(
+                debugPatterns.some(p => typeof p === 'object' && 'type' in p && p.type === 'launch'),
+                'debug tag should have launch type pattern'
+            );
         });
 
         test('editTags command opens configuration file', async function() {
@@ -138,53 +152,60 @@ suite('Task Filtering E2E Tests', () => {
     });
 
     suite('Tag Pattern Matching', () => {
-        test('wildcard * matches any characters within segment', function() {
+        test('structured patterns with label property', function() {
             this.timeout(10000);
 
             const tagConfig = JSON.parse(fs.readFileSync(getFixturePath('.vscode/tasktree.json'), 'utf8')) as TagConfig;
 
-            // Pattern *build* should match:
-            // - "build" (exact)
-            // - "prebuild"
-            // - "build-prod"
-            // - "my-build-task"
-
+            // Build tag should have structured patterns with label
             const buildPatterns = tagConfig.tags['build'];
             assert.ok(buildPatterns, 'build tag should exist');
-            assert.ok(buildPatterns.some((p: string) => p.includes('*')), 'Should have wildcard patterns');
+            assert.ok(
+                buildPatterns.some(p => typeof p === 'object' && 'label' in p),
+                'Should have structured patterns with label'
+            );
         });
 
-        test('type: prefix pattern format is supported', function() {
+        test('structured patterns with type property', function() {
             this.timeout(10000);
 
             const tagConfig = JSON.parse(fs.readFileSync(getFixturePath('.vscode/tasktree.json'), 'utf8')) as TagConfig;
 
-            // Check various type patterns
+            // Check scripts patterns - should match by type
             const scriptsPatterns = tagConfig.tags['scripts'];
             assert.ok(scriptsPatterns, 'scripts tag should exist');
             assert.ok(
-                scriptsPatterns.includes('type:shell:*'),
-                'scripts tag should match all shell scripts'
+                scriptsPatterns.some(p => typeof p === 'object' && 'type' in p && p.type === 'shell'),
+                'scripts tag should have shell type pattern'
             );
 
             const debugPatterns = tagConfig.tags['debug'];
             assert.ok(debugPatterns, 'debug tag should exist');
             assert.ok(
-                debugPatterns.includes('type:launch:*'),
-                'debug tag should match all launch configs'
+                debugPatterns.some(p => typeof p === 'object' && 'type' in p && p.type === 'launch'),
+                'debug tag should have launch type pattern'
             );
         });
 
-        test('ci tag matches multiple npm scripts', function() {
+        test('ci tag has multiple npm script patterns', function() {
             this.timeout(10000);
 
             const tagConfig = JSON.parse(fs.readFileSync(getFixturePath('.vscode/tasktree.json'), 'utf8')) as TagConfig;
 
             const ciPatterns = tagConfig.tags['ci'];
             assert.ok(ciPatterns, 'ci tag should exist');
-            assert.ok(ciPatterns.includes('type:npm:lint'), 'ci should include lint');
-            assert.ok(ciPatterns.includes('type:npm:test'), 'ci should include test');
-            assert.ok(ciPatterns.includes('type:npm:build'), 'ci should include build');
+            assert.ok(
+                ciPatterns.some(p => typeof p === 'object' && p.type === 'npm' && p.label === 'lint'),
+                'ci should include lint pattern'
+            );
+            assert.ok(
+                ciPatterns.some(p => typeof p === 'object' && p.type === 'npm' && p.label === 'test'),
+                'ci should include test pattern'
+            );
+            assert.ok(
+                ciPatterns.some(p => typeof p === 'object' && p.type === 'npm' && p.label === 'build'),
+                'ci should include build pattern'
+            );
         });
     });
 
@@ -421,6 +442,300 @@ suite('Task Filtering E2E Tests', () => {
                 await vscode.commands.executeCommand('tasktree.refresh');
                 await sleep(500);
             }
+        });
+    });
+
+    /**
+     * PROOF TESTS: These tests verify that tag filtering ACTUALLY works at the
+     * tree view level. They recursively check every task in getChildren() output.
+     */
+    suite('PROOF: Tag Filtering Actually Works At Tree Level', () => {
+        let originalConfig: string;
+        const tagConfigPath = getFixturePath('.vscode/tasktree.json');
+
+        suiteSetup(async function() {
+            this.timeout(15000);
+            originalConfig = fs.readFileSync(tagConfigPath, 'utf8');
+        });
+
+        suiteTeardown(async function() {
+            this.timeout(10000);
+            fs.writeFileSync(tagConfigPath, originalConfig);
+            const provider = getTaskTreeProvider();
+            provider.clearFilters();
+            await vscode.commands.executeCommand('tasktree.refresh');
+            await sleep(500);
+        });
+
+        interface CollectedTask {
+            id: string;
+            label: string;
+            tags: string[];
+            category: string;
+            filePath: string;
+            description: string | undefined;
+        }
+
+        /**
+         * Recursively collects all TaskItems from the tree view.
+         */
+        async function collectAllTasksFromTree(
+            provider: ReturnType<typeof getTaskTreeProvider>,
+            element?: Parameters<ReturnType<typeof getTaskTreeProvider>['getChildren']>[0]
+        ): Promise<CollectedTask[]> {
+            const children = await provider.getChildren(element);
+            const tasks: CollectedTask[] = [];
+
+            for (const child of children) {
+                if (child.task !== null) {
+                    // This is an actual task node
+                    tasks.push({
+                        id: child.task.id,
+                        label: child.task.label,
+                        tags: [...child.task.tags],
+                        category: child.task.category,
+                        filePath: child.task.filePath,
+                        description: child.task.description
+                    });
+                }
+                // Recursively get tasks from child nodes (categories, folders)
+                if (child.children.length > 0) {
+                    const childTasks = await collectAllTasksFromTree(provider, child);
+                    tasks.push(...childTasks);
+                }
+            }
+
+            return tasks;
+        }
+
+        test('PROOF: setTagFilter shows ONLY tasks with that tag in tree', async function() {
+            this.timeout(30000);
+
+            const provider = getTaskTreeProvider();
+
+            // Step 1: Set up a config with a specific tag
+            const config: TagConfig = {
+                tags: {
+                    'proof-tag': ['npm:build', 'npm:test']
+                }
+            };
+            fs.writeFileSync(tagConfigPath, JSON.stringify(config, null, 4));
+
+            // Step 2: Refresh to apply tags
+            await vscode.commands.executeCommand('tasktree.refresh');
+            await sleep(2000);
+
+            // Step 3: Verify some tasks have the tag before filtering
+            const allTasks = provider.getAllTasks();
+            const taggedTasks = allTasks.filter(t => t.tags.includes('proof-tag'));
+            assert.ok(taggedTasks.length > 0, 'Must have at least one task with proof-tag');
+            assert.ok(taggedTasks.length < allTasks.length, 'Not ALL tasks should have proof-tag');
+
+            // Step 4: Apply tag filter
+            provider.setTagFilter('proof-tag');
+            await sleep(500);
+
+            // Step 5: CRITICAL - Get ALL tasks from the tree view
+            const tasksInTree = await collectAllTasksFromTree(provider);
+
+            // Step 6: PROOF - Every task in tree MUST have the tag
+            assert.ok(tasksInTree.length > 0, 'Tree must show at least one task when filter matches');
+
+            for (const task of tasksInTree) {
+                assert.ok(
+                    task.tags.includes('proof-tag'),
+                    `PROOF FAILED: Task "${task.label}" (ID: ${task.id}) appears in tree but ` +
+                    `does NOT have tag "proof-tag"! Tags: [${task.tags.join(', ')}]`
+                );
+            }
+
+            // Step 7: Verify count matches expected
+            assert.strictEqual(
+                tasksInTree.length,
+                taggedTasks.length,
+                `Tree should show exactly ${taggedTasks.length} tasks, not ${tasksInTree.length}`
+            );
+
+            // Clean up
+            provider.clearFilters();
+        });
+
+        test('PROOF: setTagFilter with non-existent tag shows ZERO tasks in tree', async function() {
+            this.timeout(20000);
+
+            const provider = getTaskTreeProvider();
+
+            // Step 1: Clear filters and refresh
+            provider.clearFilters();
+            await vscode.commands.executeCommand('tasktree.refresh');
+            await sleep(1000);
+
+            // Step 2: Verify we have tasks before filtering
+            const allTasks = provider.getAllTasks();
+            assert.ok(allTasks.length > 0, 'Must have tasks before testing');
+
+            // Step 3: Apply filter for non-existent tag
+            provider.setTagFilter('this-tag-does-not-exist-xyz-12345');
+            await sleep(500);
+
+            // Step 4: CRITICAL - Get ALL tasks from tree
+            const tasksInTree = await collectAllTasksFromTree(provider);
+
+            // Step 5: PROOF - Tree must be empty
+            assert.strictEqual(
+                tasksInTree.length,
+                0,
+                `PROOF FAILED: Tree shows ${tasksInTree.length} tasks for non-existent tag! ` +
+                `Tasks: [${tasksInTree.map(t => t.label).join(', ')}]`
+            );
+
+            // Clean up
+            provider.clearFilters();
+        });
+
+        test('PROOF: setTextFilter shows ONLY matching tasks in tree', async function() {
+            this.timeout(20000);
+
+            const provider = getTaskTreeProvider();
+
+            // Step 1: Clear filters and refresh
+            provider.clearFilters();
+            await vscode.commands.executeCommand('tasktree.refresh');
+            await sleep(1000);
+
+            // Step 2: Get all tasks and find ones matching "build"
+            const allTasks = provider.getAllTasks();
+            const matchingTasks = allTasks.filter(t =>
+                t.label.toLowerCase().includes('build') ||
+                t.category.toLowerCase().includes('build') ||
+                t.filePath.toLowerCase().includes('build') ||
+                (t.description?.toLowerCase().includes('build') ?? false)
+            );
+            assert.ok(matchingTasks.length > 0, 'Must have tasks matching "build"');
+            assert.ok(matchingTasks.length < allTasks.length, 'Not ALL tasks should match "build"');
+
+            // Step 3: Apply text filter
+            provider.setTextFilter('build');
+            await sleep(500);
+
+            // Step 4: CRITICAL - Get ALL tasks from tree
+            const tasksInTree = await collectAllTasksFromTree(provider);
+
+            // Step 5: PROOF - Every task in tree must match the filter
+            // Filter checks: label, category, filePath, description
+            for (const task of tasksInTree) {
+                const matches =
+                    task.label.toLowerCase().includes('build') ||
+                    task.category.toLowerCase().includes('build') ||
+                    task.filePath.toLowerCase().includes('build') ||
+                    (task.description?.toLowerCase().includes('build') ?? false);
+
+                assert.ok(
+                    matches,
+                    `PROOF FAILED: Task "${task.label}" (ID: ${task.id}) appears in tree ` +
+                    `but does NOT match text filter "build"!`
+                );
+            }
+
+            // Step 6: Verify count is reasonable
+            assert.ok(
+                tasksInTree.length > 0,
+                'Tree must show at least one task matching "build"'
+            );
+            assert.ok(
+                tasksInTree.length <= matchingTasks.length,
+                `Tree shows ${tasksInTree.length} tasks but only ${matchingTasks.length} match`
+            );
+
+            // Clean up
+            provider.clearFilters();
+        });
+
+        test('PROOF: clearFilters shows ALL tasks again', async function() {
+            this.timeout(20000);
+
+            const provider = getTaskTreeProvider();
+
+            // Step 1: Get unfiltered count
+            provider.clearFilters();
+            await vscode.commands.executeCommand('tasktree.refresh');
+            await sleep(1000);
+
+            const allTasksBefore = await collectAllTasksFromTree(provider);
+            const unfilteredCount = allTasksBefore.length;
+            assert.ok(unfilteredCount > 0, 'Must have tasks');
+
+            // Step 2: Apply a restrictive filter
+            provider.setTextFilter('xyznonexistent123');
+            await sleep(500);
+
+            const filteredTasks = await collectAllTasksFromTree(provider);
+            assert.strictEqual(filteredTasks.length, 0, 'Filter should show 0 tasks');
+
+            // Step 3: Clear filters
+            provider.clearFilters();
+            await sleep(500);
+
+            // Step 4: CRITICAL - Verify ALL tasks are back
+            const allTasksAfter = await collectAllTasksFromTree(provider);
+
+            assert.strictEqual(
+                allTasksAfter.length,
+                unfilteredCount,
+                `PROOF FAILED: After clearFilters, tree shows ${allTasksAfter.length} tasks ` +
+                `but should show ${unfilteredCount}!`
+            );
+        });
+
+        test('PROOF: Combined text + tag filter intersects correctly', async function() {
+            this.timeout(30000);
+
+            const provider = getTaskTreeProvider();
+
+            // Step 1: Set up config with tags using structured pattern
+            const config: TagConfig = {
+                tags: {
+                    'combo-tag': [{ type: 'npm' }]  // All npm tasks
+                }
+            };
+            fs.writeFileSync(tagConfigPath, JSON.stringify(config, null, 4));
+
+            await vscode.commands.executeCommand('tasktree.refresh');
+            await sleep(2000);
+
+            // Step 2: Get tasks that match both criteria
+            const allTasks = provider.getAllTasks();
+            const npmTasks = allTasks.filter(t => t.tags.includes('combo-tag'));
+            assert.ok(npmTasks.length > 0, 'Must have npm tasks with combo-tag');
+
+            // Step 3: Apply BOTH filters
+            provider.setTagFilter('combo-tag');
+            provider.setTextFilter('build');
+            await sleep(500);
+
+            // Step 4: CRITICAL - Get tasks from tree
+            const tasksInTree = await collectAllTasksFromTree(provider);
+
+            // Step 5: PROOF - Every task must satisfy BOTH conditions
+            for (const task of tasksInTree) {
+                assert.ok(
+                    task.tags.includes('combo-tag'),
+                    `PROOF FAILED: Task "${task.label}" in tree but missing "combo-tag"`
+                );
+
+                const matchesText =
+                    task.label.toLowerCase().includes('build') ||
+                    task.category.toLowerCase().includes('build') ||
+                    task.filePath.toLowerCase().includes('build') ||
+                    (task.description?.toLowerCase().includes('build') ?? false);
+                assert.ok(
+                    matchesText,
+                    `PROOF FAILED: Task "${task.label}" in tree but doesn't match "build"`
+                );
+            }
+
+            // Clean up
+            provider.clearFilters();
         });
     });
 });

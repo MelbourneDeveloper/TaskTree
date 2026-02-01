@@ -11,12 +11,20 @@ interface ComposerJson {
 
 /**
  * Discovers Composer scripts from composer.json files.
+ * Only returns tasks if PHP source files (.php) exist in the workspace.
  */
 export async function discoverComposerScripts(
     workspaceRoot: string,
     excludePatterns: string[]
 ): Promise<TaskItem[]> {
     const exclude = `{${excludePatterns.join(',')}}`;
+
+    // Check if any PHP source files exist before processing
+    const phpFiles = await vscode.workspace.findFiles('**/*.php', exclude);
+    if (phpFiles.length === 0) {
+        return []; // No PHP source code, skip Composer scripts
+    }
+
     const files = await vscode.workspace.findFiles('**/composer.json', exclude);
     const tasks: TaskItem[] = [];
 

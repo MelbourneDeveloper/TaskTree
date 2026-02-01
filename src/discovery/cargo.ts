@@ -20,12 +20,20 @@ const STANDARD_CARGO_COMMANDS = [
 
 /**
  * Discovers Cargo tasks from Cargo.toml files.
+ * Only returns tasks if Rust source files (.rs) exist in the workspace.
  */
 export async function discoverCargoTasks(
     workspaceRoot: string,
     excludePatterns: string[]
 ): Promise<TaskItem[]> {
     const exclude = `{${excludePatterns.join(',')}}`;
+
+    // Check if any Rust source files exist before processing
+    const rustFiles = await vscode.workspace.findFiles('**/*.rs', exclude);
+    if (rustFiles.length === 0) {
+        return []; // No Rust source code, skip Cargo tasks
+    }
+
     const files = await vscode.workspace.findFiles('**/Cargo.toml', exclude);
     const tasks: TaskItem[] = [];
 

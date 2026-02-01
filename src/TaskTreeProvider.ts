@@ -4,6 +4,7 @@ import { TaskTreeItem } from './models/TaskItem';
 import type { DiscoveryResult } from './discovery';
 import { discoverAllTasks, flattenTasks, getExcludePatterns } from './discovery';
 import { TagConfig } from './config/TagConfig';
+import { logger } from './utils/logger';
 
 type GroupedTasks = Map<string, TaskItem[]>;
 type SortOrder = 'folder' | 'name' | 'type';
@@ -50,6 +51,7 @@ export class TaskTreeProvider implements vscode.TreeDataProvider<TaskTreeItem> {
      * Sets tag filter and refreshes tree.
      */
     setTagFilter(tag: string | null): void {
+        logger.filter('setTagFilter', { tagFilter: tag });
         this.tagFilter = tag;
         this._onDidChangeTreeData.fire(undefined);
     }
@@ -372,6 +374,12 @@ export class TaskTreeProvider implements vscode.TreeDataProvider<TaskTreeItem> {
      * Applies text and tag filters.
      */
     private applyFilters(tasks: TaskItem[]): TaskItem[] {
+        logger.filter('applyFilters START', {
+            textFilter: this.textFilter,
+            tagFilter: this.tagFilter,
+            inputCount: tasks.length
+        });
+
         let result = tasks;
 
         // Apply text filter
@@ -382,14 +390,24 @@ export class TaskTreeProvider implements vscode.TreeDataProvider<TaskTreeItem> {
                 t.filePath.toLowerCase().includes(this.textFilter) ||
                 (t.description?.toLowerCase().includes(this.textFilter) ?? false)
             );
+            logger.filter('After text filter', { outputCount: result.length });
         }
 
         // Apply tag filter
         if (this.tagFilter !== null && this.tagFilter !== '') {
             const filterTag = this.tagFilter;
+            logger.filter('Applying tag filter', {
+                tagFilter: filterTag,
+                tasksWithTags: tasks.map(t => ({ id: t.id, label: t.label, tags: t.tags }))
+            });
             result = result.filter(t => t.tags.includes(filterTag));
+            logger.filter('After tag filter', {
+                outputCount: result.length,
+                matchedTasks: result.map(t => ({ id: t.id, label: t.label, tags: t.tags }))
+            });
         }
 
+        logger.filter('applyFilters END', { outputCount: result.length });
         return result;
     }
 }

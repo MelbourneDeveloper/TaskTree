@@ -2,8 +2,18 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import type { TaskItem, Result } from '../models/TaskItem';
 import { ok, err } from '../models/TaskItem';
+import { logger } from '../utils/logger';
 
-type TagDefinition = Record<string, string[]>;
+type TagDefinition = Record<string, Array<string | TagPattern>>;
+
+/**
+ * Structured tag pattern for matching tasks.
+ */
+interface TagPattern {
+    id?: string;
+    type?: string;
+    label?: string;
+}
 
 interface TaskTreeConfig {
     tags?: TagDefinition;
@@ -29,9 +39,17 @@ export class TagConfig {
             const bytes = await vscode.workspace.fs.readFile(uri);
             const content = new TextDecoder().decode(bytes);
             this.config = JSON.parse(content) as TaskTreeConfig;
-        } catch {
+            logger.config('Loaded config', {
+                path: this.configPath,
+                tags: this.config.tags as Record<string, unknown> | undefined
+            });
+        } catch (e) {
             // No config file or invalid - use defaults
             this.config = {};
+            logger.config('Failed to load config (using defaults)', {
+                path: this.configPath,
+                error: e instanceof Error ? e.message : 'Unknown error'
+            });
         }
     }
 
@@ -39,17 +57,31 @@ export class TagConfig {
      * Applies tags to a list of tasks based on glob patterns.
      */
     applyTags(tasks: TaskItem[]): TaskItem[] {
+        logger.tag('applyTags called', { taskCount: tasks.length });
+
         if (this.config.tags === undefined) {
+            logger.tag('No tags configured', {});
             return tasks;
         }
 
         const tags = this.config.tags;
-        return tasks.map(task => {
+        const result = tasks.map(task => {
             const matchedTags: string[] = [];
 
             for (const [tagName, patterns] of Object.entries(tags)) {
                 for (const pattern of patterns) {
-                    if (this.matchesPattern(task, pattern)) {
+                    // String = exact ID match
+                    const matches = typeof pattern === 'string'
+                        ? task.id === pattern
+                        : this.matchesPattern(task, pattern);
+
+                    if (matches) {
+                        logger.tag('Pattern matched', {
+                            tagName,
+                            taskId: task.id,
+                            taskLabel: task.label,
+                            pattern
+                        });
                         matchedTags.push(tagName);
                         break;
                     }
@@ -61,6 +93,15 @@ export class TagConfig {
             }
             return task;
         });
+
+        const taggedCount = result.filter(t => t.tags.length > 0).length;
+        logger.tag('applyTags complete', {
+            taskCount: tasks.length,
+            taggedCount,
+            result: result.map(t => ({ id: t.id, label: t.label, tags: t.tags }))
+        });
+
+        return result;
     }
 
     /**
@@ -142,9 +183,11 @@ export class TagConfig {
 
     /**
      * Gets the patterns for a specific tag in order.
+     * Returns only string patterns (exact IDs).
      */
     getTagPatterns(tagName: string): string[] {
-        return this.config.tags?.[tagName] ?? [];
+        const patterns = this.config.tags?.[tagName] ?? [];
+        return patterns.filter((p): p is string => typeof p === 'string');
     }
 
     /**
@@ -159,7 +202,7 @@ export class TagConfig {
         // Use the full task ID for precise matching
         const pattern = task.id;
         const patterns = [...this.config.tags[tagName]];
-        const currentIndex = patterns.indexOf(pattern);
+        const currentIndex = patterns.findIndex(p => p === pattern);
 
         if (currentIndex === -1) {
             return ok(undefined);
@@ -192,62 +235,18 @@ export class TagConfig {
     }
 
     /**
-     * Checks if a task matches a glob-like pattern.
-     * Prioritizes exact task ID match for unique identification.
+     * Checks if a task matches a structured pattern object.
      */
-    private matchesPattern(task: TaskItem, pattern: string): boolean {
-        // FIRST: Exact task ID match (highest priority for unique identification)
-        // Task IDs are in format: type:filePath:name
-        if (task.id === pattern) {
-            return true;
+    private matchesPattern(task: TaskItem, pattern: TagPattern): boolean {
+        // Match by exact ID if specified
+        if (pattern.id !== undefined) {
+            return task.id === pattern.id;
         }
 
-        // If pattern looks like a full task ID (starts with type: prefix),
-        // only match against the full ID - don't fall through to partial matches
-        const looksLikeFullId = /^(npm|shell|make|launch|vscode):/.test(pattern);
-        if (looksLikeFullId) {
-            // For full IDs or type:name patterns, use glob matching against ID and type:label
-            const typeLabel = `${task.type}:${task.label}`;
-            return this.globMatch(task.id, pattern) || this.globMatch(typeLabel, pattern);
-        }
+        // Match by type and/or label
+        const typeMatches = pattern.type === undefined || task.type === pattern.type;
+        const labelMatches = pattern.label === undefined || task.label === pattern.label;
 
-        // Check if pattern has glob wildcards (* or **)
-        const hasGlobWildcard = pattern.includes('*');
-
-        // Path match (only with wildcards for safety)
-        if (hasGlobWildcard && this.globMatch(task.filePath, pattern)) {
-            return true;
-        }
-
-        // Category match (only with wildcards for safety)
-        if (hasGlobWildcard && this.globMatch(task.category, pattern)) {
-            return true;
-        }
-
-        // Direct label match - ONLY if pattern has wildcards
-        // Plain labels like "lint" should NOT match - they are ambiguous
-        // Users should use full task IDs or type:name patterns for specificity
-        if (hasGlobWildcard && this.globMatch(task.label, pattern)) {
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * Simple glob matching supporting * and **
-     */
-    private globMatch(text: string, pattern: string): boolean {
-        // Convert glob to regex
-        const regex = pattern
-            .replace(/[.+^${}()|[\]\\]/g, '\\$&') // Escape special chars
-            .replace(/\*\*/g, '.*') // ** matches anything
-            .replace(/\*/g, '[^/]*'); // * matches within segment
-
-        try {
-            return new RegExp(`^${regex}$`, 'i').test(text);
-        } catch {
-            return false;
-        }
+        return typeMatches && labelMatches;
     }
 }

@@ -10,12 +10,24 @@ interface DenoJson {
 
 /**
  * Discovers Deno tasks from deno.json and deno.jsonc files.
+ * Only returns tasks if TypeScript/JavaScript source files exist (excluding node_modules).
  */
 export async function discoverDenoTasks(
     workspaceRoot: string,
     excludePatterns: string[]
 ): Promise<TaskItem[]> {
     const exclude = `{${excludePatterns.join(',')}}`;
+
+    // Check if any TS/JS source files exist (outside node_modules)
+    const excludeWithNodeModules = `{${[...excludePatterns, '**/node_modules/**'].join(',')}}`;
+    const [tsFiles, jsFiles] = await Promise.all([
+        vscode.workspace.findFiles('**/*.ts', excludeWithNodeModules),
+        vscode.workspace.findFiles('**/*.js', excludeWithNodeModules)
+    ]);
+    if (tsFiles.length === 0 && jsFiles.length === 0) {
+        return []; // No source files outside node_modules, skip Deno tasks
+    }
+
     const [jsonFiles, jsoncFiles] = await Promise.all([
         vscode.workspace.findFiles('**/deno.json', exclude),
         vscode.workspace.findFiles('**/deno.jsonc', exclude)
