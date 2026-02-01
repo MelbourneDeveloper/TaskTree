@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import { TaskTreeProvider } from '../../TaskTreeProvider';
 import { QuickTasksProvider } from '../../QuickTasksProvider';
 import { TaskTreeItem } from '../../models/TaskItem';
+import type { TaskItem, TaskType } from '../../models/TaskItem';
 
 export const EXTENSION_ID = 'nimblesite.tasktree';
 export const TREE_VIEW_ID = 'tasktree';
@@ -192,7 +193,7 @@ export async function captureTerminalOutput(terminalName: string, timeout = 5000
 export function createMockTaskItem(overrides: Partial<{
     id: string;
     label: string;
-    type: string;
+    type: TaskType;
     command: string;
     cwd: string;
     filePath: string;
@@ -200,17 +201,17 @@ export function createMockTaskItem(overrides: Partial<{
     description: string;
     params: Array<{ name: string; description: string; default?: string; options?: string[] }>;
     tags: string[];
-}> = {}): unknown {
-    return {
+}> = {}): TaskItem {
+    const base = {
         id: overrides.id ?? 'test-task-id',
         label: overrides.label ?? 'Test Task',
         type: overrides.type ?? 'shell',
         command: overrides.command ?? 'echo test',
-        cwd: overrides.cwd ?? '/tmp',
         filePath: overrides.filePath ?? '/tmp/test.sh',
         category: overrides.category ?? 'Test Category',
         description: overrides.description ?? 'A test task',
         params: overrides.params ?? [],
         tags: overrides.tags ?? []
     };
+    return overrides.cwd !== undefined ? { ...base, cwd: overrides.cwd } : base;
 }

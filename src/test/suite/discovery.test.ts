@@ -2,6 +2,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import type { TaskTreeItem } from './helpers';
 import {
     activateExtension,
     sleep,
@@ -649,9 +650,9 @@ suite('Task Discovery E2E Tests', () => {
             const pythonCategory = rootChildren.find(c => getLabelString(c.label).startsWith('Python Scripts'));
             assert.ok(pythonCategory, `Should have Python Scripts category, got: ${rootChildren.map(c => getLabelString(c.label)).join(', ')}`);
 
-            // Get tasks in category
-            const pythonTasks = await getTreeChildren(provider, pythonCategory);
-            const labels = pythonTasks.map(t => getLabelString(t.label));
+            // Get all tasks from category (Python tasks are grouped by folder, so flatten)
+            const allTasks = flattenTaskItems(pythonCategory.children);
+            const labels = allTasks.map(t => t.task?.label ?? '');
 
             // Should have our runnable scripts but not utils.py
             assert.ok(labels.some(l => l.includes('build_project.py')), `Should have build_project.py, got: ${labels.join(', ')}`);
@@ -763,3 +764,21 @@ suite('Task Discovery E2E Tests', () => {
         });
     });
 });
+
+/**
+ * Flattens nested TaskTreeItems to get all leaf task nodes
+ */
+function flattenTaskItems(items: TaskTreeItem[]): TaskTreeItem[] {
+    const result: TaskTreeItem[] = [];
+
+    for (const item of items) {
+        if (item.task) {
+            result.push(item);
+        }
+        if (item.children.length > 0) {
+            result.push(...flattenTaskItems(item.children));
+        }
+    }
+
+    return result;
+}

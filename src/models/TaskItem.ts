@@ -113,22 +113,22 @@ export class TaskTreeItem extends vscode.TreeItem {
     private getIcon(type: TaskType): vscode.ThemeIcon {
         switch (type) {
             case 'shell': {
-                return new vscode.ThemeIcon('terminal');
+                return new vscode.ThemeIcon('terminal', new vscode.ThemeColor('terminal.ansiGreen'));
             }
             case 'npm': {
-                return new vscode.ThemeIcon('package');
+                return new vscode.ThemeIcon('package', new vscode.ThemeColor('terminal.ansiRed'));
             }
             case 'make': {
-                return new vscode.ThemeIcon('tools');
+                return new vscode.ThemeIcon('tools', new vscode.ThemeColor('terminal.ansiYellow'));
             }
             case 'launch': {
-                return new vscode.ThemeIcon('debug-alt');
+                return new vscode.ThemeIcon('debug-alt', new vscode.ThemeColor('debugIcon.startForeground'));
             }
             case 'vscode': {
-                return new vscode.ThemeIcon('gear');
+                return new vscode.ThemeIcon('gear', new vscode.ThemeColor('terminal.ansiBlue'));
             }
             case 'python': {
-                return new vscode.ThemeIcon('symbol-misc');
+                return new vscode.ThemeIcon('symbol-misc', new vscode.ThemeColor('terminal.ansiCyan'));
             }
         }
     }
@@ -136,22 +136,22 @@ export class TaskTreeItem extends vscode.TreeItem {
     private getCategoryIcon(category: string): vscode.ThemeIcon {
         const lower = category.toLowerCase();
         if (lower.includes('shell')) {
-            return new vscode.ThemeIcon('terminal');
+            return new vscode.ThemeIcon('terminal', new vscode.ThemeColor('terminal.ansiGreen'));
         }
         if (lower.includes('npm')) {
-            return new vscode.ThemeIcon('package');
+            return new vscode.ThemeIcon('package', new vscode.ThemeColor('terminal.ansiRed'));
         }
         if (lower.includes('make')) {
-            return new vscode.ThemeIcon('tools');
+            return new vscode.ThemeIcon('tools', new vscode.ThemeColor('terminal.ansiYellow'));
         }
         if (lower.includes('launch')) {
-            return new vscode.ThemeIcon('debug-alt');
+            return new vscode.ThemeIcon('debug-alt', new vscode.ThemeColor('debugIcon.startForeground'));
         }
         if (lower.includes('task')) {
-            return new vscode.ThemeIcon('gear');
+            return new vscode.ThemeIcon('gear', new vscode.ThemeColor('terminal.ansiBlue'));
         }
         if (lower.includes('python')) {
-            return new vscode.ThemeIcon('symbol-misc');
+            return new vscode.ThemeIcon('symbol-misc', new vscode.ThemeColor('terminal.ansiCyan'));
         }
         return new vscode.ThemeIcon('folder');
     }

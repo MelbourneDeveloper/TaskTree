@@ -147,7 +147,7 @@ suite('Task Execution E2E Tests', () => {
                 cwd: context.workspaceRoot
             });
 
-            assert.ok((npmTask as Record<string, unknown>)['command'] === 'npm run build', 'Should have correct command');
+            assert.strictEqual(npmTask.command, 'npm run build', 'Should have correct command');
         });
 
         test('npm task uses correct working directory', function() {
@@ -164,7 +164,7 @@ suite('Task Execution E2E Tests', () => {
                 category: 'subproject'
             });
 
-            assert.ok((npmTask as Record<string, unknown>)['cwd'] === subprojectCwd, 'Should have subproject cwd');
+            assert.strictEqual(npmTask.cwd, subprojectCwd, 'Should have subproject cwd');
         });
     });
 
@@ -190,7 +190,7 @@ suite('Task Execution E2E Tests', () => {
                 cwd: context.workspaceRoot
             });
 
-            assert.ok((makeTask as Record<string, unknown>)['command'] === 'make build', 'Should have correct command');
+            assert.strictEqual(makeTask.command, 'make build', 'Should have correct command');
         });
 
         test('make task targets phony declarations', function() {
@@ -223,7 +223,7 @@ suite('Task Execution E2E Tests', () => {
                 command: 'Debug Application'
             });
 
-            assert.ok((launchTask as Record<string, unknown>)['type'] === 'launch', 'Should be launch type');
+            assert.strictEqual(launchTask.type, 'launch', 'Should be launch type');
         });
 
         test('launch configurations have correct types', function() {
@@ -278,8 +278,7 @@ suite('Task Execution E2E Tests', () => {
                 params: []
             });
 
-            const params = (taskWithoutParams as Record<string, unknown[]>)['params'];
-            assert.ok(params?.length === 0, 'Should have no params');
+            assert.strictEqual(taskWithoutParams.params?.length ?? 0, 0, 'Should have no params');
         });
 
         test('task with params has param definitions', function() {
@@ -295,8 +294,7 @@ suite('Task Execution E2E Tests', () => {
                 ]
             });
 
-            const params = (taskWithParams as Record<string, unknown[]>)['params'];
-            assert.ok(params?.length === 2, 'Should have 2 params');
+            assert.strictEqual(taskWithParams.params?.length ?? 0, 2, 'Should have 2 params');
         });
 
         test('param with options creates quick pick choices', function() {
@@ -592,7 +590,7 @@ suite('Task Execution E2E Tests', () => {
                 cwd: context.workspaceRoot
             });
 
-            assert.ok((task as Record<string, unknown>)['cwd'] === context.workspaceRoot, 'Should have workspace root as cwd');
+            assert.ok(task.cwd === context.workspaceRoot, 'Should have workspace root as cwd');
         });
 
         test('npm tasks use package.json directory as cwd', function() {
@@ -605,7 +603,7 @@ suite('Task Execution E2E Tests', () => {
                 cwd: subprojectDir
             });
 
-            assert.ok((task as Record<string, unknown>)['cwd'] === subprojectDir, 'Should have subproject dir as cwd');
+            assert.ok(task.cwd === subprojectDir, 'Should have subproject dir as cwd');
         });
 
         test('make tasks use Makefile directory as cwd', function() {
@@ -616,7 +614,7 @@ suite('Task Execution E2E Tests', () => {
                 cwd: context.workspaceRoot
             });
 
-            assert.ok((task as Record<string, unknown>)['cwd'] === context.workspaceRoot, 'Should have Makefile dir as cwd');
+            assert.ok(task.cwd === context.workspaceRoot, 'Should have Makefile dir as cwd');
         });
     });
 });
