@@ -1,7 +1,7 @@
 import { defineConfig } from '@vscode/test-cli';
 
 export default defineConfig({
-    files: 'out/test/**/*.test.js',
+    files: ['out/test/e2e/**/*.test.js', 'out/test/providers/**/*.test.js'],
     version: 'stable',
     workspaceFolder: './test-fixtures/workspace',
     extensionDevelopmentPath: './',

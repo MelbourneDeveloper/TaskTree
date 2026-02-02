@@ -32,6 +32,7 @@ You are working with many other agents. Make sure there is effective cooperation
 - Run tests: `npm test`
 - NEVER remove assertions
 - FAILING TEST = ✅ OK. TEST THAT DOESN'T ENFORCE BEHAVIOR = ⛔️ ILLEGAL
+- Unit test = No VSCODE instance needed = isolation only test
 
 ### Automated (E2E) Testing
 

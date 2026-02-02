@@ -1,0 +1,124 @@
+/**
+ * TAGGING E2E TESTS
+ *
+ * These tests verify command registration and static file structure only.
+ * All tests that call provider methods have been moved to tagging.unit.test.ts
+ */
+
+import * as assert from "assert";
+import * as vscode from "vscode";
+import * as fs from "fs";
+import { activateExtension, sleep, getExtensionPath } from "../helpers/helpers";
+
+suite("Tag Context Menu E2E Tests", () => {
+  suiteSetup(async function () {
+    this.timeout(30000);
+    await activateExtension();
+    await sleep(2000);
+  });
+
+  suite("Tag Commands Registration", () => {
+    test("addTag command is registered", async function () {
+      this.timeout(10000);
+      const commands = await vscode.commands.getCommands(true);
+      assert.ok(
+        commands.includes("tasktree.addTag"),
+        "addTag command should be registered",
+      );
+    });
+
+    test("removeTag command is registered", async function () {
+      this.timeout(10000);
+      const commands = await vscode.commands.getCommands(true);
+      assert.ok(
+        commands.includes("tasktree.removeTag"),
+        "removeTag command should be registered",
+      );
+    });
+  });
+
+  suite("Tag UI Integration (Static Checks)", () => {
+    test("addTag and removeTag are in view item context menu", function () {
+      this.timeout(10000);
+
+      const packageJsonPath = getExtensionPath("package.json");
+      const packageJson = JSON.parse(
+        fs.readFileSync(packageJsonPath, "utf8"),
+      ) as {
+        contributes: {
+          menus: {
+            "view/item/context": Array<{
+              command: string;
+              when: string;
+              group: string;
+            }>;
+          };
+        };
+      };
+
+      const contextMenus = packageJson.contributes.menus["view/item/context"];
+
+      const addTagMenu = contextMenus.find(
+        (m) => m.command === "tasktree.addTag",
+      );
+      const removeTagMenu = contextMenus.find(
+        (m) => m.command === "tasktree.removeTag",
+      );
+
+      assert.ok(addTagMenu !== undefined, "addTag should be in context menu");
+      assert.ok(
+        removeTagMenu !== undefined,
+        "removeTag should be in context menu",
+      );
+      assert.ok(
+        addTagMenu.when.includes("viewItem == task"),
+        "addTag should only show for tasks",
+      );
+      assert.ok(
+        removeTagMenu.when.includes("viewItem == task"),
+        "removeTag should only show for tasks",
+      );
+    });
+
+    test("tag commands are in 3_tagging group", function () {
+      this.timeout(10000);
+
+      const packageJsonPath = getExtensionPath("package.json");
+      const packageJson = JSON.parse(
+        fs.readFileSync(packageJsonPath, "utf8"),
+      ) as {
+        contributes: {
+          menus: {
+            "view/item/context": Array<{
+              command: string;
+              group: string;
+            }>;
+          };
+        };
+      };
+
+      const contextMenus = packageJson.contributes.menus["view/item/context"];
+
+      const addTagMenu = contextMenus.find(
+        (m) => m.command === "tasktree.addTag",
+      );
+      const removeTagMenu = contextMenus.find(
+        (m) => m.command === "tasktree.removeTag",
+      );
+
+      assert.ok(addTagMenu !== undefined, "addTag should be in context menu");
+      assert.ok(
+        addTagMenu.group.startsWith("3_tagging"),
+        "addTag should be in tagging group",
+      );
+      assert.ok(
+        removeTagMenu !== undefined,
+        "removeTag should be in context menu",
+      );
+      assert.ok(
+        removeTagMenu.group.startsWith("3_tagging"),
+        "removeTag should be in tagging group",
+      );
+    });
+  });
+});
