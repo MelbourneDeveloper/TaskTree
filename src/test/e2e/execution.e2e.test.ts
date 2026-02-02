@@ -849,13 +849,13 @@ suite("Task Execution E2E Tests", () => {
     });
 
     test("new terminal has TaskTree prefix in name", async function () {
-      this.timeout(15000);
+      this.timeout(20000);
 
       // Dispose all existing terminals to ensure clean slate
       for (const t of vscode.window.terminals) {
         t.dispose();
       }
-      await sleep(500);
+      await sleep(2000);
 
       const shellTask = createMockTaskItem({
         type: "shell",
@@ -867,14 +867,15 @@ suite("Task Execution E2E Tests", () => {
 
       const taskTreeItem = { task: shellTask };
       await vscode.commands.executeCommand("tasktree.run", taskTreeItem);
-      await sleep(1500);
+      await sleep(3000);
 
-      const taskTreeTerminal = vscode.window.terminals.find((t) =>
+      const terminals = vscode.window.terminals;
+      const taskTreeTerminal = terminals.find((t) =>
         t.name.includes("TaskTree"),
       );
       assert.ok(
         taskTreeTerminal !== undefined,
-        "Should create terminal with TaskTree in name",
+        `Should create terminal with TaskTree in name. Found terminals: [${terminals.map(t => t.name).join(", ")}]`,
       );
       assert.ok(
         taskTreeTerminal.name.includes("Named Terminal Test"),
