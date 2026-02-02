@@ -147,7 +147,10 @@ suite('Tag Context Menu E2E Tests', () => {
 
             // Step 2: Remove tag via config (simulates user editing)
             config = readTagConfig();
-            delete config.tags[tagName];
+            const remainingTags = Object.fromEntries(
+                Object.entries(config.tags).filter(([key]) => key !== tagName)
+            );
+            config.tags = remainingTags;
             writeTagConfig(config);
             await sleep(3000);
 

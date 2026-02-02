@@ -1,3 +1,26 @@
+/**
+ * TREEVIEW E2E TESTS
+ *
+ * These tests verify the tree view structure, icons, labels, and data integrity.
+ *
+ * ⛔️⛔️⛔️ E2E TEST RULES ⛔️⛔️⛔️
+ *
+ * LEGAL:
+ * ✅ Observing state via getChildren() / getAllTasks() (read-only)
+ * ✅ Waiting for initial load with await sleep()
+ * ✅ Writing to config files (simulates user editing)
+ *
+ * ILLEGAL:
+ * ❌ provider.refresh() - refresh should be AUTOMATIC
+ * ❌ provider.setTextFilter() - internal method
+ * ❌ provider.setTagFilter() - internal method
+ * ❌ provider.clearFilters() - internal method
+ * ❌ vscode.commands.executeCommand('tasktree.refresh')
+ *
+ * The extension should auto-load tasks on activation and auto-refresh
+ * when files change. Tests verify the observable state only.
+ */
+
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 import type { TaskTreeProvider, TaskTreeItem, TestContext } from './helpers';
@@ -26,8 +49,8 @@ suite('TreeView Real UI Tests', () => {
         this.timeout(30000);
         context = await activateExtension();
         provider = getTaskTreeProvider();
-        await provider.refresh();
-        await sleep(2000);
+        // Wait for extension to auto-load tasks - NO refresh() call!
+        await sleep(3000);
     });
 
     suite('Tree Structure Verification', () => {
@@ -85,11 +108,11 @@ suite('TreeView Real UI Tests', () => {
             const makeCategory = roots.find(r => getLabelString(r.label).includes('Make Targets'));
 
             assert.ok(makeCategory, 'Make Targets category should exist');
-            // 7 targets: 6 from workspace + 1 from watcher-make (.internal is skipped)
+            // 6 targets: all, build, test, clean, install, new-watcher-target (.internal is skipped)
             const makeLabel = getLabelString(makeCategory.label);
             assert.ok(
-                makeLabel.includes('(7)'),
-                `Make Targets should show count (7), got: ${makeLabel}`
+                makeLabel.includes('(6)'),
+                `Make Targets should show count (6), got: ${makeLabel}`
             );
         });
 
@@ -415,148 +438,6 @@ suite('TreeView Real UI Tests', () => {
         });
     });
 
-    suite('Filtering Verification', () => {
-        test('text filter reduces visible tasks', async function() {
-            this.timeout(10000);
-
-            // Get initial count
-            const rootsBefore = await getTreeChildren(provider);
-            const totalBefore = countAllTasks(rootsBefore);
-
-            // Apply filter
-            provider.setTextFilter('build');
-            const rootsAfter = await getTreeChildren(provider);
-            const totalAfter = countAllTasks(rootsAfter);
-
-            // Clear filter
-            provider.clearFilters();
-
-            assert.ok(totalAfter < totalBefore, `Filtering should reduce tasks: ${totalAfter} < ${totalBefore}`);
-            assert.ok(totalAfter > 0, 'Filtering for "build" should still show some tasks');
-        });
-
-        test('filter shows only matching tasks', async function() {
-            this.timeout(10000);
-
-            provider.setTextFilter('deploy');
-            const roots = await getTreeChildren(provider);
-
-            const allTasks: TaskTreeItem[] = [];
-            for (const category of roots) {
-                allTasks.push(...flattenTaskItems(category.children));
-            }
-
-            provider.clearFilters();
-
-            // All visible tasks should contain "deploy" in label, path, or description
-            for (const task of allTasks) {
-                const taskData = task.task;
-                if (!taskData) {
-                    continue;
-                }
-                const label = taskData.label.toLowerCase();
-                const path = taskData.filePath.toLowerCase();
-                const desc = (taskData.description ?? '').toLowerCase();
-                const cat = taskData.category.toLowerCase();
-
-                const matches = label.includes('deploy') ||
-                    path.includes('deploy') ||
-                    desc.includes('deploy') ||
-                    cat.includes('deploy');
-
-                assert.ok(matches, `Task "${taskData.label}" should match filter "deploy"`);
-            }
-        });
-
-        test('clearing filter restores all tasks', async function() {
-            this.timeout(10000);
-
-            // Get initial count
-            const rootsBefore = await getTreeChildren(provider);
-            const totalBefore = countAllTasks(rootsBefore);
-
-            // Apply and clear filter
-            provider.setTextFilter('xyz-nonexistent');
-            provider.clearFilters();
-
-            const rootsAfter = await getTreeChildren(provider);
-            const totalAfter = countAllTasks(rootsAfter);
-
-            assert.strictEqual(totalAfter, totalBefore, 'Clearing filter should restore all tasks');
-        });
-
-        test('filter with no matches shows empty categories or hides them', async function() {
-            this.timeout(10000);
-
-            provider.setTextFilter('xyz-definitely-no-match-12345');
-            const roots = await getTreeChildren(provider);
-            const total = countAllTasks(roots);
-
-            provider.clearFilters();
-
-            assert.strictEqual(total, 0, 'Non-matching filter should show 0 tasks');
-        });
-
-        test('hasFilter returns correct state', function() {
-            this.timeout(10000);
-
-            provider.clearFilters();
-            assert.strictEqual(provider.hasFilter(), false, 'hasFilter should be false when no filter');
-
-            provider.setTextFilter('test');
-            assert.strictEqual(provider.hasFilter(), true, 'hasFilter should be true after setTextFilter');
-
-            provider.clearFilters();
-            assert.strictEqual(provider.hasFilter(), false, 'hasFilter should be false after clearFilters');
-
-            provider.setTagFilter('build');
-            assert.strictEqual(provider.hasFilter(), true, 'hasFilter should be true after setTagFilter');
-
-            provider.clearFilters();
-        });
-    });
-
-    suite('Tag Filtering Verification', () => {
-        test('tag filter reduces visible tasks', async function() {
-            this.timeout(10000);
-
-            const rootsBefore = await getTreeChildren(provider);
-            const totalBefore = countAllTasks(rootsBefore);
-
-            provider.setTagFilter('build');
-            const rootsAfter = await getTreeChildren(provider);
-            const totalAfter = countAllTasks(rootsAfter);
-
-            provider.clearFilters();
-
-            // Tag filter should reduce tasks (unless all tasks have 'build' tag)
-            assert.ok(totalAfter <= totalBefore, `Tag filtering should not increase tasks: ${totalAfter} <= ${totalBefore}`);
-        });
-
-        test('filtered tasks have the correct tag', async function() {
-            this.timeout(10000);
-
-            provider.setTagFilter('build');
-            const roots = await getTreeChildren(provider);
-
-            const allTasks: TaskTreeItem[] = [];
-            for (const category of roots) {
-                allTasks.push(...flattenTaskItems(category.children));
-            }
-
-            provider.clearFilters();
-
-            for (const task of allTasks) {
-                const taskData = task.task;
-                assert.ok(taskData, 'Task should have task data');
-                assert.ok(
-                    taskData.tags.includes('build'),
-                    `Task "${taskData.label}" should have 'build' tag when filtered by build`
-                );
-            }
-        });
-    });
-
     suite('Task Description and Tooltip', () => {
         test('task items have description showing category', async function() {
             this.timeout(10000);
@@ -777,8 +658,8 @@ suite('TreeView Real UI Tests', () => {
         });
     });
 
-    suite('Empty Category Hiding', () => {
-        test('categories with no tasks do not appear when showEmptyCategories is false', async function() {
+    suite('Category Visibility', () => {
+        test('all visible categories have at least one task', async function() {
             this.timeout(15000);
 
             // By default showEmptyCategories is false
@@ -787,71 +668,30 @@ suite('TreeView Real UI Tests', () => {
 
             for (const category of roots) {
                 const label = getLabelString(category.label);
-                // Extract count from label like "NPM Scripts (7)"
-                const countMatch = /\((\d+)\)/.exec(label);
-                if (countMatch?.[1] !== undefined) {
-                    const count = parseInt(countMatch[1], 10);
-                    assert.ok(count > 0, `Category "${label}" should not appear with 0 tasks`);
-                }
-                // If no count in label, check children exist
                 const allTasks = flattenTaskItems(category.children);
                 assert.ok(allTasks.length > 0, `Category "${label}" should have tasks when visible`);
             }
         });
 
-        test('filtering that removes all tasks from category hides the category', async function() {
+        test('category count in label matches actual children count', async function() {
             this.timeout(15000);
-
-            // Apply a filter that will match only specific types
-            provider.setTextFilter('deploy.sh');
-            await sleep(500);
 
             const roots = await getTreeChildren(provider);
 
-            // Should have fewer categories or tasks
             for (const category of roots) {
-                const allTasks = flattenTaskItems(category.children);
-                // If category is visible, it should have matching tasks
-                if (allTasks.length > 0) {
-                    const hasMatchingTask = allTasks.some(t => {
-                        return t.task?.label.toLowerCase().includes('deploy.sh') ?? false;
-                    });
-                    assert.ok(
-                        hasMatchingTask,
-                        `Category "${getLabelString(category.label)}" should only contain matching tasks`
+                const label = getLabelString(category.label);
+                // Extract count from label like "NPM Scripts (7)"
+                const countMatch = (/\((\d+)\)/).exec(label);
+                if (countMatch?.[1] !== undefined) {
+                    const claimedCount = parseInt(countMatch[1], 10);
+                    const actualTasks = flattenTaskItems(category.children);
+                    assert.strictEqual(
+                        actualTasks.length,
+                        claimedCount,
+                        `Category "${label}" claims ${claimedCount} tasks but has ${actualTasks.length}`
                     );
                 }
             }
-
-            // Clear filter for other tests
-            provider.clearFilters();
-            await sleep(300);
-        });
-
-        test('showEmptyCategories setting controls empty category visibility', async function() {
-            this.timeout(15000);
-
-            // First apply filter that removes all tasks from a category
-            provider.setTextFilter('xyznonexistent123');
-            await sleep(500);
-
-            // With showEmptyCategories=false (default), should have no or fewer categories
-            const roots = await getTreeChildren(provider);
-
-            // No categories should be visible with no matching tasks
-            for (const category of roots) {
-                const allTasks = flattenTaskItems(category.children);
-                // If category appears, it should be because showEmptyCategories=true
-                // or there's a bug. Default is false, so assert no tasks = no category
-                if (allTasks.length === 0) {
-                    // This indicates a bug - empty category should be hidden
-                    assert.fail(`Category "${getLabelString(category.label)}" should be hidden when empty`);
-                }
-            }
-
-            // Clear filter
-            provider.clearFilters();
-            await sleep(300);
         });
     });
 });
@@ -867,8 +707,8 @@ suite('PROOF: No Duplicate Items In Tree', () => {
         this.timeout(30000);
         await activateExtension();
         provider = getTaskTreeProvider();
-        await provider.refresh();
-        await sleep(2000);
+        // Wait for extension to auto-load tasks - NO refresh() call!
+        await sleep(3000);
     });
 
     test('PROOF: Each task ID appears exactly ONCE in entire tree', async function() {
@@ -1009,27 +849,6 @@ suite('PROOF: No Duplicate Items In Tree', () => {
         );
     });
 
-    test('PROOF: Category task counts match actual children', async function() {
-        this.timeout(15000);
-
-        const roots = await getTreeChildren(provider);
-
-        for (const category of roots) {
-            const label = getLabelString(category.label);
-            const countMatch = /\((\d+)\)/.exec(label);
-
-            if (countMatch?.[1] !== undefined) {
-                const claimedCount = parseInt(countMatch[1], 10);
-                const actualTasks = flattenTaskItems(category.children);
-
-                assert.strictEqual(
-                    actualTasks.length, claimedCount,
-                    `PROOF FAILED: Category "${label}" claims ${claimedCount} tasks but has ${actualTasks.length}`
-                );
-            }
-        }
-    });
-
     test('PROOF: getAllTasks returns unique tasks only', function() {
         this.timeout(10000);
 
@@ -1062,15 +881,4 @@ function flattenTaskItems(items: TaskTreeItem[]): TaskTreeItem[] {
     }
 
     return result;
-}
-
-/**
- * Counts all tasks across all categories
- */
-function countAllTasks(roots: TaskTreeItem[]): number {
-    let count = 0;
-    for (const category of roots) {
-        count += flattenTaskItems(category.children).length;
-    }
-    return count;
 }

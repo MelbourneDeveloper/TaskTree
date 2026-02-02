@@ -3,7 +3,6 @@
 ## Too Many Cooks
 
 You are working with many other agents. Make sure there is effective cooperation
-
 - Register on TMC immediately
 - Don't edit files that are locked; lock files when editing
 - COMMUNICATE REGULARLY AND COORDINATE WITH OTHERS THROUGH MESSAGES
@@ -26,17 +25,20 @@ You are working with many other agents. Make sure there is effective cooperation
 
 ⚠️ NEVER KILL VSCODE PROCESSES
 
-### Testing Process
+#### Rules
+- **Prefer e2e tests over unit tests** - only unit tests for isolating bugs
+- Separate e2e tests from unit tests by file. They should not be in the same file together.
+- Test files in `src/test/suite/*.test.ts`
+- Run tests: `npm test`
+- NEVER remove assertions
+- FAILING TEST = ✅ OK. TEST THAT DOESN'T ENFORCE BEHAVIOR = ⛔️ ILLEGAL
+
+### Automated (E2E) Testing
 
 **AUTOMATED TESTING IS BLACK BOX TESTING ONLY**
 Only test the UI **THROUGH the UI**. Do not run command etc. to coerce the state. You are testing the UI, not the code.
 
-- Write test that fails because of bug/missing feature
-- Run tests to verify that test fails because of this reason
-- Adjust test and repeat until you see failure for the reason above
-- Add missing feature or fix bug
-- Run tests to verify test passes.
-- Repeat and fix until test passes WITHOUT changing the test
+- Tests run in actual VS Code window via `@vscode/test-electron`
 - Automated tests must not modify internal state or call functions that do. They must only use the extension through the UI. 
  * - ❌ Calling internal methods like provider.updateTasks()
  * - ❌ Calling provider.refresh() directly
@@ -45,12 +47,18 @@ Only test the UI **THROUGH the UI**. Do not run command etc. to coerce the state
  * - ❌ Using commands that should just happen as part of normal use. e.g.: `await vscode.commands.executeCommand('tasktree.refresh');`
  * - ❌ `executeCommand('tasktree.addToQuick', item)` - TAP the item via the DOM!!!
 
-- **E2E tests ONLY** - No unit tests, no mocks
-- Tests run in actual VS Code window via `@vscode/test-electron`
-- Test files in `src/test/suite/*.test.ts`
-- Run tests: `npm test`
-- NEVER remove assertions
-- FAILING TEST = OK. TEST THAT DOESN'T ENFORCE BEHAVIOR = ILLEGAL
+### Test First Process
+- Write test that fails because of bug/missing feature
+- Run tests to verify that test fails because of this reason
+- Adjust test and repeat until you see failure for the reason above
+- Add missing feature or fix bug
+- Run tests to verify test passes.
+- Repeat and fix until test passes WITHOUT changing the test
+
+**Every test MUST:**
+1. Assert on the ACTUAL OBSERVABLE BEHAVIOR (UI state, view contents, return values)
+2. Fail if the feature is broken
+3. Test the full flow, not just side effects like config files
 
 ### ⛔️ FAKE TESTS ARE ILLEGAL
 
@@ -72,23 +80,6 @@ assert.ok(config.quick.includes('task1')); // This doesn't test the FEATURE
 // ❌ ILLEGAL - empty catch with success assertion
 try { await command(); } catch { /* swallow */ }
 assert.ok(true, 'Command ran');
-```
-
-**Every test MUST:**
-1. Assert on the ACTUAL OBSERVABLE BEHAVIOR (UI state, view contents, return values)
-2. Fail if the feature is broken
-3. Test the full flow, not just side effects like config files
-
-```typescript
-// ✅ CORRECT - verifies actual view state
-await addToQuick(task);
-const children = provider.getChildren();
-const found = children.find(c => c.task?.id === task.id);
-assert.ok(found !== undefined, 'Task MUST appear in view');
-
-// ✅ CORRECT - verifies actual return value
-const result = await discover();
-assert.strictEqual(result.length, 5, 'Must find 5 tasks');
 ```
 
 ## Critical Docs

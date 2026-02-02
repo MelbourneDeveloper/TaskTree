@@ -22,3 +22,5 @@ Thumbs.db
 .venv/
 
 test-fixtures/workspace/.vscode/tasktree.json
+
+.vscode/tasktree.json

@@ -2,14 +2,24 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "type": "npm",
-      "script": "my-test-script",
-      "problemMatcher": []
+      "label": "Build Project",
+      "type": "shell",
+      "command": "echo 'Building project'"
     },
     {
-      "type": "npm",
-      "script": "another-script",
-      "problemMatcher": []
+      "label": "Run Tests",
+      "type": "shell",
+      "command": "echo 'Running tests'"
+    },
+    {
+      "label": "Deploy with Config",
+      "type": "shell",
+      "command": "echo 'Deploying'"
+    },
+    {
+      "label": "Custom Build",
+      "type": "shell",
+      "command": "echo 'Custom build'"
     }
   ]
 }

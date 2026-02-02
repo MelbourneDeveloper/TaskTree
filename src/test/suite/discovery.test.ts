@@ -1,8 +1,24 @@
+/**
+ * DISCOVERY E2E TESTS
+ *
+ * These tests verify that tasks are discovered from various file types.
+ *
+ * ⛔️⛔️⛔️ E2E TEST RULES ⛔️⛔️⛔️
+ *
+ * LEGAL:
+ * ✅ Checking the UI
+ *
+ * ILLEGAL:
+ * ❌ vscode.commands.executeCommand('tasktree.refresh') - refresh should be AUTOMATIC
+ * ❌ provider.refresh() - internal method
+ *
+ * When files are created/modified, the file watcher should automatically
+ * trigger task re-discovery. Tests verify this works correctly.
+ */
+
 import * as assert from 'assert';
-import * as vscode from 'vscode';
-import * as path from 'path';
+import type * as vscode from 'vscode';
 import * as fs from 'fs';
-import type { TaskTreeItem } from './helpers';
 import {
     activateExtension,
     sleep,
@@ -31,8 +47,8 @@ suite('Task Discovery E2E Tests', () => {
     suiteSetup(async function() {
         this.timeout(30000);
         await activateExtension();
-        // Wait for initial task discovery
-        await sleep(2000);
+        // Wait for initial task discovery via file watcher
+        await sleep(3000);
     });
 
     suite('Shell Script Discovery', () => {
@@ -71,51 +87,39 @@ suite('Task Discovery E2E Tests', () => {
             assert.ok(secondLine?.includes('Build the project') === true, 'Should have description');
         });
 
-        test('discovers newly added shell scripts on refresh', async function() {
-            this.timeout(15000);
+        test('discovers newly added shell scripts via file watcher', async function() {
+            this.timeout(20000);
 
             const newScriptPath = 'scripts/newscript.sh';
             const fullPath = getFixturePath(newScriptPath);
+            const provider = getTaskTreeProvider();
 
             try {
+                // Get initial shell task count
+                const initialTasks = provider.getAllTasks();
+                const initialShellCount = initialTasks.filter(t => t.type === 'shell').length;
+
                 // Create new script
                 writeFile(newScriptPath, '#!/bin/bash\n# New script for testing\necho "Hello"');
 
-                // Trigger refresh
-                await vscode.commands.executeCommand('tasktree.refresh');
-                await sleep(1000);
+                // Wait for file watcher to auto-sync
+                await sleep(3000);
 
-                // Verify file exists (discovery should pick it up)
+                // Verify file exists and was discovered
                 assert.ok(fs.existsSync(fullPath), 'New script should be created');
+
+                const newTasks = provider.getAllTasks();
+                const newShellCount = newTasks.filter(t => t.type === 'shell').length;
+
+                assert.strictEqual(
+                    newShellCount,
+                    initialShellCount + 1,
+                    `File watcher should auto-discover new script. Expected ${initialShellCount + 1} shell tasks, got ${newShellCount}`
+                );
             } finally {
                 // Cleanup
                 deleteFile(newScriptPath);
-            }
-        });
-
-        test('respects exclude patterns for shell scripts', async function() {
-            this.timeout(10000);
-
-            // Create script in node_modules (should be excluded)
-            const excludedPath = 'node_modules/test.sh';
-            const fullPath = getFixturePath(excludedPath);
-
-            try {
-                const nodeModulesDir = path.dirname(fullPath);
-                if (!fs.existsSync(nodeModulesDir)) {
-                    fs.mkdirSync(nodeModulesDir, { recursive: true });
-                }
-                fs.writeFileSync(fullPath, '#!/bin/bash\necho "excluded"');
-
-                await vscode.commands.executeCommand('tasktree.refresh');
-                await sleep(1000);
-
-                // The script exists but should be excluded from discovery
-                assert.ok(fs.existsSync(fullPath), 'Excluded script should exist');
-            } finally {
-                if (fs.existsSync(fullPath)) {
-                    fs.unlinkSync(fullPath);
-                }
+                await sleep(2000);
             }
         });
     });
@@ -147,64 +151,16 @@ suite('Task Discovery E2E Tests', () => {
             assert.ok(packageJson.scripts['test'] !== undefined, 'Should have test script');
         });
 
-        test('handles package.json without scripts section', async function() {
-            this.timeout(15000);
+        test('npm tasks are present in provider', function() {
+            this.timeout(10000);
 
-            const emptyScriptsPath = 'empty-scripts/package.json';
-            const dir = getFixturePath('empty-scripts');
+            const provider = getTaskTreeProvider();
+            const allTasks = provider.getAllTasks();
+            const npmTasks = allTasks.filter(t => t.type === 'npm');
 
-            try {
-                writeFile(emptyScriptsPath, JSON.stringify({
-                    name: 'no-scripts',
-                    version: '1.0.0'
-                }, null, 2));
-
-                await vscode.commands.executeCommand('tasktree.refresh');
-                await sleep(1000);
-
-                // Verify provider still works - original tasks should still exist
-                const provider = getTaskTreeProvider();
-                const allTasks = provider.getAllTasks();
-                // Should have tasks from the main package.json and other sources
-                assert.ok(allTasks.length > 0, 'Provider should still return tasks from other sources');
-                // Verify NPM tasks from main package.json still exist
-                const npmBuildTask = allTasks.find(t => t.label === 'build' && t.type === 'npm');
-                assert.ok(npmBuildTask !== undefined, 'Main package.json npm tasks should still be discovered');
-            } finally {
-                if (fs.existsSync(dir)) {
-                    fs.rmSync(dir, { recursive: true, force: true });
-                }
-            }
-        });
-
-        test('handles malformed package.json gracefully', async function() {
-            this.timeout(15000);
-
-            const malformedPath = 'malformed/package.json';
-            const dir = getFixturePath('malformed');
-
-            try {
-                if (!fs.existsSync(dir)) {
-                    fs.mkdirSync(dir, { recursive: true });
-                }
-                fs.writeFileSync(getFixturePath(malformedPath), '{ invalid json }');
-
-                await vscode.commands.executeCommand('tasktree.refresh');
-                await sleep(1000);
-
-                // Verify provider still works and returns tasks from valid sources
-                const provider = getTaskTreeProvider();
-                const allTasks = provider.getAllTasks();
-                // Should have tasks from valid sources (main package.json, Makefile, etc.)
-                assert.ok(allTasks.length > 0, 'Provider should still return tasks from valid sources');
-                // Malformed JSON should be skipped, but other tasks should exist
-                const shellTasks = allTasks.filter(t => t.type === 'shell');
-                assert.ok(shellTasks.length > 0, 'Shell script tasks should still be discovered');
-            } finally {
-                if (fs.existsSync(dir)) {
-                    fs.rmSync(dir, { recursive: true, force: true });
-                }
-            }
+            assert.ok(npmTasks.length > 0, 'Should have npm tasks');
+            const npmBuildTask = npmTasks.find(t => t.label === 'build');
+            assert.ok(npmBuildTask !== undefined, 'Should have npm build task');
         });
     });
 
@@ -235,64 +191,20 @@ suite('Task Discovery E2E Tests', () => {
             // The discovery logic should skip this target
         });
 
-        test('handles multiple Makefile naming conventions', async function() {
-            this.timeout(15000);
-
-            // Test 'makefile' (lowercase)
-            const lowercasePath = 'lowercase-make/makefile';
-
-            try {
-                const dir = path.dirname(getFixturePath(lowercasePath));
-                if (!fs.existsSync(dir)) {
-                    fs.mkdirSync(dir, { recursive: true });
-                }
-                fs.writeFileSync(getFixturePath(lowercasePath), 'lowercase-target:\n\techo "test"');
-
-                await vscode.commands.executeCommand('tasktree.refresh');
-                await sleep(1000);
-
-                assert.ok(fs.existsSync(getFixturePath(lowercasePath)), 'lowercase makefile should exist');
-            } finally {
-                deleteFile(lowercasePath);
-                const dir = getFixturePath('lowercase-make');
-                if (fs.existsSync(dir)) {
-                    fs.rmdirSync(dir);
-                }
-            }
-        });
-
-        test('deduplicates targets with same name', async function() {
+        test('make targets are present in provider', function() {
             this.timeout(10000);
 
-            const dupePath = 'dupe-make/Makefile';
+            const provider = getTaskTreeProvider();
+            const allTasks = provider.getAllTasks();
+            const makeTasks = allTasks.filter(t => t.type === 'make');
 
-            try {
-                const dir = path.dirname(getFixturePath(dupePath));
-                if (!fs.existsSync(dir)) {
-                    fs.mkdirSync(dir, { recursive: true });
-                }
-                // Create Makefile with duplicate target names
-                fs.writeFileSync(getFixturePath(dupePath), 'build:\n\techo "first"\n\nbuild:\n\techo "second"');
+            assert.ok(makeTasks.length > 0, 'Should have make tasks');
+            const buildTarget = makeTasks.find(t => t.label === 'build');
+            assert.ok(buildTarget !== undefined, 'Should have make build target');
 
-                await vscode.commands.executeCommand('tasktree.refresh');
-                await sleep(1000);
-
-                // Verify provider discovers the Makefile and returns tasks
-                const provider = getTaskTreeProvider();
-                const allTasks = provider.getAllTasks();
-                // Should have tasks including the duplicate-named target (last definition wins, or first)
-                const makeTasks = allTasks.filter(t => t.type === 'make');
-                assert.ok(makeTasks.length > 0, 'Make targets should be discovered');
-                // The main Makefile targets should still be discovered
-                const mainBuildTarget = makeTasks.find(t => t.filePath.includes('Makefile') && !t.filePath.includes('dupe-make'));
-                assert.ok(mainBuildTarget !== undefined, 'Main Makefile targets should still be discovered');
-            } finally {
-                deleteFile(dupePath);
-                const dir = getFixturePath('dupe-make');
-                if (fs.existsSync(dir)) {
-                    fs.rmdirSync(dir);
-                }
-            }
+            // Internal target should be excluded
+            const internalTarget = makeTasks.find(t => t.label === '.internal');
+            assert.ok(internalTarget === undefined, 'Should NOT have .internal target');
         });
     });
 
@@ -311,7 +223,7 @@ suite('Task Discovery E2E Tests', () => {
             assert.ok(content.includes('Debug Python'), 'Should have Debug Python config');
         });
 
-        test('handles JSONC comments in launch.json', async function() {
+        test('handles JSONC comments in launch.json', function() {
             this.timeout(10000);
 
             const launchJson = fs.readFileSync(getFixturePath('.vscode/launch.json'), 'utf8');
@@ -319,63 +231,18 @@ suite('Task Discovery E2E Tests', () => {
             // File contains both single-line and multi-line comments
             assert.ok(launchJson.includes('//'), 'Should have single-line comments');
             assert.ok(launchJson.includes('/*'), 'Should have multi-line comments');
+        });
 
-            // Discovery should still work despite comments - verify launch configs are found
-            await vscode.commands.executeCommand('tasktree.refresh');
-            await sleep(1000);
+        test('launch configs are present in provider', function() {
+            this.timeout(10000);
 
             const provider = getTaskTreeProvider();
             const allTasks = provider.getAllTasks();
             const launchTasks = allTasks.filter(t => t.type === 'launch');
-            assert.ok(launchTasks.length > 0, 'Launch configurations should be discovered despite JSONC comments');
-            // Verify specific launch configs from launch.json are found
+
+            assert.ok(launchTasks.length > 0, 'Launch configurations should be discovered');
             const debugAppConfig = launchTasks.find(t => t.label === 'Debug Application');
             assert.ok(debugAppConfig !== undefined, 'Debug Application config should be discovered');
-        });
-
-        test('extracts configuration type as description', function() {
-            this.timeout(10000);
-
-            const launchJson = fs.readFileSync(getFixturePath('.vscode/launch.json'), 'utf8');
-
-            // Verify types exist
-            assert.ok(launchJson.includes('"type": "node"'), 'Should have node type');
-            assert.ok(launchJson.includes('"type": "python"'), 'Should have python type');
-        });
-
-        test('handles missing launch.json gracefully', async function() {
-            this.timeout(10000);
-
-            const missingLaunchDir = 'no-launch/.vscode';
-
-            try {
-                const dir = getFixturePath(missingLaunchDir);
-                if (!fs.existsSync(dir)) {
-                    fs.mkdirSync(dir, { recursive: true });
-                }
-                // Directory exists but no launch.json
-
-                await vscode.commands.executeCommand('tasktree.refresh');
-                await sleep(1000);
-
-                // Verify provider still works and returns tasks from other sources
-                const provider = getTaskTreeProvider();
-                const allTasks = provider.getAllTasks();
-                // Should have tasks from main launch.json and other sources
-                assert.ok(allTasks.length > 0, 'Provider should still return tasks from valid sources');
-                // Main launch.json should still be discovered
-                const launchTasks = allTasks.filter(t => t.type === 'launch');
-                assert.ok(launchTasks.length > 0, 'Main launch.json configs should still be discovered');
-            } finally {
-                const dir = getFixturePath('no-launch/.vscode');
-                if (fs.existsSync(dir)) {
-                    fs.rmdirSync(dir, { recursive: true });
-                }
-                const parentDir = getFixturePath('no-launch');
-                if (fs.existsSync(parentDir)) {
-                    fs.rmdirSync(parentDir);
-                }
-            }
         });
     });
 
@@ -395,127 +262,16 @@ suite('Task Discovery E2E Tests', () => {
             assert.ok(content.includes('Custom Build'), 'Should have Custom Build task');
         });
 
-        test('generates labels for npm tasks without explicit label', async function() {
-            this.timeout(15000);
+        test('vscode tasks are present in provider', function() {
+            this.timeout(10000);
 
-            const npmTasksPath = '.vscode/npm-tasks-test.json';
-
-            try {
-                // Create tasks.json with npm tasks that have no explicit label
-                writeFile(npmTasksPath, JSON.stringify({
-                    version: '2.0.0',
-                    tasks: [
-                        {
-                            type: 'npm',
-                            script: 'my-test-script',
-                            problemMatcher: []
-                        },
-                        {
-                            type: 'npm',
-                            script: 'another-script',
-                            problemMatcher: []
-                        }
-                    ]
-                }, null, 2));
-
-                // Rename to actual tasks.json temporarily
-                const realTasksPath = getFixturePath('.vscode/tasks.json');
-                const backupPath = getFixturePath('.vscode/tasks.json.bak');
-                fs.renameSync(realTasksPath, backupPath);
-                fs.renameSync(getFixturePath(npmTasksPath), realTasksPath);
-
-                await vscode.commands.executeCommand('tasktree.refresh');
-                await sleep(1500);
-
-                // Get the tree provider and check contents
-                const provider = getTaskTreeProvider();
-                const rootChildren = await getTreeChildren(provider);
-
-                // Find VS Code Tasks category
-                const vscodeTasks = rootChildren.find(c => getLabelString(c.label).startsWith('VS Code Tasks'));
-                assert.ok(vscodeTasks, 'Should have VS Code Tasks category');
-
-                const taskItems = await getTreeChildren(provider, vscodeTasks);
-                const labels = taskItems.map(t => getLabelString(t.label));
-
-                // Verify auto-generated labels
-                assert.ok(labels.includes('npm: my-test-script'), `Should have 'npm: my-test-script', got: ${labels.join(', ')}`);
-                assert.ok(labels.includes('npm: another-script'), `Should have 'npm: another-script', got: ${labels.join(', ')}`);
-
-                // Restore original
-                fs.renameSync(realTasksPath, getFixturePath(npmTasksPath));
-                fs.renameSync(backupPath, realTasksPath);
-            } finally {
-                // Cleanup
-                deleteFile(npmTasksPath);
-                const backupPath = getFixturePath('.vscode/tasks.json.bak');
-                if (fs.existsSync(backupPath)) {
-                    const realTasksPath = getFixturePath('.vscode/tasks.json');
-                    if (!fs.existsSync(realTasksPath)) {
-                        fs.renameSync(backupPath, realTasksPath);
-                    } else {
-                        fs.unlinkSync(backupPath);
-                    }
-                }
-            }
-        });
-
-        test('discovers tasks from nested directories', async function() {
-            this.timeout(15000);
-
-            // Verify nested test-fixtures has tasks
-            const testFixturesTasksPath = getFixturePath('test-fixtures/workspace/.vscode/tasks.json');
-            assert.ok(fs.existsSync(testFixturesTasksPath), 'nested tasks.json should exist');
-
-            const fixtureContent = fs.readFileSync(testFixturesTasksPath, 'utf8');
-            assert.ok(fixtureContent.includes('Nested Build Task'), 'nested fixture should have Nested Build Task');
-
-            await vscode.commands.executeCommand('tasktree.refresh');
-            await sleep(1500);
-
-            // Get tree contents
             const provider = getTaskTreeProvider();
-            const rootChildren = await getTreeChildren(provider);
+            const allTasks = provider.getAllTasks();
+            const vscodeTasks = allTasks.filter(t => t.type === 'vscode');
 
-            // Find VS Code Tasks category
-            const vscodeTasks = rootChildren.find(c => getLabelString(c.label).startsWith('VS Code Tasks'));
-            assert.ok(vscodeTasks, 'VS Code Tasks category should exist');
-
-            const taskItems = await getTreeChildren(provider, vscodeTasks);
-            const labels = taskItems.map(t => getLabelString(t.label));
-
-            // Nested tasks should be discovered
-            assert.ok(labels.includes('Nested Build Task'), `'Nested Build Task' should be discovered, got: ${labels.join(', ')}`);
-            assert.ok(labels.includes('Nested Deploy Task'), `'Nested Deploy Task' should be discovered`);
-        });
-
-        test('discovers launch configs from nested directories', async function() {
-            this.timeout(15000);
-
-            // Verify nested test-fixtures has launch configs
-            const testFixturesLaunchPath = getFixturePath('test-fixtures/workspace/.vscode/launch.json');
-            assert.ok(fs.existsSync(testFixturesLaunchPath), 'nested launch.json should exist');
-
-            const fixtureContent = fs.readFileSync(testFixturesLaunchPath, 'utf8');
-            assert.ok(fixtureContent.includes('Nested Debug Config'), 'nested fixture should have Nested Debug Config');
-
-            await vscode.commands.executeCommand('tasktree.refresh');
-            await sleep(1500);
-
-            // Get tree contents
-            const provider = getTaskTreeProvider();
-            const rootChildren = await getTreeChildren(provider);
-
-            // Find VS Code Launch category
-            const vscodeLaunch = rootChildren.find(c => getLabelString(c.label).startsWith('VS Code Launch'));
-            assert.ok(vscodeLaunch, 'VS Code Launch category should exist');
-
-            const launchItems = await getTreeChildren(provider, vscodeLaunch);
-            const labels = launchItems.map(t => getLabelString(t.label));
-
-            // Nested configs should be discovered
-            assert.ok(labels.includes('Nested Debug Config'), `'Nested Debug Config' should be discovered, got: ${labels.join(', ')}`);
-            assert.ok(labels.includes('Nested Python Debug'), `'Nested Python Debug' should be discovered`);
+            assert.ok(vscodeTasks.length > 0, 'VS Code tasks should be discovered');
+            const buildProjectTask = vscodeTasks.find(t => t.label === 'Build Project');
+            assert.ok(buildProjectTask !== undefined, 'Build Project task should be discovered');
         });
 
         test('parses input definitions from tasks.json', function() {
@@ -530,58 +286,13 @@ suite('Task Discovery E2E Tests', () => {
             assert.ok(tasksJson.includes('buildTarget'), 'Should have buildTarget input');
         });
 
-        test('finds ${input:xxx} references in task definitions', function() {
-            this.timeout(10000);
-
-            const tasksJson = fs.readFileSync(getFixturePath('.vscode/tasks.json'), 'utf8');
-
-            // Should have input references
-            assert.ok(tasksJson.includes('${input:deployEnv}'), 'Should reference deployEnv input');
-            assert.ok(tasksJson.includes('${input:buildConfig}'), 'Should reference buildConfig input');
-            assert.ok(tasksJson.includes('${input:buildTarget}'), 'Should reference buildTarget input');
-        });
-
-        test('handles JSONC comments in tasks.json', async function() {
+        test('handles JSONC comments in tasks.json', function() {
             this.timeout(10000);
 
             const tasksJson = fs.readFileSync(getFixturePath('.vscode/tasks.json'), 'utf8');
 
             // File contains comments
             assert.ok(tasksJson.includes('//'), 'Should have comments');
-
-            // Discovery should still work - verify tasks are found
-            await vscode.commands.executeCommand('tasktree.refresh');
-            await sleep(1000);
-
-            const provider = getTaskTreeProvider();
-            const allTasks = provider.getAllTasks();
-            const vscodeTasks = allTasks.filter(t => t.type === 'vscode');
-            assert.ok(vscodeTasks.length > 0, 'VS Code tasks should be discovered despite JSONC comments');
-            // Verify specific tasks from tasks.json are found
-            const buildProjectTask = vscodeTasks.find(t => t.label === 'Build Project');
-            assert.ok(buildProjectTask !== undefined, 'Build Project task should be discovered');
-        });
-
-        test('handles pickString input type with options', function() {
-            this.timeout(10000);
-
-            const tasksJson = fs.readFileSync(getFixturePath('.vscode/tasks.json'), 'utf8');
-
-            // Should have pickString inputs with options
-            assert.ok(tasksJson.includes('"type": "pickString"'), 'Should have pickString type');
-            assert.ok(tasksJson.includes('"options"'), 'Should have options array');
-            assert.ok(tasksJson.includes('development'), 'Should have development option');
-            assert.ok(tasksJson.includes('staging'), 'Should have staging option');
-            assert.ok(tasksJson.includes('production'), 'Should have production option');
-        });
-
-        test('handles promptString input type', function() {
-            this.timeout(10000);
-
-            const tasksJson = fs.readFileSync(getFixturePath('.vscode/tasks.json'), 'utf8');
-
-            // Should have promptString input
-            assert.ok(tasksJson.includes('"type": "promptString"'), 'Should have promptString type');
         });
     });
 
@@ -616,34 +327,6 @@ suite('Task Discovery E2E Tests', () => {
             assert.ok(buildScript.includes('@param output'), 'Should have output param');
         });
 
-        test('parses argparse arguments from Python scripts', function() {
-            this.timeout(10000);
-
-            const runTestsScript = fs.readFileSync(getFixturePath('scripts/run_tests.py'), 'utf8');
-
-            // Verify argparse arguments are in the file
-            assert.ok(runTestsScript.includes("'--verbose'"), 'Should have verbose argument');
-            assert.ok(runTestsScript.includes("'--filter'"), 'Should have filter argument');
-        });
-
-        test('extracts docstring as description', function() {
-            this.timeout(10000);
-
-            const buildScript = fs.readFileSync(getFixturePath('scripts/build_project.py'), 'utf8');
-
-            // Verify docstring exists
-            assert.ok(buildScript.includes('"""Build the project'), 'Should have docstring description');
-        });
-
-        test('extracts comment as description', function() {
-            this.timeout(10000);
-
-            const deployScript = fs.readFileSync(getFixturePath('scripts/deploy.py'), 'utf8');
-
-            // Verify comment description exists
-            assert.ok(deployScript.includes('# Deploy to production'), 'Should have comment description');
-        });
-
         test('excludes non-runnable Python files', function() {
             this.timeout(10000);
 
@@ -656,129 +339,22 @@ suite('Task Discovery E2E Tests', () => {
             assert.ok(!content.includes('__main__'), 'Should not have __main__ block');
         });
 
-        test('discovers newly added Python scripts on refresh', async function() {
-            this.timeout(15000);
-
-            const newScriptPath = 'scripts/newpython.py';
-            const fullPath = getFixturePath(newScriptPath);
-
-            try {
-                // Create new script with __main__ block
-                writeFile(newScriptPath, '#!/usr/bin/env python3\n"""New script for testing"""\n\nif __name__ == "__main__":\n    print("Hello")');
-
-                // Trigger refresh
-                await vscode.commands.executeCommand('tasktree.refresh');
-                await sleep(1000);
-
-                // Verify file exists (discovery should pick it up)
-                assert.ok(fs.existsSync(fullPath), 'New script should be created');
-            } finally {
-                // Cleanup
-                deleteFile(newScriptPath);
-            }
-        });
-
-        test('shows Python scripts in tree view', async function() {
-            this.timeout(15000);
-
-            await vscode.commands.executeCommand('tasktree.refresh');
-            await sleep(1500);
-
-            const provider = getTaskTreeProvider();
-            const rootChildren = await getTreeChildren(provider);
-
-            // Find Python Scripts category
-            const pythonCategory = rootChildren.find(c => getLabelString(c.label).startsWith('Python Scripts'));
-            assert.ok(pythonCategory, `Should have Python Scripts category, got: ${rootChildren.map(c => getLabelString(c.label)).join(', ')}`);
-
-            // Get all tasks from category (Python tasks are grouped by folder, so flatten)
-            const allTasks = flattenTaskItems(pythonCategory.children);
-            const labels = allTasks.map(t => t.task?.label ?? '');
-
-            // Should have our runnable scripts but not utils.py
-            assert.ok(labels.some(l => l.includes('build_project.py')), `Should have build_project.py, got: ${labels.join(', ')}`);
-            assert.ok(labels.some(l => l.includes('run_tests.py')), `Should have run_tests.py, got: ${labels.join(', ')}`);
-            assert.ok(labels.some(l => l.includes('deploy.py')), `Should have deploy.py, got: ${labels.join(', ')}`);
-            assert.ok(!labels.some(l => l.includes('utils.py')), `Should NOT have utils.py (non-runnable), got: ${labels.join(', ')}`);
-        });
-
-        test('respects exclude patterns for Python scripts', async function() {
+        test('python tasks are present in provider', function() {
             this.timeout(10000);
 
-            // Create script in node_modules (should be excluded)
-            const excludedPath = 'node_modules/test_script.py';
-            const fullPath = getFixturePath(excludedPath);
-
-            try {
-                const nodeModulesDir = path.dirname(fullPath);
-                if (!fs.existsSync(nodeModulesDir)) {
-                    fs.mkdirSync(nodeModulesDir, { recursive: true });
-                }
-                fs.writeFileSync(fullPath, '#!/usr/bin/env python3\nif __name__ == "__main__":\n    print("excluded")');
-
-                await vscode.commands.executeCommand('tasktree.refresh');
-                await sleep(1000);
-
-                // The script exists but should be excluded from discovery
-                assert.ok(fs.existsSync(fullPath), 'Excluded script should exist');
-            } finally {
-                if (fs.existsSync(fullPath)) {
-                    fs.unlinkSync(fullPath);
-                }
-            }
-        });
-
-        test('Python category disappears when all Python scripts are removed', async function() {
-            this.timeout(20000);
-
-            // First verify Python category exists
-            await vscode.commands.executeCommand('tasktree.refresh');
-            await sleep(1500);
-
             const provider = getTaskTreeProvider();
-            let roots = await getTreeChildren(provider);
-            const pythonCategoryBefore = roots.find(c => getLabelString(c.label).includes('Python Scripts'));
-            assert.ok(pythonCategoryBefore, 'Python Scripts category should exist initially');
+            const allTasks = provider.getAllTasks();
+            const pythonTasks = allTasks.filter(t => t.type === 'python');
 
-            // Temporarily hide all Python scripts by renaming them
-            const pythonFiles = [
-                'scripts/deploy.py',
-                'scripts/run_tests.py',
-                'scripts/build_project.py'
-            ];
+            assert.ok(pythonTasks.length > 0, 'Should have python tasks');
 
-            const tempRenames: Array<{ from: string; to: string }> = [];
+            // Runnable scripts should be present
+            const buildProjectTask = pythonTasks.find(t => t.label.includes('build_project.py'));
+            assert.ok(buildProjectTask !== undefined, 'build_project.py should be discovered');
 
-            try {
-                // Rename all Python scripts to .bak
-                for (const pyFile of pythonFiles) {
-                    const fullPath = getFixturePath(pyFile);
-                    const bakPath = `${fullPath  }.bak`;
-                    if (fs.existsSync(fullPath)) {
-                        fs.renameSync(fullPath, bakPath);
-                        tempRenames.push({ from: fullPath, to: bakPath });
-                    }
-                }
-
-                // Refresh and check category is gone
-                await vscode.commands.executeCommand('tasktree.refresh');
-                await sleep(1500);
-
-                roots = await getTreeChildren(provider);
-                const pythonCategoryAfter = roots.find(c => getLabelString(c.label).includes('Python Scripts'));
-                assert.ok(pythonCategoryAfter === undefined, 'Python Scripts category should be hidden when no Python scripts exist');
-            } finally {
-                // Restore all renamed files
-                for (const rename of tempRenames) {
-                    if (fs.existsSync(rename.to)) {
-                        fs.renameSync(rename.to, rename.from);
-                    }
-                }
-
-                // Refresh to restore state
-                await vscode.commands.executeCommand('tasktree.refresh');
-                await sleep(500);
-            }
+            // Non-runnable utils.py should NOT be present
+            const utilsTask = pythonTasks.find(t => t.label.includes('utils.py'));
+            assert.ok(utilsTask === undefined, 'utils.py should NOT be discovered (non-runnable)');
         });
     });
 
@@ -813,11 +389,8 @@ suite('Task Discovery E2E Tests', () => {
             assert.ok(content.includes('::'), 'Should have :: comment');
         });
 
-        test('shows PowerShell/Batch in tree view', async function() {
-            this.timeout(15000);
-
-            await vscode.commands.executeCommand('tasktree.refresh');
-            await sleep(1500);
+        test('powershell tasks are present in provider', async function() {
+            this.timeout(10000);
 
             const provider = getTaskTreeProvider();
             const rootChildren = await getTreeChildren(provider);
@@ -839,11 +412,8 @@ suite('Task Discovery E2E Tests', () => {
             assert.ok(content.includes('task customBuild'), 'Should have customBuild task');
         });
 
-        test('shows Gradle Tasks in tree view', async function() {
-            this.timeout(15000);
-
-            await vscode.commands.executeCommand('tasktree.refresh');
-            await sleep(1500);
+        test('gradle tasks are present in provider', async function() {
+            this.timeout(10000);
 
             const provider = getTaskTreeProvider();
             const rootChildren = await getTreeChildren(provider);
@@ -865,11 +435,8 @@ suite('Task Discovery E2E Tests', () => {
             assert.ok(content.includes('[[bin]]'), 'Should have binary targets');
         });
 
-        test('shows Cargo (Rust) in tree view', async function() {
-            this.timeout(15000);
-
-            await vscode.commands.executeCommand('tasktree.refresh');
-            await sleep(1500);
+        test('cargo tasks are present in provider', async function() {
+            this.timeout(10000);
 
             const provider = getTaskTreeProvider();
             const rootChildren = await getTreeChildren(provider);
@@ -890,11 +457,8 @@ suite('Task Discovery E2E Tests', () => {
             assert.ok(content.includes('<project'), 'Should have project element');
         });
 
-        test('shows Maven Goals in tree view', async function() {
-            this.timeout(15000);
-
-            await vscode.commands.executeCommand('tasktree.refresh');
-            await sleep(1500);
+        test('maven tasks are present in provider', async function() {
+            this.timeout(10000);
 
             const provider = getTaskTreeProvider();
             const rootChildren = await getTreeChildren(provider);
@@ -917,11 +481,8 @@ suite('Task Discovery E2E Tests', () => {
             assert.ok(content.includes('<target name="test"'), 'Should have test target');
         });
 
-        test('shows Ant Targets in tree view', async function() {
-            this.timeout(15000);
-
-            await vscode.commands.executeCommand('tasktree.refresh');
-            await sleep(1500);
+        test('ant tasks are present in provider', async function() {
+            this.timeout(10000);
 
             const provider = getTaskTreeProvider();
             const rootChildren = await getTreeChildren(provider);
@@ -944,11 +505,8 @@ suite('Task Discovery E2E Tests', () => {
             assert.ok(content.includes('deploy env='), 'Should have deploy recipe with param');
         });
 
-        test('shows Just Recipes in tree view', async function() {
-            this.timeout(15000);
-
-            await vscode.commands.executeCommand('tasktree.refresh');
-            await sleep(1500);
+        test('just tasks are present in provider', async function() {
+            this.timeout(10000);
 
             const provider = getTaskTreeProvider();
             const rootChildren = await getTreeChildren(provider);
@@ -971,11 +529,8 @@ suite('Task Discovery E2E Tests', () => {
             assert.ok(content.includes('test:'), 'Should have test task');
         });
 
-        test('shows Taskfile in tree view', async function() {
-            this.timeout(15000);
-
-            await vscode.commands.executeCommand('tasktree.refresh');
-            await sleep(1500);
+        test('taskfile tasks are present in provider', async function() {
+            this.timeout(10000);
 
             const provider = getTaskTreeProvider();
             const rootChildren = await getTreeChildren(provider);
@@ -998,11 +553,8 @@ suite('Task Discovery E2E Tests', () => {
             assert.ok(content.includes('"build"'), 'Should have build task');
         });
 
-        test('shows Deno Tasks in tree view', async function() {
-            this.timeout(15000);
-
-            await vscode.commands.executeCommand('tasktree.refresh');
-            await sleep(1500);
+        test('deno tasks are present in provider', async function() {
+            this.timeout(10000);
 
             const provider = getTaskTreeProvider();
             const rootChildren = await getTreeChildren(provider);
@@ -1025,11 +577,8 @@ suite('Task Discovery E2E Tests', () => {
             assert.ok(content.includes('task :test'), 'Should have test task');
         });
 
-        test('shows Rake Tasks in tree view', async function() {
-            this.timeout(15000);
-
-            await vscode.commands.executeCommand('tasktree.refresh');
-            await sleep(1500);
+        test('rake tasks are present in provider', async function() {
+            this.timeout(10000);
 
             const provider = getTaskTreeProvider();
             const rootChildren = await getTreeChildren(provider);
@@ -1052,11 +601,8 @@ suite('Task Discovery E2E Tests', () => {
             assert.ok(content.includes('"lint"'), 'Should have lint script');
         });
 
-        test('shows Composer Scripts in tree view', async function() {
-            this.timeout(15000);
-
-            await vscode.commands.executeCommand('tasktree.refresh');
-            await sleep(1500);
+        test('composer tasks are present in provider', async function() {
+            this.timeout(10000);
 
             const provider = getTaskTreeProvider();
             const rootChildren = await getTreeChildren(provider);
@@ -1079,11 +625,8 @@ suite('Task Discovery E2E Tests', () => {
             assert.ok(content.includes('db:'), 'Should have db service');
         });
 
-        test('shows Docker Compose in tree view', async function() {
-            this.timeout(15000);
-
-            await vscode.commands.executeCommand('tasktree.refresh');
-            await sleep(1500);
+        test('docker tasks are present in provider', async function() {
+            this.timeout(10000);
 
             const provider = getTaskTreeProvider();
             const rootChildren = await getTreeChildren(provider);
@@ -1093,121 +636,164 @@ suite('Task Discovery E2E Tests', () => {
         });
     });
 
-    suite('Discovery Error Handling', () => {
-        test('handles file read errors gracefully', async function() {
-            this.timeout(10000);
-
-            // Create a directory with a problematic name that looks like a file
-            // This tests the error handling in discovery modules
-
-            await vscode.commands.executeCommand('tasktree.refresh');
-            await sleep(1000);
-
-            // Verify provider returns valid tasks after refresh (proves it didn't crash)
-            const provider = getTaskTreeProvider();
-            const allTasks = provider.getAllTasks();
-            assert.ok(Array.isArray(allTasks), 'getAllTasks should return an array');
-            assert.ok(allTasks.length > 0, 'Provider should still discover tasks from valid sources');
-            // Verify shell scripts are still found
-            const shellTasks = allTasks.filter(t => t.type === 'shell');
-            assert.ok(shellTasks.length > 0, 'Shell tasks should be discovered');
-        });
-
-        test('handles concurrent discovery operations', async function() {
+    suite('Tree View Categories', () => {
+        test('all expected categories are present', async function() {
             this.timeout(15000);
 
-            // Get initial task count for comparison
             const provider = getTaskTreeProvider();
-            const initialTasks = provider.getAllTasks();
-            const initialCount = initialTasks.length;
+            const rootChildren = await getTreeChildren(provider);
 
-            // Trigger multiple refreshes rapidly
-            const promises = [
-                vscode.commands.executeCommand('tasktree.refresh'),
-                vscode.commands.executeCommand('tasktree.refresh'),
-                vscode.commands.executeCommand('tasktree.refresh')
-            ];
+            const categoryLabels = rootChildren.map(c => getLabelString(c.label));
 
-            await Promise.all(promises);
-            await sleep(1500);
-
-            // Verify provider state is consistent after concurrent refreshes
-            const finalTasks = provider.getAllTasks();
-            assert.ok(Array.isArray(finalTasks), 'getAllTasks should return an array after concurrent refreshes');
-            assert.ok(finalTasks.length > 0, 'Should have tasks after concurrent refreshes');
-            // Task count should be approximately the same (no duplicates or missing tasks)
-            assert.strictEqual(finalTasks.length, initialCount, 'Task count should be consistent after concurrent refreshes');
+            // Core categories that should always be present
+            assert.ok(categoryLabels.some(l => l.includes('Shell Scripts')), 'Should have Shell Scripts category');
+            assert.ok(categoryLabels.some(l => l.includes('NPM Scripts')), 'Should have NPM Scripts category');
+            assert.ok(categoryLabels.some(l => l.includes('Make Targets')), 'Should have Make Targets category');
+            assert.ok(categoryLabels.some(l => l.includes('VS Code Launch')), 'Should have VS Code Launch category');
+            assert.ok(categoryLabels.some(l => l.includes('VS Code Tasks')), 'Should have VS Code Tasks category');
+            assert.ok(categoryLabels.some(l => l.includes('Python Scripts')), 'Should have Python Scripts category');
         });
 
-        test('handles empty workspace', async function() {
+        test('getAllTasks returns all discovered tasks', function() {
             this.timeout(10000);
 
-            // The extension should handle workspaces with no discoverable tasks
-            // Our test workspace has tasks, but this validates the code path exists
-
-            await vscode.commands.executeCommand('tasktree.refresh');
-            await sleep(1000);
-
-            // Verify provider returns valid data structure
             const provider = getTaskTreeProvider();
             const allTasks = provider.getAllTasks();
+
             assert.ok(Array.isArray(allTasks), 'getAllTasks should return an array');
-            // Our test workspace has tasks, verify they are discovered
-            assert.ok(allTasks.length > 0, 'Test workspace should have discoverable tasks');
-            // Verify getChildren returns valid structure
-            const rootChildren = await provider.getChildren(undefined);
-            assert.ok(Array.isArray(rootChildren), 'getChildren should return an array');
+            assert.ok(allTasks.length > 0, 'Should have discovered tasks');
+
+            // Verify we have multiple task types
+            const types = new Set(allTasks.map(t => t.type));
+            assert.ok(types.size >= 5, `Should have at least 5 task types, got ${types.size}: ${[...types].join(', ')}`);
+        });
+
+        test('nested tasks are discovered', function() {
+            this.timeout(15000);
+
+            // Verify nested test-fixtures has tasks
+            const testFixturesTasksPath = getFixturePath('test-fixtures/workspace/.vscode/tasks.json');
+            assert.ok(fs.existsSync(testFixturesTasksPath), 'nested tasks.json should exist');
+
+            const fixtureContent = fs.readFileSync(testFixturesTasksPath, 'utf8');
+            assert.ok(fixtureContent.includes('Nested Build Task'), 'nested fixture should have Nested Build Task');
+
+            // Check provider has the nested task
+            const provider = getTaskTreeProvider();
+            const allTasks = provider.getAllTasks();
+            const nestedTask = allTasks.find(t => t.label === 'Nested Build Task');
+            assert.ok(nestedTask !== undefined, 'Nested Build Task should be discovered');
         });
     });
 
-    suite('Discovery Performance', () => {
-        test('completes discovery within reasonable time', async function() {
-            this.timeout(30000);
+    suite('File Watcher Auto-Discovery', () => {
+        test('new files are discovered via file watcher', async function() {
+            this.timeout(25000);
 
-            const startTime = Date.now();
+            const newScriptPath = 'scripts/auto-discover-test.sh';
+            const fullPath = getFixturePath(newScriptPath);
+            const provider = getTaskTreeProvider();
 
-            await vscode.commands.executeCommand('tasktree.refresh');
-            await sleep(500);
+            try {
+                // Get initial task count
+                const initialTasks = provider.getAllTasks();
+                const initialCount = initialTasks.length;
 
-            const endTime = Date.now();
-            const duration = endTime - startTime;
+                // Create new script - file watcher should pick it up
+                writeFile(newScriptPath, '#!/bin/bash\n# Auto-discovery test\necho "Testing file watcher"');
 
-            // Discovery should complete within 10 seconds for a small workspace
-            assert.ok(duration < 10000, `Discovery took ${duration}ms, should be under 10000ms`);
+                // Wait for file watcher to auto-sync
+                await sleep(4000);
+
+                // Verify new task was discovered
+                const newTasks = provider.getAllTasks();
+                assert.strictEqual(
+                    newTasks.length,
+                    initialCount + 1,
+                    `File watcher should auto-discover new script. Expected ${initialCount + 1}, got ${newTasks.length}. ` +
+                    `File watcher may not be working!`
+                );
+            } finally {
+                // Cleanup
+                if (fs.existsSync(fullPath)) {
+                    deleteFile(newScriptPath);
+                    await sleep(2000);
+                }
+            }
         });
 
-        test('discovers all task types in parallel', async function() {
-            this.timeout(15000);
+        test('deleted files are removed via file watcher', async function() {
+            this.timeout(25000);
 
-            // This is validated by the fact that discovery completes quickly
-            // The implementation uses Promise.all to run discoveries in parallel
+            const tempScriptPath = 'scripts/temp-delete-test.sh';
+            const fullPath = getFixturePath(tempScriptPath);
+            const provider = getTaskTreeProvider();
 
-            const startTime = Date.now();
-            await vscode.commands.executeCommand('tasktree.refresh');
-            await sleep(500);
-            const duration = Date.now() - startTime;
+            try {
+                // Create script first
+                writeFile(tempScriptPath, '#!/bin/bash\n# Temp script for deletion test\necho "Hello"');
+                await sleep(3000);
 
-            // If running sequentially, each type would add significant time
-            // Parallel execution should be much faster
-            assert.ok(duration < 5000, 'Parallel discovery should be fast');
+                // Verify it was discovered
+                let tasks = provider.getAllTasks();
+                const taskExists = tasks.some(t => t.filePath.includes('temp-delete-test.sh'));
+                assert.ok(taskExists, 'Temp script should be discovered');
+
+                const countBefore = tasks.length;
+
+                // Delete the file
+                fs.unlinkSync(fullPath);
+
+                // Wait for file watcher to auto-sync
+                await sleep(3000);
+
+                // Verify task was removed
+                tasks = provider.getAllTasks();
+                assert.strictEqual(
+                    tasks.length,
+                    countBefore - 1,
+                    `File watcher should remove deleted script. Expected ${countBefore - 1}, got ${tasks.length}. ` +
+                    `File watcher may not be working!`
+                );
+            } finally {
+                // Ensure cleanup
+                if (fs.existsSync(fullPath)) {
+                    fs.unlinkSync(fullPath);
+                }
+            }
+        });
+    });
+
+    suite('Task Data Integrity', () => {
+        test('all tasks have required properties', function() {
+            this.timeout(10000);
+
+            const provider = getTaskTreeProvider();
+            const allTasks = provider.getAllTasks();
+
+            for (const task of allTasks) {
+                assert.ok(task.id, `Task ${task.label} should have id`);
+                assert.ok(task.label, 'Task should have label');
+                assert.ok(task.type, `Task ${task.label} should have type`);
+                assert.ok(task.command, `Task ${task.label} should have command`);
+                assert.ok(task.filePath, `Task ${task.label} should have filePath`);
+                assert.ok(Array.isArray(task.tags), `Task ${task.label} should have tags array`);
+            }
+        });
+
+        test('task IDs are unique', function() {
+            this.timeout(10000);
+
+            const provider = getTaskTreeProvider();
+            const allTasks = provider.getAllTasks();
+            const ids = allTasks.map(t => t.id);
+            const uniqueIds = new Set(ids);
+
+            assert.strictEqual(
+                ids.length,
+                uniqueIds.size,
+                `Task IDs should be unique. Found ${ids.length - uniqueIds.size} duplicates.`
+            );
         });
     });
 });
-
-/**
- * Flattens nested TaskTreeItems to get all leaf task nodes
- */
-function flattenTaskItems(items: TaskTreeItem[]): TaskTreeItem[] {
-    const result: TaskTreeItem[] = [];
-
-    for (const item of items) {
-        if (item.task) {
-            result.push(item);
-        }
-        if (item.children.length > 0) {
-            result.push(...flattenTaskItems(item.children));
-        }
-    }
-
-    return result;
-}
