@@ -38,7 +38,7 @@ test.describe('Homepage', () => {
 
     const expectedFeatures = [
       'Auto-Discovery',
-      'Quick Tasks',
+      'Quick Launch',
       'Tagging',
       'Filtering',
       'Run Anywhere',
@@ -49,9 +49,9 @@ test.describe('Homepage', () => {
     }
   });
 
-  test('task types section shows all 6 types', async ({ page }) => {
-    const taskTypes = page.locator('.task-type');
-    await expect(taskTypes).toHaveCount(6);
+  test('command types section shows all 6 types', async ({ page }) => {
+    const commandTypes = page.locator('.command-type');
+    await expect(commandTypes).toHaveCount(6);
 
     const expectedTypes = [
       'Shell Scripts',
@@ -62,7 +62,7 @@ test.describe('Homepage', () => {
       'Python Scripts',
     ];
     for (const name of expectedTypes) {
-      await expect(page.locator('.task-type', { hasText: name })).toBeVisible();
+      await expect(page.locator('.command-type', { hasText: name })).toBeVisible();
     }
   });
 

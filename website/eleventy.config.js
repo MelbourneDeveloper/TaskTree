@@ -5,7 +5,7 @@ export default function(eleventyConfig) {
     site: {
       name: "CommandTree",
       url: "https://commandtree.dev",
-      description: "One sidebar. Every task in your workspace.",
+      description: "One sidebar. Every command in your workspace.",
     },
     features: {
       blog: true,

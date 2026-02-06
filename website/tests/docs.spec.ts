@@ -53,7 +53,7 @@ test.describe('Documentation', () => {
     await expect(page.locator('h1')).toContainText('Configuration');
     await expect(page.locator('text=Exclude Patterns')).toBeVisible();
     await expect(page.locator('text=Sort Order')).toBeVisible();
-    await expect(page.locator('text=Quick Tasks')).toBeVisible();
+    await expect(page.locator('text=Quick Launch')).toBeVisible();
     await expect(page.locator('text=Tagging')).toBeVisible();
     await expect(page.locator('text=Filtering')).toBeVisible();
   });

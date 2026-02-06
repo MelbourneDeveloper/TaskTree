@@ -1,14 +1,14 @@
 ---
 layout: layouts/docs.njk
-title: Task Discovery
+title: Command Discovery
 eleventyNavigation:
-  key: Task Discovery
+  key: Command Discovery
   order: 2
 ---
 
-# Task Discovery
+# Command Discovery
 
-CommandTree recursively scans the workspace for runnable tasks grouped by type. Discovery respects exclude patterns and runs in the background.
+CommandTree recursively scans the workspace for runnable commands grouped by type. Discovery respects exclude patterns and runs in the background.
 
 ## Shell Scripts
 
@@ -35,7 +35,7 @@ Reads debug configurations from `.vscode/launch.json`. Launchable with the VS Co
 
 ## VS Code Tasks
 
-Reads task definitions from `.vscode/tasks.json`, including `${input:*}` variable prompts.
+Reads command definitions from `.vscode/tasks.json`, including `${input:*}` variable prompts.
 
 ## Python Scripts
 

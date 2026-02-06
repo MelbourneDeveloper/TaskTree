@@ -314,7 +314,7 @@ suite("Tag Config Integration Tests", () => {
       // GET QUICK LAUNCH VIEW (observation only)
       const quickChildren = quickProvider.getChildren(undefined);
 
-      // CRITICAL: Task must appear in quick tasks
+      // CRITICAL: Command must appear in Quick Launch
       const taskInQuick = quickChildren.find(
         (c) => c.task?.id === targetTask.id,
       );
@@ -342,7 +342,7 @@ suite("Tag Config Integration Tests", () => {
       // WAIT: File watcher should auto-sync
       await sleep(3000);
 
-      // GET QUICK TASKS (observation only)
+      // GET QUICK LAUNCH (observation only)
       const quickChildren = quickProvider.getChildren(undefined);
       const quickTasks = quickChildren.filter((c) => c.task !== null);
 
@@ -384,7 +384,7 @@ suite("Tag Config Integration Tests", () => {
       // WAIT: File watcher should auto-sync
       await sleep(3000);
 
-      // GET QUICK TASKS (observation only)
+      // GET QUICK LAUNCH (observation only)
       const quickChildren = quickProvider.getChildren(undefined);
 
       // CRITICAL: Should show placeholder
@@ -401,7 +401,7 @@ suite("Tag Config Integration Tests", () => {
     test("INTEGRATION: Writing task ID to quick config makes it appear in QuickTasksProvider", async function () {
       this.timeout(30000);
 
-      // Clear quick tasks first by writing empty config
+      // Clear Quick Launch first by writing empty config
       writeConfig({ tags: { quick: [] } });
       await sleep(3000);
 
@@ -429,7 +429,7 @@ suite("Tag Config Integration Tests", () => {
       // WAIT: File watcher should auto-sync
       await sleep(3000);
 
-      // GET QUICK TASKS AGAIN (observation only)
+      // GET QUICK LAUNCH AGAIN (observation only)
       quickChildren = quickProvider.getChildren(undefined);
 
       // CRITICAL: Task must appear
@@ -471,7 +471,7 @@ suite("Tag Config Integration Tests", () => {
       // WAIT: File watcher should auto-sync
       await sleep(3000);
 
-      // GET QUICK TASKS AGAIN (observation only)
+      // GET QUICK LAUNCH AGAIN (observation only)
       quickChildren = quickProvider.getChildren(undefined);
 
       // CRITICAL: Task must NOT appear

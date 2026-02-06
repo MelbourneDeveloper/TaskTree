@@ -22,11 +22,11 @@ All settings via VS Code settings (`Cmd+,` / `Ctrl+,`).
 |-------|-------------|
 | `folder` | Sort by folder path (default) |
 | `name` | Sort alphabetically |
-| `type` | Sort by task type |
+| `type` | Sort by command type |
 
-## Quick Tasks
+## Quick Launch
 
-Pin tasks by clicking the star icon. Stored in `.vscode/commandtree.json`:
+Pin commands by clicking the star icon. Stored in `.vscode/commandtree.json`:
 
 ```json
 {

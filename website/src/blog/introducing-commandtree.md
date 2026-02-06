@@ -4,7 +4,7 @@ title: Introducing CommandTree
 date: 2026-02-07
 author: Christian Findlay
 tags: posts
-excerpt: Meet CommandTree - the VS Code extension that discovers every runnable task in your workspace and puts them in one beautiful tree view.
+excerpt: Meet CommandTree - the VS Code extension that discovers every runnable command in your workspace and puts them in one beautiful tree view.
 ---
 
 # Introducing CommandTree
@@ -21,7 +21,7 @@ This shouldn't be hard.
 
 ## The Solution
 
-Install CommandTree and a new panel appears in your VS Code sidebar. Every runnable task in your workspace is right there, categorized and ready to go:
+Install CommandTree and a new panel appears in your VS Code sidebar. Every runnable command in your workspace is right there, categorized and ready to go:
 
 - Shell scripts (`.sh`, `.bash`, `.zsh`)
 - NPM scripts from every `package.json`
@@ -32,13 +32,13 @@ Install CommandTree and a new panel appears in your VS Code sidebar. Every runna
 
 Click the play button. Done.
 
-## Quick Tasks
+## Quick Launch
 
-Pin your favorites. Click the star icon on any task and it appears in the Quick Tasks panel at the top. Your most-used commands are always one click away.
+Pin your favorites. Click the star icon on any command and it appears in the Quick Launch panel at the top. Your most-used commands are always one click away.
 
 ## Tags and Filters
 
-Group related tasks with tags. Filter the tree by text or tag. Find exactly what you need, instantly.
+Group related commands with tags. Filter the tree by text or tag. Find exactly what you need, instantly.
 
 ## Get Started
 

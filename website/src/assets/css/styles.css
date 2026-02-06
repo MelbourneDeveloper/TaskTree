@@ -376,23 +376,23 @@ a:hover { color: var(--color-primary-hover); }
   line-height: 1.6;
 }
 
-/* --- Task Types --- */
-.task-types {
+/* --- Command Types --- */
+.command-types {
   background: var(--color-surface);
   border-top: 1px solid var(--color-border);
   border-bottom: 1px solid var(--color-border);
 }
-.task-types-inner {
+.command-types-inner {
   max-width: var(--max-width);
   margin: 0 auto;
   padding: 5rem 2rem;
 }
-.task-grid {
+.command-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1rem;
 }
-.task-type {
+.command-type {
   display: flex;
   align-items: center;
   gap: 0.85rem;
@@ -402,14 +402,14 @@ a:hover { color: var(--color-primary-hover); }
   border-radius: var(--radius);
   transition: all 0.25s;
 }
-.task-type:hover {
+.command-type:hover {
   border-color: var(--color-primary);
   box-shadow: var(--shadow-sm);
   transform: translateY(-2px);
 }
-.task-type-icon { font-size: 1.5rem; flex-shrink: 0; }
-.task-type-info h4 { font-size: 0.9375rem; font-weight: 600; margin: 0; }
-.task-type-info p { font-size: 0.8125rem; color: var(--color-muted); margin: 0.1rem 0 0; }
+.command-type-icon { font-size: 1.5rem; flex-shrink: 0; }
+.command-type-info h4 { font-size: 0.9375rem; font-weight: 600; margin: 0; }
+.command-type-info p { font-size: 0.8125rem; color: var(--color-muted); margin: 0.1rem 0 0; }
 
 /* --- CTA --- */
 .cta-section {
@@ -660,9 +660,9 @@ li::marker { color: var(--color-primary); }
   .hero h1 { font-size: 2.25rem; }
   .hero-logo { width: 90px; height: 90px; }
   .hero-tagline { font-size: 1.1rem; }
-  .features-section, .task-types-inner, .cta-section { padding: 3rem 1.5rem; }
+  .features-section, .command-types-inner, .cta-section { padding: 3rem 1.5rem; }
   .feature-grid { grid-template-columns: 1fr; }
-  .task-grid { grid-template-columns: repeat(2, 1fr); }
+  .command-grid { grid-template-columns: repeat(2, 1fr); }
   .mobile-menu-toggle { color: var(--color-text); }
   .nav-links {
     background: var(--color-surface);
@@ -672,7 +672,7 @@ li::marker { color: var(--color-primary); }
   .docs-layout { padding: 1rem; }
 }
 @media (max-width: 480px) {
-  .task-grid { grid-template-columns: 1fr; }
+  .command-grid { grid-template-columns: 1fr; }
   .hero-actions { flex-direction: column; align-items: center; }
   .btn-hero { width: 100%; justify-content: center; max-width: 300px; }
 }

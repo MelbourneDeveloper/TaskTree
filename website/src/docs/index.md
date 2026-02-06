@@ -8,7 +8,7 @@ eleventyNavigation:
 
 # Getting Started
 
-CommandTree scans your VS Code workspace and surfaces all runnable tasks in a single tree view sidebar panel.
+CommandTree scans your VS Code workspace and surfaces all runnable commands in a single tree view sidebar panel.
 
 ## Installation
 
