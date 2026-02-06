@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "npx playwright test",
     "dev": "npx @11ty/eleventy --serve",
     "build": "npx @11ty/eleventy"
   },
@@ -15,5 +15,8 @@
     "@11ty/eleventy": "^3.1.2",
     "eleventy-plugin-techdoc": "^0.1.0"
   },
-  "type": "module"
+  "type": "module",
+  "devDependencies": {
+    "@playwright/test": "^1.58.2"
+  }
 }

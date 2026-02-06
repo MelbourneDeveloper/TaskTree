@@ -26,3 +26,6 @@ src/test/fixtures/workspace/.vscode/tasktree.json
 .vscode/tasktree.json
 
 .too_many_cooks/
+
+
+.playwright-mcp/

@@ -16,6 +16,7 @@ export default function(eleventyConfig) {
   });
 
   eleventyConfig.addPassthroughCopy("src/assets");
+  eleventyConfig.addPassthroughCopy({ "src/favicon.ico": "favicon.ico" });
 
   return {
     dir: { input: "src", output: "_site" },
