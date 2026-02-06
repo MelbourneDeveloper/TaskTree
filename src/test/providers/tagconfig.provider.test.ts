@@ -1,4 +1,5 @@
 /**
+ * Spec: tagging/config-file, tagging/pattern-syntax, quick-tasks, user-data-storage
  * INTEGRATION TESTS: Tag Config -> Task Tagging -> View Display
  *
  * These tests verify the FULL FLOW from config file to actual view state.
@@ -52,6 +53,7 @@ function writeConfig(config: TaskTreeConfig): void {
   fs.writeFileSync(configPath, JSON.stringify(config, null, 4));
 }
 
+// Spec: tagging/config-file, tagging/pattern-syntax, quick-tasks
 suite("Tag Config Integration Tests", () => {
   let originalConfig: string;
   let treeProvider: TaskTreeProvider;
@@ -88,6 +90,7 @@ suite("Tag Config Integration Tests", () => {
    * These tests verify that writing tag patterns to config causes
    * tags to be automatically applied to matching tasks via file watcher.
    */
+  // Spec: tagging/config-file, tagging/pattern-syntax
   suite("Config Loading -> Tag Application", () => {
     test("INTEGRATION: Structured {type} pattern applies tag to ALL tasks of that type", async function () {
       this.timeout(30000);
@@ -285,6 +288,7 @@ suite("Tag Config Integration Tests", () => {
    * These tests verify that writing to the "quick" tag in config
    * causes tasks to automatically appear in QuickTasksProvider.
    */
+  // Spec: quick-tasks, user-data-storage
   suite("Quick Tag -> QuickTasksProvider Display", () => {
     test('INTEGRATION: Task with "quick" tag in config APPEARS in QuickTasksProvider', async function () {
       this.timeout(30000);
@@ -483,6 +487,7 @@ suite("Tag Config Integration Tests", () => {
   /**
    * INTEGRATION: Multiple Tags on Same Task
    */
+  // Spec: tagging/pattern-syntax
   suite("Multiple Tags on Same Task", () => {
     test("INTEGRATION: Task can have multiple tags from different patterns", async function () {
       this.timeout(30000);
@@ -530,6 +535,7 @@ suite("Tag Config Integration Tests", () => {
    * CRITICAL: These tests verify that the file watcher automatically
    * picks up config changes WITHOUT needing to call refresh!
    */
+  // Spec: tagging/config-file
   suite("Config File Auto-Watch", () => {
     test("INTEGRATION: Config edit WITHOUT refresh applies new tags automatically", async function () {
       this.timeout(30000);

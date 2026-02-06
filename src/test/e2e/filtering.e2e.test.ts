@@ -1,4 +1,5 @@
 /**
+ * Spec: filtering, tagging/config-file
  * FILTERING E2E TESTS
  *
  * These tests verify command registration, config file structure, and UI behavior.
@@ -22,6 +23,7 @@ interface TagConfig {
   tags: Record<string, Array<string | TagPattern>>;
 }
 
+// Spec: filtering
 suite("Task Filtering E2E Tests", () => {
   let originalConfig: string;
   const tagConfigPath = getFixturePath(".vscode/tasktree.json");
@@ -43,6 +45,7 @@ suite("Task Filtering E2E Tests", () => {
     await sleep(3000);
   });
 
+  // Spec: filtering
   suite("Filter Commands Registration", () => {
     test("filter command is registered", async function () {
       this.timeout(10000);
@@ -85,6 +88,7 @@ suite("Task Filtering E2E Tests", () => {
     });
   });
 
+  // Spec: tagging/config-file
   suite("Tag Configuration File Structure", () => {
     // Set up expected config at start of this suite to avoid state leakage from other tests
     const expectedConfig: TagConfig = {
@@ -227,6 +231,7 @@ suite("Task Filtering E2E Tests", () => {
     });
   });
 
+  // Spec: tagging/management
   suite("Edit Tags Command", () => {
     test("editTags command opens configuration file", async function () {
       this.timeout(15000);

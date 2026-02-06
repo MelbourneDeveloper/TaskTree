@@ -1,5 +1,6 @@
 /**
  * DISCOVERY E2E TESTS
+ * Spec: task-discovery
  *
  * These tests verify that task source files exist with correct structure.
  * They do NOT call internal provider methods.
@@ -22,6 +23,7 @@ suite("Task Discovery E2E Tests", () => {
     await sleep(3000);
   });
 
+  // Spec: task-discovery/shell-scripts
   suite("Shell Script Discovery", () => {
     test("discovers shell scripts in workspace", function () {
       this.timeout(10000);
@@ -71,6 +73,7 @@ suite("Task Discovery E2E Tests", () => {
     });
   });
 
+  // Spec: task-discovery/npm-scripts
   suite("NPM Script Discovery", () => {
     test("discovers npm scripts from root package.json", function () {
       this.timeout(10000);
@@ -126,6 +129,7 @@ suite("Task Discovery E2E Tests", () => {
     });
   });
 
+  // Spec: task-discovery/makefile-targets
   suite("Makefile Target Discovery", () => {
     test("discovers Makefile targets", function () {
       this.timeout(10000);
@@ -153,6 +157,7 @@ suite("Task Discovery E2E Tests", () => {
     });
   });
 
+  // Spec: task-discovery/launch-configurations
   suite("VS Code Launch Configuration Discovery", () => {
     test("discovers launch configurations from launch.json", function () {
       this.timeout(10000);
@@ -189,6 +194,7 @@ suite("Task Discovery E2E Tests", () => {
     });
   });
 
+  // Spec: task-discovery/vscode-tasks
   suite("VS Code Tasks Discovery", () => {
     test("discovers tasks from tasks.json", function () {
       this.timeout(10000);
@@ -244,6 +250,7 @@ suite("Task Discovery E2E Tests", () => {
     });
   });
 
+  // Spec: task-discovery/python-scripts
   suite("Python Script Discovery", () => {
     test("discovers Python scripts with shebang", function () {
       this.timeout(10000);
@@ -307,6 +314,7 @@ suite("Task Discovery E2E Tests", () => {
     });
   });
 
+  // TODO: No corresponding section in spec
   suite("PowerShell/Batch Script Discovery", () => {
     test("discovers PowerShell scripts", function () {
       this.timeout(10000);
@@ -339,6 +347,7 @@ suite("Task Discovery E2E Tests", () => {
     });
   });
 
+  // TODO: No corresponding section in spec
   suite("Gradle Task Discovery", () => {
     test("discovers Gradle tasks from build.gradle", function () {
       this.timeout(10000);
@@ -355,6 +364,7 @@ suite("Task Discovery E2E Tests", () => {
     });
   });
 
+  // TODO: No corresponding section in spec
   suite("Cargo Task Discovery", () => {
     test("discovers Cargo.toml files", function () {
       this.timeout(10000);
@@ -368,6 +378,7 @@ suite("Task Discovery E2E Tests", () => {
     });
   });
 
+  // TODO: No corresponding section in spec
   suite("Maven Goal Discovery", () => {
     test("discovers pom.xml files", function () {
       this.timeout(10000);
@@ -380,6 +391,7 @@ suite("Task Discovery E2E Tests", () => {
     });
   });
 
+  // TODO: No corresponding section in spec
   suite("Ant Target Discovery", () => {
     test("discovers build.xml files", function () {
       this.timeout(10000);
@@ -403,6 +415,7 @@ suite("Task Discovery E2E Tests", () => {
     });
   });
 
+  // TODO: No corresponding section in spec
   suite("Just Recipe Discovery", () => {
     test("discovers justfile recipes", function () {
       this.timeout(10000);
@@ -420,6 +433,7 @@ suite("Task Discovery E2E Tests", () => {
     });
   });
 
+  // TODO: No corresponding section in spec
   suite("Taskfile Discovery", () => {
     test("discovers Taskfile.yml tasks", function () {
       this.timeout(10000);
@@ -434,6 +448,7 @@ suite("Task Discovery E2E Tests", () => {
     });
   });
 
+  // TODO: No corresponding section in spec
   suite("Deno Task Discovery", () => {
     test("discovers deno.json tasks", function () {
       this.timeout(10000);
@@ -448,6 +463,7 @@ suite("Task Discovery E2E Tests", () => {
     });
   });
 
+  // TODO: No corresponding section in spec
   suite("Rake Task Discovery", () => {
     test("discovers Rakefile tasks", function () {
       this.timeout(10000);
@@ -465,6 +481,7 @@ suite("Task Discovery E2E Tests", () => {
     });
   });
 
+  // TODO: No corresponding section in spec
   suite("Composer Script Discovery", () => {
     test("discovers composer.json scripts", function () {
       this.timeout(10000);
@@ -479,6 +496,7 @@ suite("Task Discovery E2E Tests", () => {
     });
   });
 
+  // TODO: No corresponding section in spec
   suite("Docker Compose Discovery", () => {
     test("discovers docker-compose.yml services", function () {
       this.timeout(10000);

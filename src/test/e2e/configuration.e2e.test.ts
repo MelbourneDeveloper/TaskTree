@@ -1,4 +1,5 @@
 /**
+ * Spec: settings
  * CONFIGURATION E2E TESTS
  *
  * These tests verify extension settings and static configuration.
@@ -44,6 +45,7 @@ function readExtensionPackageJson(): PackageJsonConfig {
   ) as PackageJsonConfig;
 }
 
+// Spec: settings
 suite("Configuration and File Watchers E2E Tests", () => {
   suiteSetup(async function () {
     this.timeout(30000);
@@ -51,6 +53,7 @@ suite("Configuration and File Watchers E2E Tests", () => {
     await sleep(3000);
   });
 
+  // Spec: settings/exclude-patterns, settings/sort-order
   suite("Extension Settings", () => {
     test("excludePatterns setting exists", function () {
       this.timeout(10000);
@@ -148,6 +151,7 @@ suite("Configuration and File Watchers E2E Tests", () => {
     });
   });
 
+  // Spec: settings/sort-order
   suite("Configuration Value Reading", () => {
     test("sortOrder config has valid value", function () {
       this.timeout(10000);
@@ -189,6 +193,7 @@ suite("Configuration and File Watchers E2E Tests", () => {
     });
   });
 
+  // Spec: tagging/config-file
   suite("Tag Configuration", () => {
     test("tag config file has correct structure", function () {
       this.timeout(10000);
@@ -219,6 +224,7 @@ suite("Configuration and File Watchers E2E Tests", () => {
     });
   });
 
+  // Spec: settings/exclude-patterns
   suite("Glob Pattern Matching", () => {
     test("exclude patterns use glob syntax", function () {
       this.timeout(10000);
@@ -251,6 +257,7 @@ suite("Configuration and File Watchers E2E Tests", () => {
     });
   });
 
+  // TODO: No corresponding section in spec
   suite("Multiple Workspace Support", () => {
     test("works with single workspace folder", function () {
       this.timeout(10000);

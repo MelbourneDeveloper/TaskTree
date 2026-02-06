@@ -82,6 +82,7 @@ suite("Commands and UI E2E Tests", () => {
     await sleep(3000);
   });
 
+  // Spec: overview
   suite("Extension Activation", () => {
     test("extension is present", function () {
       this.timeout(10000);
@@ -119,6 +120,7 @@ suite("Commands and UI E2E Tests", () => {
     });
   });
 
+  // TODO: No corresponding section in spec
   suite("Command Registration", () => {
     test("all commands are registered", async function () {
       this.timeout(10000);
@@ -166,6 +168,7 @@ suite("Commands and UI E2E Tests", () => {
     });
   });
 
+  // TODO: No corresponding section in spec
   suite("Tree View Registration", () => {
     test("tree view is registered in custom container", function () {
       this.timeout(10000);
@@ -205,6 +208,7 @@ suite("Commands and UI E2E Tests", () => {
     });
   });
 
+  // TODO: No corresponding section in spec
   suite("Menu Contributions", () => {
     test("view title menu has correct commands", function () {
       this.timeout(10000);
@@ -407,6 +411,7 @@ suite("Commands and UI E2E Tests", () => {
     });
   });
 
+  // TODO: No corresponding section in spec
   suite("Command Icons", () => {
     test("commands have appropriate icons", function () {
       this.timeout(10000);
@@ -471,6 +476,7 @@ suite("Commands and UI E2E Tests", () => {
   // They had fake assertions (assert.ok(true, ...)) which is ILLEGAL per CLAUDE.md
   // Proper tests for these behaviors would require observing actual UI state
 
+  // TODO: No corresponding section in spec
   suite("Extension Package Configuration", () => {
     test("package.json has correct metadata", function () {
       this.timeout(10000);
@@ -520,6 +526,7 @@ suite("Commands and UI E2E Tests", () => {
     });
   });
 
+  // TODO: No corresponding section in spec
   suite("View Container", () => {
     test("views are in custom container", function () {
       this.timeout(10000);
@@ -533,6 +540,7 @@ suite("Commands and UI E2E Tests", () => {
     });
   });
 
+  // TODO: No corresponding section in spec
   suite("Workspace Trust", () => {
     test("extension works in trusted workspace", function () {
       this.timeout(10000);

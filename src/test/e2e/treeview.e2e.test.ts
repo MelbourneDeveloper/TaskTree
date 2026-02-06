@@ -1,5 +1,6 @@
 /**
  * TREEVIEW E2E TESTS
+ * TODO: No corresponding section in spec
  *
  * Tests tree view behavior by observing TaskTreeItem properties.
  * Verifies click behavior, item rendering, etc.
@@ -13,6 +14,7 @@ import {
 } from "../helpers/helpers";
 import type { TaskTreeItem } from "../../models/TaskItem";
 
+// TODO: No corresponding section in spec
 suite("TreeView E2E Tests", () => {
   suiteSetup(async function () {
     this.timeout(30000);
@@ -45,6 +47,7 @@ suite("TreeView E2E Tests", () => {
     return undefined;
   }
 
+  // TODO: No corresponding section in spec
   suite("Click Behavior", () => {
     test("clicking a task item opens the file in editor, NOT runs it", async function () {
       this.timeout(15000);

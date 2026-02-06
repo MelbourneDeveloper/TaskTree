@@ -2,9 +2,11 @@ import * as assert from 'assert';
 import type { TaskItem } from '../../models/TaskItem';
 
 /**
+ * Spec: tagging/pattern-syntax, filtering/tag, quick-tasks
  * PURE UNIT TESTS for TagConfig logic
  * NO VS Code - tests pure functions only
  */
+// Spec: tagging/pattern-syntax
 suite('TagConfig Unit Tests', function () {
     this.timeout(10000);
 
@@ -32,6 +34,7 @@ suite('TagConfig Unit Tests', function () {
         return { ...base, ...restOverrides };
     }
 
+    // Spec: tagging/pattern-syntax
     suite('Pattern Matching Logic', () => {
         /**
          * Tests the matchesPattern logic extracted from TagConfig
@@ -147,6 +150,7 @@ suite('TagConfig Unit Tests', function () {
         });
     });
 
+    // Spec: tagging/pattern-syntax
     suite('Tag Application Logic', () => {
         /**
          * Tests the applyTags logic extracted from TagConfig
@@ -299,6 +303,7 @@ suite('TagConfig Unit Tests', function () {
         });
     });
 
+    // Spec: filtering/tag
     suite('Tag Filtering Logic', () => {
         /**
          * Tests the filter logic used in TaskTreeProvider
@@ -370,6 +375,7 @@ suite('TagConfig Unit Tests', function () {
         });
     });
 
+    // Spec: quick-tasks
     suite('Quick Tasks Logic', () => {
         /**
          * Tests the logic used in QuickTasksProvider.getChildren()

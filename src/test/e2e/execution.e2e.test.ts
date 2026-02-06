@@ -1,5 +1,6 @@
 /**
  * EXECUTION E2E TESTS
+ * Spec: task-execution
  *
  * These tests verify command registration and terminal management.
  * Tests that call provider methods have been moved to execution.unit.test.ts
@@ -21,6 +22,7 @@ interface PackageJson {
   scripts?: Record<string, string>;
 }
 
+// Spec: task-execution
 suite("Task Execution E2E Tests", () => {
   let context: TestContext;
 
@@ -36,6 +38,7 @@ suite("Task Execution E2E Tests", () => {
     }
   });
 
+  // Spec: task-execution/new-terminal
   suite("Run Command", () => {
     test("run command is registered", async function () {
       this.timeout(10000);
@@ -88,6 +91,7 @@ suite("Task Execution E2E Tests", () => {
     });
   });
 
+  // Spec: task-execution/new-terminal
   suite("Shell Script Execution", () => {
     test("shell scripts exist and are executable format", function () {
       this.timeout(10000);
@@ -167,6 +171,7 @@ suite("Task Execution E2E Tests", () => {
     });
   });
 
+  // Spec: task-execution/new-terminal
   suite("NPM Script Execution", () => {
     test("npm scripts are defined in package.json", function () {
       this.timeout(10000);
@@ -219,6 +224,7 @@ suite("Task Execution E2E Tests", () => {
     });
   });
 
+  // Spec: task-execution/new-terminal
   suite("Make Target Execution", () => {
     test("Makefile targets are defined", function () {
       this.timeout(10000);
@@ -256,6 +262,7 @@ suite("Task Execution E2E Tests", () => {
     });
   });
 
+  // Spec: task-execution/debug
   suite("Launch Configuration Execution", () => {
     test("launch configurations are defined", function () {
       this.timeout(10000);
@@ -300,6 +307,7 @@ suite("Task Execution E2E Tests", () => {
     });
   });
 
+  // Spec: task-execution/new-terminal
   suite("VS Code Task Execution", () => {
     test("VS Code tasks are defined", function () {
       this.timeout(10000);
@@ -343,6 +351,7 @@ suite("Task Execution E2E Tests", () => {
     });
   });
 
+  // Spec: parameterized-tasks
   suite("Parameter Collection", () => {
     test("task with no params executes directly", function () {
       this.timeout(10000);
@@ -413,6 +422,7 @@ suite("Task Execution E2E Tests", () => {
     });
   });
 
+  // TODO: No corresponding section in spec
   suite("Task Execution Error Handling", () => {
     test("handles task cancellation gracefully", function () {
       this.timeout(10000);
@@ -432,6 +442,7 @@ suite("Task Execution E2E Tests", () => {
     });
   });
 
+  // Spec: task-execution/new-terminal
   suite("Terminal Management", () => {
     test("terminals are created for shell tasks", function () {
       this.timeout(10000);
@@ -482,6 +493,7 @@ suite("Task Execution E2E Tests", () => {
     });
   });
 
+  // Spec: task-execution/new-terminal
   suite("Run Task (New Terminal)", () => {
     test("tasktree.run creates a new terminal", async function () {
       this.timeout(15000);
@@ -572,6 +584,7 @@ suite("Task Execution E2E Tests", () => {
     });
   });
 
+  // Spec: task-execution/current-terminal
   suite("Run In Current Terminal", () => {
     test("runInCurrentTerminal command is registered", async function () {
       this.timeout(10000);
@@ -693,6 +706,7 @@ suite("Task Execution E2E Tests", () => {
     });
   });
 
+  // Spec: task-execution/debug
   suite("Launch Config Execution", () => {
     test("launch tasks use debug API", function () {
       this.timeout(10000);
@@ -733,6 +747,7 @@ suite("Task Execution E2E Tests", () => {
     });
   });
 
+  // Spec: task-execution
   suite("Working Directory Handling", () => {
     test("shell tasks use correct cwd", function () {
       this.timeout(10000);
@@ -779,6 +794,7 @@ suite("Task Execution E2E Tests", () => {
     });
   });
 
+  // Spec: task-execution
   suite("Terminal Execution Modes", () => {
     test("runInCurrentTerminal creates terminal when none exists", async function () {
       this.timeout(15000);

@@ -1,4 +1,5 @@
 /**
+ * Spec: quick-tasks, user-data-storage
  * E2E Tests for Quick Tasks functionality
  *
  * These tests verify config file behavior and command registration.
@@ -32,6 +33,7 @@ function writeTaskTreeConfig(config: TaskTreeConfig): void {
   fs.writeFileSync(configPath, JSON.stringify(config, null, 4));
 }
 
+// Spec: quick-tasks
 suite("Quick Tasks E2E Tests", () => {
   let originalConfig: TaskTreeConfig;
 
@@ -50,6 +52,7 @@ suite("Quick Tasks E2E Tests", () => {
     writeTaskTreeConfig(originalConfig);
   });
 
+  // Spec: quick-tasks
   suite("Quick Tasks Commands", () => {
     test("addToQuick command is registered", async function () {
       this.timeout(10000);
@@ -82,6 +85,7 @@ suite("Quick Tasks E2E Tests", () => {
     });
   });
 
+  // Spec: quick-tasks, user-data-storage
   suite("Quick Tasks Storage", () => {
     test("quick tasks are stored in tasktree.json", function () {
       this.timeout(10000);
@@ -163,6 +167,7 @@ suite("Quick Tasks E2E Tests", () => {
     });
   });
 
+  // Spec: quick-tasks
   suite("Quick Tasks Deterministic Ordering", () => {
     test("quick tasks maintain insertion order", function () {
       this.timeout(15000);
@@ -272,6 +277,7 @@ suite("Quick Tasks E2E Tests", () => {
     });
   });
 
+  // Spec: quick-tasks
   suite("Quick Tasks Integration", () => {
     test("config persistence works", function () {
       this.timeout(15000);
@@ -295,6 +301,7 @@ suite("Quick Tasks E2E Tests", () => {
     });
   });
 
+  // Spec: quick-tasks, user-data-storage
   suite("Quick Tasks File Watching", () => {
     test("tasktree.json changes trigger refresh", async function () {
       this.timeout(15000);

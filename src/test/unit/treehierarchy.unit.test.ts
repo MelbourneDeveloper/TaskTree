@@ -4,10 +4,12 @@ import type { TaskItem } from '../../models/TaskItem';
 import { groupByFullDir, buildDirTree, needsFolderWrapper } from '../../tree/dirTree';
 
 /**
+ * TODO: No corresponding section in spec
  * PURE UNIT TESTS for tree hierarchy building logic.
  * Tests the folder nesting behavior from src/tree/folderTree.ts.
  * NO VS Code - tests pure functions only.
  */
+// TODO: No corresponding section in spec
 suite('Tree Hierarchy Unit Tests', function () {
     this.timeout(10000);
 
@@ -34,6 +36,7 @@ suite('Tree Hierarchy Unit Tests', function () {
         return { ...base, ...restOverrides };
     }
 
+    // TODO: No corresponding section in spec
     suite('Folder grouping', () => {
         test('single task in single folder should NOT create folder node', () => {
             const tasks = [
