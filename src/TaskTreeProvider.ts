@@ -5,8 +5,8 @@ import type { DiscoveryResult } from './discovery';
 import { discoverAllTasks, flattenTasks, getExcludePatterns } from './discovery';
 import { TagConfig } from './config/TagConfig';
 import { logger } from './utils/logger';
+import { buildNestedFolderItems } from './tree/folderTree';
 
-type GroupedTasks = Map<string, TaskItem[]>;
 type SortOrder = 'folder' | 'name' | 'type';
 
 /**
@@ -256,30 +256,15 @@ export class TaskTreeProvider implements vscode.TreeDataProvider<TaskTreeItem> {
     }
 
     /**
-     * Builds a category with tasks grouped by folder.
+     * Builds a category with tasks grouped into nested folder hierarchy.
      */
     private buildCategoryWithFolders(name: string, tasks: TaskItem[]): TaskTreeItem {
-        const grouped = this.groupByCategory(tasks);
-        const sortedEntries = this.sortGroupedTasks(grouped);
-        const children: TaskTreeItem[] = [];
-        const categoryId = name;
-
-        for (const [folder, folderTasks] of sortedEntries) {
-            const firstTask = folderTasks[0];
-            if (folderTasks.length === 1 && sortedEntries.length === 1 && firstTask) {
-                // Single task in single folder - no need for folder node
-                children.push(new TaskTreeItem(firstTask, null, [], categoryId));
-            } else if (folderTasks.length === 1 && firstTask) {
-                // Single task - show with folder in description
-                children.push(new TaskTreeItem(firstTask, null, [], categoryId));
-            } else {
-                // Multiple tasks - create folder node with proper parent ID
-                const folderId = `${categoryId}/${folder}`;
-                const taskItems = folderTasks.map(t => new TaskTreeItem(t, null, [], folderId));
-                children.push(new TaskTreeItem(null, folder, taskItems, categoryId));
-            }
-        }
-
+        const children = buildNestedFolderItems({
+            tasks,
+            workspaceRoot: this.workspaceRoot,
+            categoryId: name,
+            sortTasks: (t) => this.sortTasks(t)
+        });
         return new TaskTreeItem(null, `${name} (${tasks.length})`, children);
     }
 
@@ -291,21 +276,6 @@ export class TaskTreeProvider implements vscode.TreeDataProvider<TaskTreeItem> {
         const categoryId = name;
         const children = sorted.map(t => new TaskTreeItem(t, null, [], categoryId));
         return new TaskTreeItem(null, `${name} (${tasks.length})`, children);
-    }
-
-    /**
-     * Groups tasks by their category (folder path).
-     */
-    private groupByCategory(tasks: TaskItem[]): GroupedTasks {
-        const grouped = new Map<string, TaskItem[]>();
-
-        for (const task of tasks) {
-            const existing = grouped.get(task.category) ?? [];
-            existing.push(task);
-            grouped.set(task.category, existing);
-        }
-
-        return grouped;
     }
 
     /**
@@ -354,20 +324,6 @@ export class TaskTreeProvider implements vscode.TreeDataProvider<TaskTreeItem> {
         });
 
         return sorted;
-    }
-
-    /**
-     * Sorts folder entries alphabetically.
-     */
-    private sortGroupedTasks(grouped: GroupedTasks): Array<[string, TaskItem[]]> {
-        const entries = Array.from(grouped.entries());
-        // Sort folders alphabetically
-        entries.sort((a, b) => a[0].localeCompare(b[0]));
-        // Sort tasks within each folder
-        for (const entry of entries) {
-            entry[1] = this.sortTasks(entry[1]);
-        }
-        return entries;
     }
 
     /**

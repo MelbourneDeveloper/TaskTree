@@ -2,13 +2,11 @@
 
 ## Too Many Cooks
 
-You are working with many other agents. Make sure there is effective cooperation
-- Register on TMC immediately
-- Don't edit files that are locked; lock files when editing
-- COMMUNICATE REGULARLY AND COORDINATE WITH OTHERS THROUGH MESSAGES
+- Don't use too many cooks right now
 
 ## Coding Rules
 
+- **Zero duplication - TOP PRIORITY** - Always search for existing code before adding. Move; don't copy files. Add assertions to tests rather than duplicating tests. AIM FOR LESS CODE!
 - **TypeScript strict mode** - No `any`, no implicit types, turn all lints up to error
 - **Functional style** - Prefer pure functions, avoid classes where possible
 - **No suppressing warnings** - Fix them properly
@@ -116,32 +114,6 @@ TaskTree/
 └── .vscode-test.mjs          # Test runner config
 ```
 
-## Key Types
-
-```typescript
-interface TaskItem {
-    id: string;
-    label: string;
-    type: 'shell' | 'npm' | 'make' | 'launch' | 'vscode';
-    command: string;
-    cwd: string;
-    filePath: string;
-    category: string;
-    description?: string;
-    params: TaskParam[];
-    tags: string[];
-}
-
-interface TaskParam {
-    name: string;
-    description: string;
-    default?: string;
-    options?: string[];
-}
-
-Result<T,E>
-```
-
 ## Commands
 
 | Command ID | Description |
@@ -157,13 +129,7 @@ Result<T,E>
 
 ## Build Commands
 
-```bash
-npm run compile      # Compile TypeScript
-npm run watch        # Watch mode
-npm run test         # Run E2E tests
-npm run package      # Build VSIX
-npm run build-and-install  # Full rebuild + install
-```
+See [text](package.json)
 
 ## Adding New Task Types
 
