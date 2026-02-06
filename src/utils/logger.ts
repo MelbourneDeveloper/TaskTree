@@ -93,7 +93,7 @@ class Logger {
     }
 
     /**
-     * Logs quick tasks operations
+     * Logs Quick Launch operations
      */
     quick(operation: string, details: Record<string, unknown>): void {
         if (!this.enabled) {

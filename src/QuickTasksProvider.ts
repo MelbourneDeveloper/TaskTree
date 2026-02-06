@@ -7,7 +7,7 @@ import { logger } from './utils/logger';
 const QUICK_TASK_MIME_TYPE = 'application/vnd.commandtree.quicktask';
 
 /**
- * Provider for the Quick Tasks view - shows tasks tagged as "quick".
+ * Provider for the Quick Launch view - shows commands tagged as "quick".
  * Supports drag-and-drop reordering.
  */
 export class QuickTasksProvider implements vscode.TreeDataProvider<CommandTreeItem>, vscode.TreeDragAndDropController<CommandTreeItem> {
@@ -43,7 +43,7 @@ export class QuickTasksProvider implements vscode.TreeDataProvider<CommandTreeIt
     }
 
     /**
-     * Adds a task to the quick list.
+     * Adds a command to the quick list.
      */
     async addToQuick(task: TaskItem): Promise<Result<void, string>> {
         const result = await this.tagConfig.addTaskToTag(task, 'quick');
@@ -56,7 +56,7 @@ export class QuickTasksProvider implements vscode.TreeDataProvider<CommandTreeIt
     }
 
     /**
-     * Removes a task from the quick list.
+     * Removes a command from the quick list.
      */
     async removeFromQuick(task: TaskItem): Promise<Result<void, string>> {
         const result = await this.tagConfig.removeTaskFromTag(task, 'quick');
@@ -98,7 +98,7 @@ export class QuickTasksProvider implements vscode.TreeDataProvider<CommandTreeIt
 
         if (quickTasks.length === 0) {
             logger.quick('No quick tasks found', {});
-            return [new CommandTreeItem(null, 'No quick tasks - star tasks to add them here', [])];
+            return [new CommandTreeItem(null, 'No quick commands - star commands to add them here', [])];
         }
 
         // Sort by the order in the tag patterns array for deterministic ordering

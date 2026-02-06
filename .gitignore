@@ -29,3 +29,4 @@ src/test/fixtures/workspace/.vscode/tasktree.json
 
 
 .playwright-mcp/
+website/_site/

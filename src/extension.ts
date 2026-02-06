@@ -34,7 +34,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
     });
     context.subscriptions.push(treeView);
 
-    // Register quick tasks tree view with drag-and-drop support
+    // Register Quick Launch tree view with drag-and-drop support
     const quickTreeView = vscode.window.createTreeView('commandtree-quick', {
         treeDataProvider: quickTasksProvider,
         showCollapseAll: true,
@@ -64,7 +64,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
 
         vscode.commands.registerCommand('commandtree.filter', async () => {
             const filter = await vscode.window.showInputBox({
-                prompt: 'Filter tasks by name, path, or description',
+                prompt: 'Filter commands by name, path, or description',
                 placeHolder: 'Type to filter...',
                 value: ''
             });
@@ -155,7 +155,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
 
             const taskTags = task.tags;
             if (taskTags.length === 0) {
-                vscode.window.showInformationMessage('This task has no tags');
+                vscode.window.showInformationMessage('This command has no tags');
                 return;
             }
 
@@ -177,7 +177,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
         })
     );
 
-    // Watch for file changes that might affect tasks
+    // Watch for file changes that might affect commands
     const watcher = vscode.workspace.createFileSystemWatcher(
         '**/{package.json,Makefile,makefile,tasks.json,launch.json,commandtree.json,*.sh,*.py}'
     );
