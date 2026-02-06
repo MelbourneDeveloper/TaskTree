@@ -1,0 +1,38 @@
+{
+    "version": "0.2",
+    "language": "en",
+    "ignorePaths": [
+        "node_modules",
+        "out",
+        "coverage",
+        "*.vsix",
+        ".vscode-test",
+        "src/test/fixtures",
+        "package-lock.json"
+    ],
+    "words": [
+        "tasktree",
+        "nimblesite",
+        "vsix",
+        "vsce",
+        "xvfb",
+        "viewitem",
+        "mocha",
+        "lcov",
+        "tsconfig",
+        "devdependencies",
+        "treeview",
+        "vscodeignore",
+        "activitybar",
+        "taskfile",
+        "powershell",
+        "deno",
+        "gradle",
+        "maven",
+        "cargo",
+        "composer",
+        "rakefile",
+        "justfile",
+        "dockercompose"
+    ]
+}

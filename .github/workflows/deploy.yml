@@ -1,0 +1,26 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build
+        run: npm run compile
+
+      - name: Publish to Marketplace
+        run: npx vsce publish --skip-duplicate
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}

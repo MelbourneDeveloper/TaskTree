@@ -4,9 +4,31 @@ One sidebar. Every task in your workspace.
 
 TaskTree scans your project and surfaces all runnable tasks in a single tree view: shell scripts, npm scripts, Makefile targets, VS Code tasks, launch configurations, and Python scripts. Filter by text or tag, run in terminal or debugger.
 
+## Features
+
+- **Auto-discovery** - Shell scripts (`.sh`, `.bash`, `.zsh`), npm scripts, Makefile targets, VS Code tasks, launch configurations, and Python scripts
+- **Quick Tasks** - Pin frequently-used tasks to a dedicated panel at the top
+- **Tagging** - Auto-tag tasks by type, label, or exact ID using pattern rules in `.vscode/tasktree.json`
+- **Filtering** - Filter the tree by text search or by tag
+- **Run anywhere** - Execute in a new terminal, the current terminal, or launch with the debugger
+- **Folder grouping** - Tasks grouped by directory with collapsible nested hierarchy
+- **Parameterized tasks** - Prompt for arguments before execution
+- **File watching** - Automatic refresh when scripts or config files change
+
+## Supported Task Types
+
+| Type | Source |
+|------|--------|
+| Shell Scripts | `.sh`, `.bash`, `.zsh` files |
+| NPM Scripts | `package.json` scripts |
+| Makefile Targets | `Makefile` / `makefile` targets |
+| VS Code Tasks | `.vscode/tasks.json` |
+| Launch Configs | `.vscode/launch.json` |
+| Python Scripts | `.py` files |
+
 ## Getting Started
 
-Install from source:
+Install from the VS Code Marketplace, or from source:
 
 ```bash
 npm install
@@ -18,16 +40,38 @@ Open a workspace and the TaskTree panel appears in the sidebar. All discovered t
 
 ## Usage
 
-- **Run a task** - Click it or use the play button
-- **Debug** - Click the bug button (launch configs only)
-- **Star a task** - Pin frequently-used tasks to Quick Tasks at the top
-- **Filter** - Use the toolbar to filter by text or tag
+- **Run a task** - Click the play button or right-click > "Run Task"
+- **Run in current terminal** - Right-click > "Run in Current Terminal"
+- **Debug** - Launch configurations run with the VS Code debugger
+- **Star a task** - Click the star icon to pin it to Quick Tasks
+- **Filter** - Use the toolbar icons to filter by text or tag
 - **Tag tasks** - Right-click > "Add Tag" to group related tasks
+- **Edit tags** - Configure auto-tagging patterns in `.vscode/tasktree.json`
 
-## Full Specification
+## Settings
 
-See SPEC.md for complete details on task discovery, tagging, pattern syntax, parameterized tasks, settings, and data storage.
+| Setting | Description | Default |
+|---------|-------------|---------|
+| `tasktree.excludePatterns` | Glob patterns to exclude from discovery | `**/node_modules/**`, `**/.git/**`, etc. |
+| `tasktree.sortOrder` | Sort tasks by `folder`, `name`, or `type` | `folder` |
+
+## Tag Configuration
+
+Create `.vscode/tasktree.json` to define tag patterns:
+
+```json
+{
+    "tags": {
+        "build": [{ "type": "npm", "label": "build" }],
+        "test": [{ "label": "test" }],
+        "scripts": [{ "type": "shell" }],
+        "quick": ["npm:/project/package.json:build"]
+    }
+}
+```
+
+Patterns match by `type`, `label`, exact `id`, or any combination.
 
 ## License
 
-MIT
+[MIT](LICENSE)

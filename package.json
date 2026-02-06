@@ -6,11 +6,20 @@
   "author": "Christian Findlay",
   "license": "MIT",
   "publisher": "nimblesite",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MelbourneDeveloper/TaskTree.git"
+  },
+  "homepage": "https://github.com/MelbourneDeveloper/TaskTree#readme",
+  "bugs": {
+    "url": "https://github.com/MelbourneDeveloper/TaskTree/issues"
+  },
   "engines": {
     "vscode": "^1.80.0"
   },
   "categories": [
-    "Other"
+    "Other",
+    "Testing"
   ],
   "keywords": [
     "tasks",
@@ -362,7 +371,7 @@
     "test:coverage": "vscode-test --coverage",
     "coverage:check": "c8 check-coverage --lines 90 --functions 90 --branches 90 --statements 90",
     "clean": "rm -rf node_modules out *.vsix coverage || true",
-    "package": "npm run compile && vsce package --allow-missing-repository --skip-license",
+    "package": "npm run compile && vsce package",
     "uninstall": "code --uninstall-extension nimblesite.tasktree || true",
     "install-ext": "code --install-extension tasktree-*.vsix",
     "build-and-install": "npm run clean && npm install && npm run uninstall && npm run package && npm run install-ext"
