@@ -102,7 +102,7 @@ suite("Task Filtering E2E Tests", () => {
       },
     };
 
-    suiteSetup(function () {
+    suiteSetup(() => {
       fs.writeFileSync(tagConfigPath, JSON.stringify(expectedConfig, null, 4));
     });
 

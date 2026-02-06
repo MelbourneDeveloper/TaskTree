@@ -265,7 +265,7 @@ suite("Commands and UI E2E Tests", () => {
         (m) =>
           m.command === "tasktree.addToQuick" &&
           m.when?.includes("view == tasktree") === true &&
-          m.when?.includes("viewItem == task") === true,
+          m.when.includes("viewItem == task"),
       );
       assert.ok(
         addToQuickMenu,
@@ -277,7 +277,7 @@ suite("Commands and UI E2E Tests", () => {
         (m) =>
           m.command === "tasktree.removeFromQuick" &&
           m.when?.includes("view == tasktree") === true &&
-          m.when?.includes("viewItem == task-quick") === true,
+          m.when.includes("viewItem == task-quick"),
       );
       assert.ok(
         removeFromQuickInAllView,

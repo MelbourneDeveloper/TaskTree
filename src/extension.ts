@@ -138,39 +138,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
                 return;
             }
 
-            const existingTags = treeProvider.getAllTags();
-            const options: vscode.QuickPickItem[] = existingTags.map(t => ({
-                label: `$(tag) ${t}`,
-                description: 'Existing tag',
-                tag: t
-            } as vscode.QuickPickItem & { tag: string }));
-
-            options.push({
-                label: '$(add) Create new tag...',
-                description: 'Create a new tag',
-                alwaysShow: true
-            });
-
-            const selected = await vscode.window.showQuickPick(options, {
-                placeHolder: `Add tag to "${task.label}"`
-            });
-
-            if (selected === undefined) {
+            const tagName = await pickOrCreateTag(treeProvider.getAllTags(), task.label);
+            if (tagName === undefined) {
                 return;
-            }
-
-            let tagName: string;
-            if (selected.label === '$(add) Create new tag...') {
-                const newTag = await vscode.window.showInputBox({
-                    prompt: 'Enter new tag name',
-                    placeHolder: 'e.g., build, test, deploy'
-                });
-                if (newTag === undefined || newTag.trim() === '') {
-                    return;
-                }
-                tagName = newTag.trim();
-            } else {
-                tagName = (selected as vscode.QuickPickItem & { tag: string }).tag;
             }
 
             await treeProvider.addTaskToTag(task, tagName);
@@ -237,6 +207,32 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
         taskTreeProvider: treeProvider,
         quickTasksProvider
     };
+}
+
+/**
+ * Shows a QuickPick that accepts both existing tag selection AND typed new tag names.
+ * Type a name and press Enter to create a new tag, or select an existing one.
+ */
+async function pickOrCreateTag(existingTags: string[], taskLabel: string): Promise<string | undefined> {
+    return await new Promise<string | undefined>((resolve) => {
+        const qp = vscode.window.createQuickPick();
+        qp.placeholder = `Type new tag or select existing — "${taskLabel}"`;
+        qp.items = existingTags.map(t => ({ label: t }));
+        let resolved = false;
+        const finish = (value: string | undefined): void => {
+            if (resolved) { return; }
+            resolved = true;
+            resolve(value);
+            qp.dispose();
+        };
+        qp.onDidAccept(() => {
+            const selected = qp.selectedItems[0];
+            const value = selected?.label ?? qp.value.trim();
+            finish(value !== '' ? value : undefined);
+        });
+        qp.onDidHide(() => { finish(undefined); });
+        qp.show();
+    });
 }
 
 function updateFilterContext(): void {

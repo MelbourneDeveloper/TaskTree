@@ -13,7 +13,7 @@ export interface DirTaskInfo {
 export interface DirNode<T extends DirTaskInfo> {
     readonly dir: string;
     readonly tasks: T[];
-    readonly subdirs: DirNode<T>[];
+    readonly subdirs: Array<DirNode<T>>;
 }
 
 /**
@@ -40,7 +40,7 @@ export function groupByFullDir<T extends DirTaskInfo>(
 function findClosestParent(dir: string, allDirs: readonly string[]): string | null {
     let closest: string | null = null;
     for (const other of allDirs) {
-        const isParent = other !== dir && dir.startsWith(other + '/');
+        const isParent = other !== dir && dir.startsWith(`${other}/`);
         if (isParent && (closest === null || other.length > closest.length)) {
             closest = other;
         }
@@ -82,7 +82,7 @@ function buildNode<T extends DirTaskInfo>(
 /**
  * Builds nested directory tree from grouped tasks.
  */
-export function buildDirTree<T extends DirTaskInfo>(groups: Map<string, T[]>): DirNode<T>[] {
+export function buildDirTree<T extends DirTaskInfo>(groups: Map<string, T[]>): Array<DirNode<T>> {
     const sortedDirs = Array.from(groups.keys()).sort();
     const childrenMap = buildChildrenMap(sortedDirs);
     const rootDirs = childrenMap.get(null) ?? [];

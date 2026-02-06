@@ -26,7 +26,7 @@ Open a workspace and the TaskTree panel appears in the sidebar. All discovered t
 
 ## Full Specification
 
-See [SPEC.md](SPEC.md) for complete details on task discovery, tagging, pattern syntax, parameterized tasks, settings, and data storage.
+See SPEC.md for complete details on task discovery, tagging, pattern syntax, parameterized tasks, settings, and data storage.
 
 ## License
 

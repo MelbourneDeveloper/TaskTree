@@ -152,6 +152,7 @@ export default tseslint.config(
       "out/**",
       "node_modules/**",
       ".vscode-test/**",
+      "src/test/fixtures/**",
       "*.js",
       "*.mjs",
       "*.cjs",

@@ -17,7 +17,7 @@ import {
     getTaskTreeProvider,
     getQuickTasksProvider
 } from '../helpers/helpers';
-import type { TaskTreeProvider, QuickTasksProvider } from '../helpers/helpers';
+import type { TaskTreeProvider, QuickTasksProvider, TaskTreeItem } from '../helpers/helpers';
 
 interface TagPattern {
     id?: string;
@@ -32,6 +32,24 @@ interface TaskTreeConfig {
 function writeConfig(config: TaskTreeConfig): void {
     const configPath = getFixturePath('.vscode/tasktree.json');
     fs.writeFileSync(configPath, JSON.stringify(config, null, 4));
+}
+
+async function findTreeItemById(
+    categories: TaskTreeItem[],
+    taskId: string,
+    provider: TaskTreeProvider
+): Promise<TaskTreeItem | undefined> {
+    for (const cat of categories) {
+        const children = await provider.getChildren(cat);
+        for (const child of children) {
+            if (child.task?.id === taskId) { return child; }
+            const grandChildren = await provider.getChildren(child);
+            for (const gc of grandChildren) {
+                if (gc.task?.id === taskId) { return gc; }
+            }
+        }
+    }
+    return undefined;
 }
 
 suite('TagConfig E2E Flow Tests', () => {
@@ -144,6 +162,15 @@ suite('TagConfig E2E Flow Tests', () => {
             const taggedTask = taggedTasks[0];
             assert.ok(taggedTask !== undefined, 'Tagged task must exist');
             assert.strictEqual(taggedTask.id, targetTask.id, 'Must be the correct task');
+
+            // VERIFY: Tree item description MUST show the tag visually
+            const categories = await treeProvider.getChildren();
+            const treeItem = await findTreeItemById(categories, targetTask.id, treeProvider);
+            assert.ok(treeItem !== undefined, 'Tagged task must appear in tree view');
+            assert.ok(
+                typeof treeItem.description === 'string' && treeItem.description.includes('exact-match'),
+                `Tree item description MUST show the tag. Got: "${String(treeItem.description)}"`
+            );
         });
 
         test('E2E: quick tag -> tasks appear in QuickTasksProvider', async function () {
@@ -173,6 +200,16 @@ suite('TagConfig E2E Flow Tests', () => {
                 taskInQuick !== undefined,
                 `Task "${targetTask.label}" with quick tag MUST appear in QuickTasksProvider. ` +
                 `Quick view contains: [${quickChildren.map(c => c.task?.id ?? 'placeholder').join(', ')}]`
+            );
+
+            // VERIFY: Tree item in main view MUST have contextValue 'task-quick' (filled star icon)
+            const categories = await treeProvider.getChildren();
+            const treeItem = await findTreeItemById(categories, targetTask.id, treeProvider);
+            assert.ok(treeItem !== undefined, 'Quick-tagged task must appear in main tree');
+            assert.strictEqual(
+                treeItem.contextValue,
+                'task-quick',
+                `Task with quick tag MUST have contextValue 'task-quick' for filled star. Got: "${treeItem.contextValue}"`
             );
         });
 

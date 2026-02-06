@@ -2,85 +2,104 @@
 
 ## Table of Contents
 
-- [S-001: Overview](#s-001-overview)
-- [S-002: Task Discovery](#s-002-task-discovery)
-  - [S-002a: Shell Scripts](#s-002a-shell-scripts)
-  - [S-002b: NPM Scripts](#s-002b-npm-scripts)
-  - [S-002c: Makefile Targets](#s-002c-makefile-targets)
-  - [S-002d: Launch Configurations](#s-002d-launch-configurations)
-  - [S-002e: VS Code Tasks](#s-002e-vs-code-tasks)
-  - [S-002f: Python Scripts](#s-002f-python-scripts)
-- [S-003: Task Execution](#s-003-task-execution)
-  - [S-003a: Run in New Terminal](#s-003a-run-in-new-terminal)
-  - [S-003b: Run in Current Terminal](#s-003b-run-in-current-terminal)
-  - [S-003c: Debug](#s-003c-debug)
-- [S-004: Quick Tasks](#s-004-quick-tasks)
-- [S-005: Tagging](#s-005-tagging)
-  - [S-005a: Tag Configuration File](#s-005a-tag-configuration-file)
-  - [S-005b: Pattern Syntax](#s-005b-pattern-syntax)
-  - [S-005c: Managing Tags](#s-005c-managing-tags)
-- [S-006: Filtering](#s-006-filtering)
-  - [S-006a: Text Filter](#s-006a-text-filter)
-  - [S-006b: Tag Filter](#s-006b-tag-filter)
-  - [S-006c: Clear Filter](#s-006c-clear-filter)
-- [S-007: Parameterized Tasks](#s-007-parameterized-tasks)
-- [S-008: Settings](#s-008-settings)
-  - [S-008a: Exclude Patterns](#s-008a-exclude-patterns)
-  - [S-008b: Sort Order](#s-008b-sort-order)
-  - [S-008c: Show Empty Categories](#s-008c-show-empty-categories)
-- [S-009: User Data Storage](#s-009-user-data-storage)
+- [Overview](#overview)
+- [Task Discovery](#task-discovery)
+  - [Shell Scripts](#shell-scripts)
+  - [NPM Scripts](#npm-scripts)
+  - [Makefile Targets](#makefile-targets)
+  - [Launch Configurations](#launch-configurations)
+  - [VS Code Tasks](#vs-code-tasks)
+  - [Python Scripts](#python-scripts)
+- [Task Execution](#task-execution)
+  - [Run in New Terminal](#run-in-new-terminal)
+  - [Run in Current Terminal](#run-in-current-terminal)
+  - [Debug](#debug)
+- [Quick Tasks](#quick-tasks)
+- [Tagging](#tagging)
+  - [Tag Configuration File](#tag-configuration-file)
+  - [Pattern Syntax](#pattern-syntax)
+  - [Managing Tags](#managing-tags)
+- [Filtering](#filtering)
+  - [Text Filter](#text-filter)
+  - [Tag Filter](#tag-filter)
+  - [Clear Filter](#clear-filter)
+- [Parameterized Tasks](#parameterized-tasks)
+- [Settings](#settings)
+  - [Exclude Patterns](#exclude-patterns)
+  - [Sort Order](#sort-order)
+  - [Show Empty Categories](#show-empty-categories)
+- [User Data Storage](#user-data-storage)
+- [Semantic Search (FUTURE FEATURE)](#semantic-search-future-feature)
+  - [Overview](#overview-1)
+  - [LLM Integration](#llm-integration)
+  - [Database and Config Migration](#database-and-config-migration)
+  - [Data Structure](#data-structure)
+  - [Search UX](#search-ux)
 
 ---
 
-## S-001: Overview
+## Overview
+**overview**
 
-TaskTree scans a VS Code workspace and surfaces all runnable tasks in a single tree view sidebar panel. It discovers shell scripts, npm scripts, Makefile targets, VS Code tasks, and launch configurations, then presents them in a categorized, filterable tree.
+TaskTree scans a VS Code workspace and surfaces all runnable tasks in a single tree view sidebar panel. It discovers shell scripts, npm scripts, Makefile targets, VS Code tasks, launch configurations, etc then presents them in a categorized, filterable tree.
 
-## S-002: Task Discovery
+## Task Discovery
+**task-discovery**
 
-TaskTree recursively scans the workspace for runnable tasks grouped by type. Discovery respects exclude patterns configured in settings.
+TaskTree recursively scans the workspace for runnable tasks grouped by type. Discovery respects exclude patterns configured in settings. It does this in the background on low priority.
 
-### S-002a: Shell Scripts
+### Shell Scripts
+**task-discovery/shell-scripts**
 
 Discovers `.sh` files throughout the workspace. Supports optional `@param` and `@description` comments for metadata.
 
-### S-002b: NPM Scripts
+### NPM Scripts
+**task-discovery/npm-scripts**
 
 Reads `scripts` from all `package.json` files, including nested projects and subfolders.
 
-### S-002c: Makefile Targets
+### Makefile Targets
+**task-discovery/makefile-targets**
 
 Parses `Makefile` and `makefile` for named targets.
 
-### S-002d: Launch Configurations
+### Launch Configurations
+**task-discovery/launch-configurations**
 
 Reads debug configurations from `.vscode/launch.json`.
 
-### S-002e: VS Code Tasks
+### VS Code Tasks
+**task-discovery/vscode-tasks**
 
 Reads task definitions from `.vscode/tasks.json`, including support for `${input:*}` variable prompts.
 
-### S-002f: Python Scripts
+### Python Scripts
+**task-discovery/python-scripts**
 
 Discovers files with a `.py` extension.
 
-## S-003: Task Execution
+## Task Execution
+**task-execution**
 
 Tasks can be executed three ways via inline buttons or context menu.
 
-### S-003a: Run in New Terminal
+### Run in New Terminal
+**task-execution/new-terminal**
 
 Opens a new VS Code terminal and runs the task command. Triggered by the play button or `tasktree.run` command.
 
-### S-003b: Run in Current Terminal
+### Run in Current Terminal
+**task-execution/current-terminal**
 
 Sends the task command to the currently active terminal. Triggered by the circle-play button or `tasktree.runInCurrentTerminal` command.
 
-### S-003c: Debug
+### Debug
+**task-execution/debug**
 
 Launches the task using the VS Code debugger. Only applicable to launch configurations. Triggered by the bug button or `tasktree.debug` command.
 
-## S-004: Quick Tasks
+## Quick Tasks
+**quick-tasks**
 
 Users can star tasks to pin them in a "Quick Tasks" panel at the top of the tree view. Starred task identifiers are persisted in the `quick` array inside `.vscode/tasktree.json`:
 
@@ -93,11 +112,13 @@ Users can star tasks to pin them in a "Quick Tasks" panel at the top of the tree
 }
 ```
 
-## S-005: Tagging
+## Tagging
+**tagging**
 
 Tags group related tasks for organization and filtering.
 
-### S-005a: Tag Configuration File
+### Tag Configuration File
+**tagging/config-file**
 
 Tags are defined in `.vscode/tasktree.json` under the `tags` key:
 
@@ -113,7 +134,8 @@ Tags are defined in `.vscode/tasktree.json` under the `tags` key:
 
 This file can be committed to version control to share task organization with a team.
 
-### S-005b: Pattern Syntax
+### Pattern Syntax
+**tagging/pattern-syntax**
 
 | Pattern | Matches |
 |---------|---------|
@@ -127,27 +149,33 @@ This file can be committed to version control to share task organization with a 
 | `**/scripts/**` | Path matching: tasks in any `scripts` folder |
 | `shell:/full/path:name` | Exact task identifier (used internally for Quick Tasks) |
 
-### S-005c: Managing Tags
+### Managing Tags
+**tagging/management**
 
 - **Add tag to task**: Right-click a task > "Add Tag" > select existing or create new
 - **Remove tag from task**: Right-click a task > "Remove Tag"
 - **Edit tags file directly**: Command Palette > "TaskTree: Edit Tags Configuration"
 
-## S-006: Filtering
+## Filtering
+**filtering**
 
-### S-006a: Text Filter
+### Text Filter
+**filtering/text**
 
 Free-text filter via toolbar or `tasktree.filter` command. Matches against task names.
 
-### S-006b: Tag Filter
+### Tag Filter
+**filtering/tag**
 
 Pick a tag from the toolbar picker (`tasktree.filterByTag`) to show only tasks matching that tag's patterns.
 
-### S-006c: Clear Filter
+### Clear Filter
+**filtering/clear**
 
 Remove all active filters via toolbar button or `tasktree.clearFilter` command.
 
-## S-007: Parameterized Tasks
+## Parameterized Tasks
+**parameterized-tasks**
 
 Shell scripts with parameter comments prompt the user for input before execution:
 
@@ -161,15 +189,18 @@ deploy_to "$1"
 
 VS Code tasks using `${input:*}` variables prompt automatically via the built-in input UI.
 
-## S-008: Settings
+## Settings
+**settings**
 
 All settings are configured via VS Code settings (`Cmd+,` / `Ctrl+,`).
 
-### S-008a: Exclude Patterns
+### Exclude Patterns
+**settings/exclude-patterns**
 
 `tasktree.excludePatterns` - Glob patterns to exclude from task discovery. Default includes `**/node_modules/**`, `**/.vscode-test/**`, and others.
 
-### S-008b: Sort Order
+### Sort Order
+**settings/sort-order**
 
 `tasktree.sortOrder` - How tasks are sorted within categories:
 
@@ -179,10 +210,91 @@ All settings are configured via VS Code settings (`Cmd+,` / `Ctrl+,`).
 | `name` | Sort alphabetically by task name |
 | `type` | Sort by task type, then alphabetically |
 
-### S-008c: Show Empty Categories
+### Show Empty Categories
+**settings/show-empty-categories**
 
 `tasktree.showEmptyCategories` - Whether to display category nodes that contain no discovered tasks.
 
-## S-009: User Data Storage
+## User Data Storage
+**user-data-storage**
 
 TaskTree stores workspace-specific data in `.vscode/tasktree.json`. This file is automatically created and updated as you use the extension. It holds both quick task pins and tag definitions.
+
+---
+
+## Semantic Search (FUTURE FEATURE)
+**semantic-search**
+
+> **⏳ FUTURE FEATURE** — This section describes a planned feature that is **not currently being implemented**. It is included here for design reference only.
+
+### Overview
+**semantic-search/overview**
+
+TaskTree will use an LLM to generate a plain-language summary of what each discovered script does. These summaries, along with vector embeddings of the script content and summary, are stored in a local database. This enables **semantic search**: users can describe what they want in natural language and find the right script without knowing its exact name or path.
+
+### LLM Integration
+**semantic-search/llm-integration**
+
+The preferred integration path is **GitHub Copilot** via the VS Code Language Model API (`vscode.lm`), which is stable since VS Code 1.90.
+
+**Opt-in flow:**
+
+1. On first workspace load (or when the user enables the feature), TaskTree shows a simple prompt:
+   > *"Would you like to use GitHub Copilot to summarise scripts in your workspace?"*
+2. If the user accepts, TaskTree uses `vscode.lm.selectChatModels({ vendor: 'copilot' })` to access a lightweight model (e.g. `gpt-4o-mini`) for summarisation. The VS Code API handles Copilot authentication and consent automatically.
+3. If the user declines, the feature remains **dormant**. No summaries are generated, and the extension behaves as before. The user can enable it later via settings.
+
+**Alternative providers:**
+
+If the user chooses not to use GitHub copilot, or it is not available (no subscription, offline environment, user preference), the user can configure an alternative LLM provider at any time.
+
+- A local model (e.g. Ollama, llama.cpp)
+- Another VS Code language model provider registered via `vscode.lm.registerLanguageModelChatProvider()`
+
+The summarisation interface is provider-agnostic — any model that accepts a text prompt and returns a text response can be used.
+
+### Database and Config Migration
+**semantic-search/database-migration**
+
+All workspace configuration currently stored in `.vscode/tasktree.json` (quick task pins, tag definitions) will migrate into a **local embedded database** (e.g. SQLite). This database also stores script summaries and vector embeddings.
+
+The migration is automatic and transparent. The `.vscode/tasktree.json` file is read once during migration, and the database becomes the single source of truth going forward.
+
+### Data Structure
+**semantic-search/data-structure**
+
+```mermaid
+erDiagram
+    TaskRecord {
+        string scriptPath PK "Absolute path to the script"
+        string contentHash "Hash of script content (for change detection)"
+        string scriptContent "Full script source text"
+        string summary "LLM-generated plain-language summary"
+        float[] embedding "Vector embedding of script + summary"
+        string[] tags "User-assigned tags"
+        boolean isQuick "Pinned to Quick Tasks"
+        datetime lastUpdated "Last summarisation timestamp"
+    }
+
+    TaskRecord ||--o{ Tag : "has"
+    Tag {
+        string name PK "Tag name"
+        string[] patterns "Glob patterns for auto-tagging"
+    }
+```
+
+- **`contentHash`** — When a script file changes, the hash no longer matches and the summary + embedding are regenerated.
+- **`embedding`** — A dense vector produced by the same or a dedicated embedding model. Used for cosine similarity search.
+- **`summary`** — A short (1-3 sentence) description of what the script does, generated by the LLM.
+
+### Search UX
+**semantic-search/search-ux**
+
+The existing filter bar (`tasktree.filter`) gains a semantic search mode:
+
+1. User types a natural-language query (e.g. *"deploy to staging"*, *"run database migrations"*, *"lint and format code"*).
+2. The query is embedded using the same model that produced the stored embeddings.
+3. Results are ranked by **cosine similarity** between the query embedding and each task's stored embedding.
+4. The tree view updates to show matching tasks, ordered by relevance.
+
+If no summaries have been generated (feature not enabled), the filter falls back to the existing text-match behaviour.
