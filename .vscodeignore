@@ -23,3 +23,4 @@ SPEC.md
 **/*.ts
 **/*.bak
 *.vsix
+website/**
