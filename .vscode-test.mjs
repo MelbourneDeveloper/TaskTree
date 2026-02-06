@@ -4,7 +4,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 
 // Copy fixtures to a temp directory so tests run in full isolation
-const testWorkspace = mkdtempSync(join(tmpdir(), 'tasktree-test-'));
+const testWorkspace = mkdtempSync(join(tmpdir(), 'commandtree-test-'));
 cpSync('./src/test/fixtures/workspace', testWorkspace, { recursive: true });
 
 export default defineConfig({

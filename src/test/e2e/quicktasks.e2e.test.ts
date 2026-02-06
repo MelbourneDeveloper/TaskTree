@@ -19,37 +19,37 @@ interface TagPattern {
   label?: string;
 }
 
-interface TaskTreeConfig {
+interface CommandTreeConfig {
   tags?: Record<string, Array<string | TagPattern>>;
 }
 
-function readTaskTreeConfig(): TaskTreeConfig {
-  const configPath = getFixturePath(".vscode/tasktree.json");
-  return JSON.parse(fs.readFileSync(configPath, "utf8")) as TaskTreeConfig;
+function readCommandTreeConfig(): CommandTreeConfig {
+  const configPath = getFixturePath(".vscode/commandtree.json");
+  return JSON.parse(fs.readFileSync(configPath, "utf8")) as CommandTreeConfig;
 }
 
-function writeTaskTreeConfig(config: TaskTreeConfig): void {
-  const configPath = getFixturePath(".vscode/tasktree.json");
+function writeCommandTreeConfig(config: CommandTreeConfig): void {
+  const configPath = getFixturePath(".vscode/commandtree.json");
   fs.writeFileSync(configPath, JSON.stringify(config, null, 4));
 }
 
 // Spec: quick-tasks
 suite("Quick Tasks E2E Tests", () => {
-  let originalConfig: TaskTreeConfig;
+  let originalConfig: CommandTreeConfig;
 
   suiteSetup(async function () {
     this.timeout(30000);
     await activateExtension();
     await sleep(2000);
-    originalConfig = readTaskTreeConfig();
+    originalConfig = readCommandTreeConfig();
   });
 
   suiteTeardown(() => {
-    writeTaskTreeConfig(originalConfig);
+    writeCommandTreeConfig(originalConfig);
   });
 
   setup(() => {
-    writeTaskTreeConfig(originalConfig);
+    writeCommandTreeConfig(originalConfig);
   });
 
   // Spec: quick-tasks
@@ -59,7 +59,7 @@ suite("Quick Tasks E2E Tests", () => {
 
       const commands = await vscode.commands.getCommands(true);
       assert.ok(
-        commands.includes("tasktree.addToQuick"),
+        commands.includes("commandtree.addToQuick"),
         "addToQuick command should be registered",
       );
     });
@@ -69,7 +69,7 @@ suite("Quick Tasks E2E Tests", () => {
 
       const commands = await vscode.commands.getCommands(true);
       assert.ok(
-        commands.includes("tasktree.removeFromQuick"),
+        commands.includes("commandtree.removeFromQuick"),
         "removeFromQuick command should be registered",
       );
     });
@@ -79,7 +79,7 @@ suite("Quick Tasks E2E Tests", () => {
 
       const commands = await vscode.commands.getCommands(true);
       assert.ok(
-        commands.includes("tasktree.refreshQuick"),
+        commands.includes("commandtree.refreshQuick"),
         "refreshQuick command should be registered",
       );
     });
@@ -87,17 +87,17 @@ suite("Quick Tasks E2E Tests", () => {
 
   // Spec: quick-tasks, user-data-storage
   suite("Quick Tasks Storage", () => {
-    test("quick tasks are stored in tasktree.json", function () {
+    test("quick tasks are stored in commandtree.json", function () {
       this.timeout(10000);
 
-      const config: TaskTreeConfig = {
+      const config: CommandTreeConfig = {
         tags: {
           quick: ["build.sh", "test"],
         },
       };
-      writeTaskTreeConfig(config);
+      writeCommandTreeConfig(config);
 
-      const savedConfig = readTaskTreeConfig();
+      const savedConfig = readCommandTreeConfig();
       const quickTags = savedConfig.tags?.["quick"];
       assert.ok(quickTags !== undefined, "Should have quick tag");
       assert.strictEqual(quickTags.length, 2, "Should have 2 quick tasks");
@@ -106,14 +106,14 @@ suite("Quick Tasks E2E Tests", () => {
     test("quick tasks order is preserved", function () {
       this.timeout(10000);
 
-      const config: TaskTreeConfig = {
+      const config: CommandTreeConfig = {
         tags: {
           quick: ["task-c", "task-a", "task-b"],
         },
       };
-      writeTaskTreeConfig(config);
+      writeCommandTreeConfig(config);
 
-      const savedConfig = readTaskTreeConfig();
+      const savedConfig = readCommandTreeConfig();
       const quickTasks = savedConfig.tags?.["quick"] ?? [];
 
       assert.strictEqual(
@@ -136,14 +136,14 @@ suite("Quick Tasks E2E Tests", () => {
     test("empty quick tasks array is valid", function () {
       this.timeout(10000);
 
-      const config: TaskTreeConfig = {
+      const config: CommandTreeConfig = {
         tags: {
           quick: [],
         },
       };
-      writeTaskTreeConfig(config);
+      writeCommandTreeConfig(config);
 
-      const savedConfig = readTaskTreeConfig();
+      const savedConfig = readCommandTreeConfig();
       const quickTags = savedConfig.tags?.["quick"];
       assert.ok(Array.isArray(quickTags), "quick should be an array");
       assert.strictEqual(quickTags.length, 0, "Should have 0 quick tasks");
@@ -152,14 +152,14 @@ suite("Quick Tasks E2E Tests", () => {
     test("missing quick tag is handled gracefully", function () {
       this.timeout(10000);
 
-      const config: TaskTreeConfig = {
+      const config: CommandTreeConfig = {
         tags: {
           build: ["npm:build"],
         },
       };
-      writeTaskTreeConfig(config);
+      writeCommandTreeConfig(config);
 
-      const savedConfig = readTaskTreeConfig();
+      const savedConfig = readCommandTreeConfig();
       assert.ok(
         savedConfig.tags?.["quick"] === undefined,
         "quick tag should not exist",
@@ -172,11 +172,11 @@ suite("Quick Tasks E2E Tests", () => {
     test("quick tasks maintain insertion order", function () {
       this.timeout(15000);
 
-      writeTaskTreeConfig({
+      writeCommandTreeConfig({
         tags: { quick: ["deploy.sh", "build.sh", "test.sh"] },
       });
 
-      const savedConfig = readTaskTreeConfig();
+      const savedConfig = readCommandTreeConfig();
       const quickTasks = savedConfig.tags?.["quick"] ?? [];
 
       assert.strictEqual(
@@ -195,23 +195,23 @@ suite("Quick Tasks E2E Tests", () => {
     test("reordering updates config file", async function () {
       this.timeout(15000);
 
-      const config: TaskTreeConfig = {
+      const config: CommandTreeConfig = {
         tags: {
           quick: ["first", "second", "third"],
         },
       };
-      writeTaskTreeConfig(config);
+      writeCommandTreeConfig(config);
 
-      const reorderedConfig: TaskTreeConfig = {
+      const reorderedConfig: CommandTreeConfig = {
         tags: {
           quick: ["third", "first", "second"],
         },
       };
-      writeTaskTreeConfig(reorderedConfig);
+      writeCommandTreeConfig(reorderedConfig);
 
       await sleep(500);
 
-      const savedConfig = readTaskTreeConfig();
+      const savedConfig = readCommandTreeConfig();
       const quickTasks = savedConfig.tags?.["quick"] ?? [];
 
       assert.strictEqual(quickTasks[0], "third", "First should be third");
@@ -222,23 +222,23 @@ suite("Quick Tasks E2E Tests", () => {
     test("adding task appends to end", async function () {
       this.timeout(15000);
 
-      const config: TaskTreeConfig = {
+      const config: CommandTreeConfig = {
         tags: {
           quick: ["existing1", "existing2"],
         },
       };
-      writeTaskTreeConfig(config);
+      writeCommandTreeConfig(config);
 
-      const updatedConfig: TaskTreeConfig = {
+      const updatedConfig: CommandTreeConfig = {
         tags: {
           quick: ["existing1", "existing2", "new-task"],
         },
       };
-      writeTaskTreeConfig(updatedConfig);
+      writeCommandTreeConfig(updatedConfig);
 
       await sleep(500);
 
-      const savedConfig = readTaskTreeConfig();
+      const savedConfig = readCommandTreeConfig();
       const quickTasks = savedConfig.tags?.["quick"] ?? [];
 
       assert.strictEqual(quickTasks.length, 3, "Should have 3 tasks");
@@ -252,23 +252,23 @@ suite("Quick Tasks E2E Tests", () => {
     test("removing task preserves remaining order", async function () {
       this.timeout(15000);
 
-      const config: TaskTreeConfig = {
+      const config: CommandTreeConfig = {
         tags: {
           quick: ["first", "middle", "last"],
         },
       };
-      writeTaskTreeConfig(config);
+      writeCommandTreeConfig(config);
 
-      const updatedConfig: TaskTreeConfig = {
+      const updatedConfig: CommandTreeConfig = {
         tags: {
           quick: ["first", "last"],
         },
       };
-      writeTaskTreeConfig(updatedConfig);
+      writeCommandTreeConfig(updatedConfig);
 
       await sleep(500);
 
-      const savedConfig = readTaskTreeConfig();
+      const savedConfig = readCommandTreeConfig();
       const quickTasks = savedConfig.tags?.["quick"] ?? [];
 
       assert.strictEqual(quickTasks.length, 2, "Should have 2 tasks");
@@ -282,9 +282,9 @@ suite("Quick Tasks E2E Tests", () => {
     test("config persistence works", function () {
       this.timeout(15000);
 
-      writeTaskTreeConfig({ tags: { quick: ["build"] } });
+      writeCommandTreeConfig({ tags: { quick: ["build"] } });
 
-      const savedConfig = readTaskTreeConfig();
+      const savedConfig = readCommandTreeConfig();
       const quickTags = savedConfig.tags?.["quick"] ?? [];
       assert.ok(quickTags.includes("build"), "Config should have build");
     });
@@ -292,10 +292,10 @@ suite("Quick Tasks E2E Tests", () => {
     test("main tree and quick tasks sync on config change", async function () {
       this.timeout(15000);
 
-      writeTaskTreeConfig({ tags: { quick: ["sync-test-task"] } });
+      writeCommandTreeConfig({ tags: { quick: ["sync-test-task"] } });
       await sleep(3000);
 
-      const savedConfig = readTaskTreeConfig();
+      const savedConfig = readCommandTreeConfig();
       const quickTags = savedConfig.tags?.["quick"] ?? [];
       assert.ok(quickTags.includes("sync-test-task"), "Config should persist");
     });
@@ -303,28 +303,28 @@ suite("Quick Tasks E2E Tests", () => {
 
   // Spec: quick-tasks, user-data-storage
   suite("Quick Tasks File Watching", () => {
-    test("tasktree.json changes trigger refresh", async function () {
+    test("commandtree.json changes trigger refresh", async function () {
       this.timeout(15000);
 
-      const config1: TaskTreeConfig = {
+      const config1: CommandTreeConfig = {
         tags: {
           quick: ["initial-task"],
         },
       };
-      writeTaskTreeConfig(config1);
+      writeCommandTreeConfig(config1);
 
       await sleep(2000);
 
-      const config2: TaskTreeConfig = {
+      const config2: CommandTreeConfig = {
         tags: {
           quick: ["updated-task"],
         },
       };
-      writeTaskTreeConfig(config2);
+      writeCommandTreeConfig(config2);
 
       await sleep(2000);
 
-      const savedConfig = readTaskTreeConfig();
+      const savedConfig = readCommandTreeConfig();
       const quickTags = savedConfig.tags?.["quick"] ?? [];
       assert.ok(quickTags.includes("updated-task"), "Should have updated task");
     });

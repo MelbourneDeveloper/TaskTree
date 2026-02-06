@@ -141,7 +141,7 @@ export function flattenTasks(result: DiscoveryResult): TaskItem[] {
  * Gets the default exclude patterns from configuration.
  */
 export function getExcludePatterns(): string[] {
-    const config = vscode.workspace.getConfiguration('tasktree');
+    const config = vscode.workspace.getConfiguration('commandtree');
     return config.get<string[]>('excludePatterns') ?? [
         '**/node_modules/**',
         '**/bin/**',

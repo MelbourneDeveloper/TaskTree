@@ -1,17 +1,17 @@
 import * as vscode from 'vscode';
 import type { TaskItem, Result } from './models/TaskItem';
-import { TaskTreeItem } from './models/TaskItem';
+import { CommandTreeItem } from './models/TaskItem';
 import { TagConfig } from './config/TagConfig';
 import { logger } from './utils/logger';
 
-const QUICK_TASK_MIME_TYPE = 'application/vnd.tasktree.quicktask';
+const QUICK_TASK_MIME_TYPE = 'application/vnd.commandtree.quicktask';
 
 /**
  * Provider for the Quick Tasks view - shows tasks tagged as "quick".
  * Supports drag-and-drop reordering.
  */
-export class QuickTasksProvider implements vscode.TreeDataProvider<TaskTreeItem>, vscode.TreeDragAndDropController<TaskTreeItem> {
-    private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<TaskTreeItem | undefined>();
+export class QuickTasksProvider implements vscode.TreeDataProvider<CommandTreeItem>, vscode.TreeDragAndDropController<CommandTreeItem> {
+    private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<CommandTreeItem | undefined>();
     readonly onDidChangeTreeData = this.onDidChangeTreeDataEmitter.event;
 
     readonly dropMimeTypes = [QUICK_TASK_MIME_TYPE];
@@ -75,11 +75,11 @@ export class QuickTasksProvider implements vscode.TreeDataProvider<TaskTreeItem>
         this.onDidChangeTreeDataEmitter.fire(undefined);
     }
 
-    getTreeItem(element: TaskTreeItem): vscode.TreeItem {
+    getTreeItem(element: CommandTreeItem): vscode.TreeItem {
         return element;
     }
 
-    getChildren(element?: TaskTreeItem): TaskTreeItem[] {
+    getChildren(element?: CommandTreeItem): CommandTreeItem[] {
         if (element !== undefined) {
             return element.children;
         }
@@ -98,7 +98,7 @@ export class QuickTasksProvider implements vscode.TreeDataProvider<TaskTreeItem>
 
         if (quickTasks.length === 0) {
             logger.quick('No quick tasks found', {});
-            return [new TaskTreeItem(null, 'No quick tasks - star tasks to add them here', [])];
+            return [new CommandTreeItem(null, 'No quick tasks - star tasks to add them here', [])];
         }
 
         // Sort by the order in the tag patterns array for deterministic ordering
@@ -127,13 +127,13 @@ export class QuickTasksProvider implements vscode.TreeDataProvider<TaskTreeItem>
             tasks: sortedTasks.map(t => t.label)
         });
 
-        return sortedTasks.map(task => new TaskTreeItem(task, null, []));
+        return sortedTasks.map(task => new CommandTreeItem(task, null, []));
     }
 
     /**
      * Called when dragging starts.
      */
-    handleDrag(source: readonly TaskTreeItem[], dataTransfer: vscode.DataTransfer): void {
+    handleDrag(source: readonly CommandTreeItem[], dataTransfer: vscode.DataTransfer): void {
         const taskItem = source[0];
         if (taskItem?.task === null) {
             return;
@@ -145,7 +145,7 @@ export class QuickTasksProvider implements vscode.TreeDataProvider<TaskTreeItem>
     /**
      * Called when dropping.
      */
-    async handleDrop(target: TaskTreeItem | undefined, dataTransfer: vscode.DataTransfer): Promise<void> {
+    async handleDrop(target: CommandTreeItem | undefined, dataTransfer: vscode.DataTransfer): Promise<void> {
         const transferItem = dataTransfer.get(QUICK_TASK_MIME_TYPE);
         if (transferItem === undefined) {
             return;

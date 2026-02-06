@@ -1,14 +1,14 @@
-# TaskTree
+# CommandTree
 
 One sidebar. Every task in your workspace.
 
-TaskTree scans your project and surfaces all runnable tasks in a single tree view: shell scripts, npm scripts, Makefile targets, VS Code tasks, launch configurations, and Python scripts. Filter by text or tag, run in terminal or debugger.
+CommandTree scans your project and surfaces all runnable tasks in a single tree view: shell scripts, npm scripts, Makefile targets, VS Code tasks, launch configurations, and Python scripts. Filter by text or tag, run in terminal or debugger.
 
 ## Features
 
 - **Auto-discovery** - Shell scripts (`.sh`, `.bash`, `.zsh`), npm scripts, Makefile targets, VS Code tasks, launch configurations, and Python scripts
 - **Quick Tasks** - Pin frequently-used tasks to a dedicated panel at the top
-- **Tagging** - Auto-tag tasks by type, label, or exact ID using pattern rules in `.vscode/tasktree.json`
+- **Tagging** - Auto-tag tasks by type, label, or exact ID using pattern rules in `.vscode/commandtree.json`
 - **Filtering** - Filter the tree by text search or by tag
 - **Run anywhere** - Execute in a new terminal, the current terminal, or launch with the debugger
 - **Folder grouping** - Tasks grouped by directory with collapsible nested hierarchy
@@ -33,10 +33,10 @@ Install from the VS Code Marketplace, or from source:
 ```bash
 npm install
 npm run package
-code --install-extension tasktree-*.vsix
+code --install-extension commandtree-*.vsix
 ```
 
-Open a workspace and the TaskTree panel appears in the sidebar. All discovered tasks are listed by category.
+Open a workspace and the CommandTree panel appears in the sidebar. All discovered tasks are listed by category.
 
 ## Usage
 
@@ -46,18 +46,18 @@ Open a workspace and the TaskTree panel appears in the sidebar. All discovered t
 - **Star a task** - Click the star icon to pin it to Quick Tasks
 - **Filter** - Use the toolbar icons to filter by text or tag
 - **Tag tasks** - Right-click > "Add Tag" to group related tasks
-- **Edit tags** - Configure auto-tagging patterns in `.vscode/tasktree.json`
+- **Edit tags** - Configure auto-tagging patterns in `.vscode/commandtree.json`
 
 ## Settings
 
 | Setting | Description | Default |
 |---------|-------------|---------|
-| `tasktree.excludePatterns` | Glob patterns to exclude from discovery | `**/node_modules/**`, `**/.git/**`, etc. |
-| `tasktree.sortOrder` | Sort tasks by `folder`, `name`, or `type` | `folder` |
+| `commandtree.excludePatterns` | Glob patterns to exclude from discovery | `**/node_modules/**`, `**/.git/**`, etc. |
+| `commandtree.sortOrder` | Sort tasks by `folder`, `name`, or `type` | `folder` |
 
 ## Tag Configuration
 
-Create `.vscode/tasktree.json` to define tag patterns:
+Create `.vscode/commandtree.json` to define tag patterns:
 
 ```json
 {

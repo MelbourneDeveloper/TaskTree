@@ -1,4 +1,4 @@
-# TaskTree Specification
+# CommandTree Specification
 
 ## Table of Contents
 
@@ -41,12 +41,12 @@
 ## Overview
 **overview**
 
-TaskTree scans a VS Code workspace and surfaces all runnable tasks in a single tree view sidebar panel. It discovers shell scripts, npm scripts, Makefile targets, VS Code tasks, launch configurations, etc then presents them in a categorized, filterable tree.
+CommandTree scans a VS Code workspace and surfaces all runnable tasks in a single tree view sidebar panel. It discovers shell scripts, npm scripts, Makefile targets, VS Code tasks, launch configurations, etc then presents them in a categorized, filterable tree.
 
 ## Task Discovery
 **task-discovery**
 
-TaskTree recursively scans the workspace for runnable tasks grouped by type. Discovery respects exclude patterns configured in settings. It does this in the background on low priority.
+CommandTree recursively scans the workspace for runnable tasks grouped by type. Discovery respects exclude patterns configured in settings. It does this in the background on low priority.
 
 ### Shell Scripts
 **task-discovery/shell-scripts**
@@ -86,22 +86,22 @@ Tasks can be executed three ways via inline buttons or context menu.
 ### Run in New Terminal
 **task-execution/new-terminal**
 
-Opens a new VS Code terminal and runs the task command. Triggered by the play button or `tasktree.run` command.
+Opens a new VS Code terminal and runs the task command. Triggered by the play button or `commandtree.run` command.
 
 ### Run in Current Terminal
 **task-execution/current-terminal**
 
-Sends the task command to the currently active terminal. Triggered by the circle-play button or `tasktree.runInCurrentTerminal` command.
+Sends the task command to the currently active terminal. Triggered by the circle-play button or `commandtree.runInCurrentTerminal` command.
 
 ### Debug
 **task-execution/debug**
 
-Launches the task using the VS Code debugger. Only applicable to launch configurations. Triggered by the bug button or `tasktree.debug` command.
+Launches the task using the VS Code debugger. Only applicable to launch configurations. Triggered by the bug button or `commandtree.debug` command.
 
 ## Quick Tasks
 **quick-tasks**
 
-Users can star tasks to pin them in a "Quick Tasks" panel at the top of the tree view. Starred task identifiers are persisted in the `quick` array inside `.vscode/tasktree.json`:
+Users can star tasks to pin them in a "Quick Tasks" panel at the top of the tree view. Starred task identifiers are persisted in the `quick` array inside `.vscode/commandtree.json`:
 
 ```json
 {
@@ -120,7 +120,7 @@ Tags group related tasks for organization and filtering.
 ### Tag Configuration File
 **tagging/config-file**
 
-Tags are defined in `.vscode/tasktree.json` under the `tags` key:
+Tags are defined in `.vscode/commandtree.json` under the `tags` key:
 
 ```json
 {
@@ -154,7 +154,7 @@ This file can be committed to version control to share task organization with a 
 
 - **Add tag to task**: Right-click a task > "Add Tag" > select existing or create new
 - **Remove tag from task**: Right-click a task > "Remove Tag"
-- **Edit tags file directly**: Command Palette > "TaskTree: Edit Tags Configuration"
+- **Edit tags file directly**: Command Palette > "CommandTree: Edit Tags Configuration"
 
 ## Filtering
 **filtering**
@@ -162,17 +162,17 @@ This file can be committed to version control to share task organization with a 
 ### Text Filter
 **filtering/text**
 
-Free-text filter via toolbar or `tasktree.filter` command. Matches against task names.
+Free-text filter via toolbar or `commandtree.filter` command. Matches against task names.
 
 ### Tag Filter
 **filtering/tag**
 
-Pick a tag from the toolbar picker (`tasktree.filterByTag`) to show only tasks matching that tag's patterns.
+Pick a tag from the toolbar picker (`commandtree.filterByTag`) to show only tasks matching that tag's patterns.
 
 ### Clear Filter
 **filtering/clear**
 
-Remove all active filters via toolbar button or `tasktree.clearFilter` command.
+Remove all active filters via toolbar button or `commandtree.clearFilter` command.
 
 ## Parameterized Tasks
 **parameterized-tasks**
@@ -197,12 +197,12 @@ All settings are configured via VS Code settings (`Cmd+,` / `Ctrl+,`).
 ### Exclude Patterns
 **settings/exclude-patterns**
 
-`tasktree.excludePatterns` - Glob patterns to exclude from task discovery. Default includes `**/node_modules/**`, `**/.vscode-test/**`, and others.
+`commandtree.excludePatterns` - Glob patterns to exclude from task discovery. Default includes `**/node_modules/**`, `**/.vscode-test/**`, and others.
 
 ### Sort Order
 **settings/sort-order**
 
-`tasktree.sortOrder` - How tasks are sorted within categories:
+`commandtree.sortOrder` - How tasks are sorted within categories:
 
 | Value | Description |
 |-------|-------------|
@@ -213,12 +213,12 @@ All settings are configured via VS Code settings (`Cmd+,` / `Ctrl+,`).
 ### Show Empty Categories
 **settings/show-empty-categories**
 
-`tasktree.showEmptyCategories` - Whether to display category nodes that contain no discovered tasks.
+`commandtree.showEmptyCategories` - Whether to display category nodes that contain no discovered tasks.
 
 ## User Data Storage
 **user-data-storage**
 
-TaskTree stores workspace-specific data in `.vscode/tasktree.json`. This file is automatically created and updated as you use the extension. It holds both quick task pins and tag definitions.
+CommandTree stores workspace-specific data in `.vscode/commandtree.json`. This file is automatically created and updated as you use the extension. It holds both quick task pins and tag definitions.
 
 ---
 
@@ -230,7 +230,7 @@ TaskTree stores workspace-specific data in `.vscode/tasktree.json`. This file is
 ### Overview
 **semantic-search/overview**
 
-TaskTree will use an LLM to generate a plain-language summary of what each discovered script does. These summaries, along with vector embeddings of the script content and summary, are stored in a local database. This enables **semantic search**: users can describe what they want in natural language and find the right script without knowing its exact name or path.
+CommandTree will use an LLM to generate a plain-language summary of what each discovered script does. These summaries, along with vector embeddings of the script content and summary, are stored in a local database. This enables **semantic search**: users can describe what they want in natural language and find the right script without knowing its exact name or path.
 
 ### LLM Integration
 **semantic-search/llm-integration**
@@ -239,9 +239,9 @@ The preferred integration path is **GitHub Copilot** via the VS Code Language Mo
 
 **Opt-in flow:**
 
-1. On first workspace load (or when the user enables the feature), TaskTree shows a simple prompt:
+1. On first workspace load (or when the user enables the feature), CommandTree shows a simple prompt:
    > *"Would you like to use GitHub Copilot to summarise scripts in your workspace?"*
-2. If the user accepts, TaskTree uses `vscode.lm.selectChatModels({ vendor: 'copilot' })` to access a lightweight model (e.g. `gpt-4o-mini`) for summarisation. The VS Code API handles Copilot authentication and consent automatically.
+2. If the user accepts, CommandTree uses `vscode.lm.selectChatModels({ vendor: 'copilot' })` to access a lightweight model (e.g. `gpt-4o-mini`) for summarisation. The VS Code API handles Copilot authentication and consent automatically.
 3. If the user declines, the feature remains **dormant**. No summaries are generated, and the extension behaves as before. The user can enable it later via settings.
 
 **Alternative providers:**
@@ -256,9 +256,9 @@ The summarisation interface is provider-agnostic — any model that accepts a te
 ### Database and Config Migration
 **semantic-search/database-migration**
 
-All workspace configuration currently stored in `.vscode/tasktree.json` (quick task pins, tag definitions) will migrate into a **local embedded database** (e.g. SQLite). This database also stores script summaries and vector embeddings.
+All workspace configuration currently stored in `.vscode/commandtree.json` (quick task pins, tag definitions) will migrate into a **local embedded database** (e.g. SQLite). This database also stores script summaries and vector embeddings.
 
-The migration is automatic and transparent. The `.vscode/tasktree.json` file is read once during migration, and the database becomes the single source of truth going forward.
+The migration is automatic and transparent. The `.vscode/commandtree.json` file is read once during migration, and the database becomes the single source of truth going forward.
 
 ### Data Structure
 **semantic-search/data-structure**
@@ -290,7 +290,7 @@ erDiagram
 ### Search UX
 **semantic-search/search-ux**
 
-The existing filter bar (`tasktree.filter`) gains a semantic search mode:
+The existing filter bar (`commandtree.filter`) gains a semantic search mode:
 
 1. User types a natural-language query (e.g. *"deploy to staging"*, *"run database migrations"*, *"lint and format code"*).
 2. The query is embedded using the same model that produced the stored embeddings.

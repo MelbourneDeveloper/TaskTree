@@ -1,13 +1,13 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { TaskTreeProvider } from '../../TaskTreeProvider';
+import { CommandTreeProvider } from '../../CommandTreeProvider';
 import { QuickTasksProvider } from '../../QuickTasksProvider';
-import { TaskTreeItem } from '../../models/TaskItem';
+import { CommandTreeItem } from '../../models/TaskItem';
 import type { TaskItem, TaskType } from '../../models/TaskItem';
 
-export const EXTENSION_ID = 'nimblesite.tasktree';
-export const TREE_VIEW_ID = 'tasktree';
+export const EXTENSION_ID = 'nimblesite.commandtree';
+export const TREE_VIEW_ID = 'commandtree';
 
 export interface TestContext {
     extension: vscode.Extension<unknown>;
@@ -50,7 +50,7 @@ export async function executeCommand<T>(command: string, ...args: unknown[]): Pr
 }
 
 export async function refreshTasks(): Promise<void> {
-    await executeCommand('tasktree.refresh');
+    await executeCommand('commandtree.refresh');
     // Wait for async discovery to complete
     await sleep(500);
 }
@@ -58,20 +58,20 @@ export async function refreshTasks(): Promise<void> {
 export async function filterTasks(_filterText: string): Promise<void> {
     // We need to mock the input box since we can't interact with UI in tests
     // Instead, we'll test the filtering logic through the provider directly
-    await executeCommand('tasktree.filter');
+    await executeCommand('commandtree.filter');
 }
 
 export async function filterByTag(_tag: string): Promise<void> {
     // _tag is used for API compatibility - the actual tag filtering happens via UI
-    await executeCommand('tasktree.filterByTag');
+    await executeCommand('commandtree.filterByTag');
 }
 
 export async function clearFilter(): Promise<void> {
-    await executeCommand('tasktree.clearFilter');
+    await executeCommand('commandtree.clearFilter');
 }
 
 export async function runTask(taskItem: unknown): Promise<void> {
-    await executeCommand('tasktree.run', taskItem);
+    await executeCommand('commandtree.run', taskItem);
 }
 
 export async function sleep(ms: number): Promise<void> {
@@ -139,7 +139,7 @@ export async function waitForCondition(
     throw new Error(`Condition not met within ${timeout}ms`);
 }
 
-export function getTaskTreeProvider(): TaskTreeProvider {
+export function getCommandTreeProvider(): CommandTreeProvider {
     // Access the tree data provider through the extension's exports
     const extension = vscode.extensions.getExtension(EXTENSION_ID);
     if (extension === undefined) {
@@ -148,15 +148,15 @@ export function getTaskTreeProvider(): TaskTreeProvider {
     if (!extension.isActive) {
         throw new Error('Extension not active');
     }
-    const extensionExports = extension.exports as { taskTreeProvider?: TaskTreeProvider } | undefined;
-    const provider = extensionExports?.taskTreeProvider;
+    const extensionExports = extension.exports as { commandTreeProvider?: CommandTreeProvider } | undefined;
+    const provider = extensionExports?.commandTreeProvider;
     if (!provider) {
-        throw new Error('TaskTreeProvider not exported from extension');
+        throw new Error('CommandTreeProvider not exported from extension');
     }
     return provider;
 }
 
-export async function getTreeChildren(provider: TaskTreeProvider, parent?: TaskTreeItem): Promise<TaskTreeItem[]> {
+export async function getTreeChildren(provider: CommandTreeProvider, parent?: CommandTreeItem): Promise<CommandTreeItem[]> {
     return await provider.getChildren(parent);
 }
 
@@ -176,7 +176,7 @@ export function getQuickTasksProvider(): QuickTasksProvider {
     return provider;
 }
 
-export { TaskTreeProvider, TaskTreeItem, QuickTasksProvider };
+export { CommandTreeProvider, CommandTreeItem, QuickTasksProvider };
 
 export async function captureTerminalOutput(terminalName: string, timeout = 5000): Promise<string> {
     // Find the terminal by name

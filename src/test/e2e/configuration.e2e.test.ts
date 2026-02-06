@@ -28,8 +28,8 @@ interface PackageJsonConfig {
     configuration: {
       title: string;
       properties: {
-        "tasktree.excludePatterns": ConfigurationProperty;
-        "tasktree.sortOrder": ConfigurationProperty;
+        "commandtree.excludePatterns": ConfigurationProperty;
+        "commandtree.sortOrder": ConfigurationProperty;
       };
     };
   };
@@ -58,7 +58,7 @@ suite("Configuration and File Watchers E2E Tests", () => {
     test("excludePatterns setting exists", function () {
       this.timeout(10000);
 
-      const config = vscode.workspace.getConfiguration("tasktree");
+      const config = vscode.workspace.getConfiguration("commandtree");
       const excludePatterns = config.get<string[]>("excludePatterns");
 
       assert.ok(excludePatterns, "excludePatterns should exist");
@@ -73,7 +73,7 @@ suite("Configuration and File Watchers E2E Tests", () => {
 
       const packageJson = readExtensionPackageJson();
       const defaultPatterns = packageJson.contributes.configuration.properties[
-        "tasktree.excludePatterns"
+        "commandtree.excludePatterns"
       ].default as string[];
 
       assert.ok(
@@ -88,7 +88,7 @@ suite("Configuration and File Watchers E2E Tests", () => {
     test("sortOrder setting exists", function () {
       this.timeout(10000);
 
-      const config = vscode.workspace.getConfiguration("tasktree");
+      const config = vscode.workspace.getConfiguration("commandtree");
       const sortOrder = config.get<string>("sortOrder");
 
       assert.ok(
@@ -102,7 +102,7 @@ suite("Configuration and File Watchers E2E Tests", () => {
 
       const packageJson = readExtensionPackageJson();
       const enumValues =
-        packageJson.contributes.configuration.properties["tasktree.sortOrder"]
+        packageJson.contributes.configuration.properties["commandtree.sortOrder"]
           .enum;
 
       assert.ok(enumValues, "enum should exist");
@@ -116,7 +116,7 @@ suite("Configuration and File Watchers E2E Tests", () => {
 
       const packageJson = readExtensionPackageJson();
       const defaultValue =
-        packageJson.contributes.configuration.properties["tasktree.sortOrder"]
+        packageJson.contributes.configuration.properties["commandtree.sortOrder"]
           .default;
 
       assert.strictEqual(
@@ -131,7 +131,7 @@ suite("Configuration and File Watchers E2E Tests", () => {
 
       const packageJson = readExtensionPackageJson();
       const enumDescriptions =
-        packageJson.contributes.configuration.properties["tasktree.sortOrder"]
+        packageJson.contributes.configuration.properties["commandtree.sortOrder"]
           .enumDescriptions;
 
       assert.ok(enumDescriptions, "enumDescriptions should exist");
@@ -156,7 +156,7 @@ suite("Configuration and File Watchers E2E Tests", () => {
     test("sortOrder config has valid value", function () {
       this.timeout(10000);
 
-      const config = vscode.workspace.getConfiguration("tasktree");
+      const config = vscode.workspace.getConfiguration("commandtree");
       const sortOrder = config.get<string>("sortOrder");
 
       assert.ok(
@@ -168,7 +168,7 @@ suite("Configuration and File Watchers E2E Tests", () => {
     test("workspace settings are read correctly", function () {
       this.timeout(10000);
 
-      const config = vscode.workspace.getConfiguration("tasktree");
+      const config = vscode.workspace.getConfiguration("commandtree");
 
       const excludePatterns = config.get<string[]>("excludePatterns");
       const sortOrder = config.get<string>("sortOrder");
@@ -187,8 +187,8 @@ suite("Configuration and File Watchers E2E Tests", () => {
 
       assert.strictEqual(
         packageJson.contributes.configuration.title,
-        "TaskTree",
-        "Configuration title should be TaskTree",
+        "CommandTree",
+        "Configuration title should be CommandTree",
       );
     });
   });
@@ -199,7 +199,7 @@ suite("Configuration and File Watchers E2E Tests", () => {
       this.timeout(10000);
 
       const tagConfig = JSON.parse(
-        fs.readFileSync(getFixturePath(".vscode/tasktree.json"), "utf8"),
+        fs.readFileSync(getFixturePath(".vscode/commandtree.json"), "utf8"),
       ) as TagConfig;
 
       assert.ok(
@@ -212,7 +212,7 @@ suite("Configuration and File Watchers E2E Tests", () => {
       this.timeout(10000);
 
       const tagConfig = JSON.parse(
-        fs.readFileSync(getFixturePath(".vscode/tasktree.json"), "utf8"),
+        fs.readFileSync(getFixturePath(".vscode/commandtree.json"), "utf8"),
       ) as TagConfig;
 
       for (const [tagName, patterns] of Object.entries(tagConfig.tags)) {
@@ -231,7 +231,7 @@ suite("Configuration and File Watchers E2E Tests", () => {
 
       const packageJson = readExtensionPackageJson();
       const patterns = packageJson.contributes.configuration.properties[
-        "tasktree.excludePatterns"
+        "commandtree.excludePatterns"
       ].default as string[];
 
       for (const pattern of patterns) {
@@ -245,7 +245,7 @@ suite("Configuration and File Watchers E2E Tests", () => {
     test("exclude patterns support common directories", function () {
       this.timeout(10000);
 
-      const config = vscode.workspace.getConfiguration("tasktree");
+      const config = vscode.workspace.getConfiguration("commandtree");
       const patterns = config.get<string[]>("excludePatterns") ?? [];
 
       const excludedDirs = ["node_modules", "bin", "obj", ".git"];

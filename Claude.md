@@ -1,8 +1,11 @@
-# CLAUDE.md - TaskTree Extension
+# CLAUDE.md - CommandTree Extension
 
 ## Too Many Cooks
 
-- Don't use too many cooks right now
+You are working with many other agents. Make sure there is effective cooperation
+- Register on TMC immediately
+- Don't edit files that are locked; lock files when editing
+- COMMUNICATE REGULARLY AND COORDINATE WITH OTHERS THROUGH MESSAGES
 
 ## Coding Rules
 
@@ -44,8 +47,8 @@ Only test the UI **THROUGH the UI**. Do not run command etc. to coerce the state
  * - ❌ Calling provider.refresh() directly
  * - ❌ Manipulating internal state directly
  * - ❌ Using any method not exposed via VS Code commands
- * - ❌ Using commands that should just happen as part of normal use. e.g.: `await vscode.commands.executeCommand('tasktree.refresh');`
- * - ❌ `executeCommand('tasktree.addToQuick', item)` - TAP the item via the DOM!!!
+ * - ❌ Using commands that should just happen as part of normal use. e.g.: `await vscode.commands.executeCommand('commandtree.refresh');`
+ * - ❌ `executeCommand('commandtree.addToQuick', item)` - TAP the item via the DOM!!!
 
 ### Test First Process
 - Write test that fails because of bug/missing feature
@@ -90,12 +93,12 @@ assert.ok(true, 'Command ran');
 ## Project Structure
 
 ```
-TaskTree/
+CommandTree/
 ├── src/
 │   ├── extension.ts          # Entry point, command registration
-│   ├── TaskTreeProvider.ts   # TreeDataProvider implementation
+│   ├── CommandTreeProvider.ts   # TreeDataProvider implementation
 │   ├── config/
-│   │   └── TagConfig.ts      # Tag configuration from tasktree.json
+│   │   └── TagConfig.ts      # Tag configuration from commandtree.json
 │   ├── discovery/
 │   │   ├── index.ts          # Discovery orchestration
 │   │   ├── shell.ts          # Shell script discovery
@@ -119,14 +122,14 @@ TaskTree/
 
 | Command ID | Description |
 |------------|-------------|
-| `tasktree.refresh` | Reload all tasks |
-| `tasktree.run` | Run task in new terminal |
-| `tasktree.runInCurrentTerminal` | Run in active terminal |
-| `tasktree.debug` | Launch with debugger |
-| `tasktree.filter` | Text filter input |
-| `tasktree.filterByTag` | Tag filter picker |
-| `tasktree.clearFilter` | Clear all filters |
-| `tasktree.editTags` | Open tasktree.json |
+| `commandtree.refresh` | Reload all tasks |
+| `commandtree.run` | Run task in new terminal |
+| `commandtree.runInCurrentTerminal` | Run in active terminal |
+| `commandtree.debug` | Launch with debugger |
+| `commandtree.filter` | Text filter input |
+| `commandtree.filterByTag` | Tag filter picker |
+| `commandtree.clearFilter` | Clear all filters |
+| `commandtree.editTags` | Open commandtree.json |
 
 ## Build Commands
 
@@ -137,7 +140,7 @@ See [text](package.json)
 1. Create discovery module in `src/discovery/`
 2. Export discovery function: `discoverXxxTasks(root: string, excludes: string[]): Promise<TaskItem[]>`
 3. Add to `discoverAllTasks()` in `src/discovery/index.ts`
-4. Add category in `TaskTreeProvider.buildRootCategories()`
+4. Add category in `CommandTreeProvider.buildRootCategories()`
 5. Handle execution in `TaskRunner.run()`
 6. Add E2E tests in `src/test/suite/discovery.test.ts`
 
@@ -146,7 +149,7 @@ See [text](package.json)
 ```typescript
 // Register command
 context.subscriptions.push(
-    vscode.commands.registerCommand('tasktree.xxx', handler)
+    vscode.commands.registerCommand('commandtree.xxx', handler)
 );
 
 // File watcher
@@ -155,18 +158,18 @@ watcher.onDidChange(() => refresh());
 context.subscriptions.push(watcher);
 
 // Tree view
-const treeView = vscode.window.createTreeView('tasktree', {
+const treeView = vscode.window.createTreeView('commandtree', {
     treeDataProvider: provider,
     showCollapseAll: true
 });
 
 // Context for when clauses
-vscode.commands.executeCommand('setContext', 'tasktree.hasFilter', true);
+vscode.commands.executeCommand('setContext', 'commandtree.hasFilter', true);
 ```
 
 ## Configuration
 
 Settings defined in `package.json` under `contributes.configuration`:
-- `tasktree.excludePatterns` - Glob patterns to exclude
-- `tasktree.showEmptyCategories` - Show empty category nodes
-- `tasktree.sortOrder` - Task sort order (folder/name/type)
+- `commandtree.excludePatterns` - Glob patterns to exclude
+- `commandtree.showEmptyCategories` - Show empty category nodes
+- `commandtree.sortOrder` - Task sort order (folder/name/type)

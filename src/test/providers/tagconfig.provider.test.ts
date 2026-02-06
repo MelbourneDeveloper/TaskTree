@@ -11,12 +11,12 @@
  * ⛔️⛔️⛔️ E2E TEST RULES ⛔️⛔️⛔️
  *
  * LEGAL:
- * ✅ Writing to config files (simulates user editing .vscode/tasktree.json)
+ * ✅ Writing to config files (simulates user editing .vscode/commandtree.json)
  * ✅ Waiting for file watcher with await sleep()
  * ✅ Observing state via getChildren() / getAllTasks() (read-only)
  *
  * ILLEGAL:
- * ❌ vscode.commands.executeCommand('tasktree.refresh') - refresh should be AUTOMATIC
+ * ❌ vscode.commands.executeCommand('commandtree.refresh') - refresh should be AUTOMATIC
  * ❌ provider.refresh() - internal method
  * ❌ provider.clearFilters() - internal method
  * ❌ provider.setTagFilter() - internal method
@@ -33,10 +33,10 @@ import {
   activateExtension,
   sleep,
   getFixturePath,
-  getTaskTreeProvider,
+  getCommandTreeProvider,
   getQuickTasksProvider,
 } from "../helpers/helpers";
-import type { TaskTreeProvider, QuickTasksProvider } from "../helpers/helpers";
+import type { CommandTreeProvider, QuickTasksProvider } from "../helpers/helpers";
 
 interface TagPattern {
   id?: string;
@@ -44,29 +44,29 @@ interface TagPattern {
   label?: string;
 }
 
-interface TaskTreeConfig {
+interface CommandTreeConfig {
   tags?: Record<string, Array<string | TagPattern>>;
 }
 
-function writeConfig(config: TaskTreeConfig): void {
-  const configPath = getFixturePath(".vscode/tasktree.json");
+function writeConfig(config: CommandTreeConfig): void {
+  const configPath = getFixturePath(".vscode/commandtree.json");
   fs.writeFileSync(configPath, JSON.stringify(config, null, 4));
 }
 
 // Spec: tagging/config-file, tagging/pattern-syntax, quick-tasks
 suite("Tag Config Integration Tests", () => {
   let originalConfig: string;
-  let treeProvider: TaskTreeProvider;
+  let treeProvider: CommandTreeProvider;
   let quickProvider: QuickTasksProvider;
 
   suiteSetup(async function () {
     this.timeout(30000);
     await activateExtension();
-    treeProvider = getTaskTreeProvider();
+    treeProvider = getCommandTreeProvider();
     quickProvider = getQuickTasksProvider();
 
     // Save original config for restoration
-    const configPath = getFixturePath(".vscode/tasktree.json");
+    const configPath = getFixturePath(".vscode/commandtree.json");
     if (fs.existsSync(configPath)) {
       originalConfig = fs.readFileSync(configPath, "utf8");
     } else {
@@ -80,7 +80,7 @@ suite("Tag Config Integration Tests", () => {
   suiteTeardown(async function () {
     this.timeout(10000);
     // Restore original config - file watcher should auto-sync
-    fs.writeFileSync(getFixturePath(".vscode/tasktree.json"), originalConfig);
+    fs.writeFileSync(getFixturePath(".vscode/commandtree.json"), originalConfig);
     await sleep(3000);
   });
 
@@ -96,7 +96,7 @@ suite("Tag Config Integration Tests", () => {
       this.timeout(30000);
 
       // SETUP: Write config with type pattern
-      const config: TaskTreeConfig = {
+      const config: CommandTreeConfig = {
         tags: {
           "test-type-tag": [{ type: "npm" }],
         },
@@ -149,7 +149,7 @@ suite("Tag Config Integration Tests", () => {
       this.timeout(30000);
 
       // SETUP: Write config with type+label pattern
-      const config: TaskTreeConfig = {
+      const config: CommandTreeConfig = {
         tags: {
           "specific-tag": [{ type: "npm", label: "build" }],
         },
@@ -202,7 +202,7 @@ suite("Tag Config Integration Tests", () => {
       assert.ok(targetTask !== undefined, "First task must exist");
 
       // SETUP: Write config with exact ID
-      const config: TaskTreeConfig = {
+      const config: CommandTreeConfig = {
         tags: {
           "exact-id-tag": [targetTask.id],
         },
@@ -239,7 +239,7 @@ suite("Tag Config Integration Tests", () => {
       this.timeout(30000);
 
       // SETUP: Write config with label-only pattern
-      const config: TaskTreeConfig = {
+      const config: CommandTreeConfig = {
         tags: {
           "label-only-tag": [{ label: "build" }],
         },
@@ -301,7 +301,7 @@ suite("Tag Config Integration Tests", () => {
       assert.ok(targetTask !== undefined, "First task must exist");
 
       // SETUP: Write config with task ID in quick tag
-      const config: TaskTreeConfig = {
+      const config: CommandTreeConfig = {
         tags: {
           quick: [targetTask.id],
         },
@@ -332,7 +332,7 @@ suite("Tag Config Integration Tests", () => {
       this.timeout(30000);
 
       // SETUP: Write config with type pattern in quick
-      const config: TaskTreeConfig = {
+      const config: CommandTreeConfig = {
         tags: {
           quick: [{ type: "shell" }],
         },
@@ -374,7 +374,7 @@ suite("Tag Config Integration Tests", () => {
       this.timeout(20000);
 
       // SETUP: Write config with empty quick tag
-      const config: TaskTreeConfig = {
+      const config: CommandTreeConfig = {
         tags: {
           quick: [],
         },
@@ -419,7 +419,7 @@ suite("Tag Config Integration Tests", () => {
       assert.ok(taskToAdd !== undefined, "Must have task to add");
 
       // WRITE TO CONFIG (simulates user editing config file)
-      const config: TaskTreeConfig = {
+      const config: CommandTreeConfig = {
         tags: {
           quick: [taskToAdd.id],
         },
@@ -493,7 +493,7 @@ suite("Tag Config Integration Tests", () => {
       this.timeout(30000);
 
       // SETUP: Write config with multiple patterns that match the same task
-      const config: TaskTreeConfig = {
+      const config: CommandTreeConfig = {
         tags: {
           "tag-by-type": [{ type: "npm" }],
           "tag-by-label": [{ label: "build" }],
@@ -556,7 +556,7 @@ suite("Tag Config Integration Tests", () => {
       );
 
       // WRITE NEW CONFIG (simulate user editing file)
-      const newConfig: TaskTreeConfig = {
+      const newConfig: CommandTreeConfig = {
         tags: {
           "auto-watch-tag": [{ type: "npm" }],
         },

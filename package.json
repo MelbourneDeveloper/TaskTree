@@ -1,6 +1,6 @@
 {
-  "name": "tasktree",
-  "displayName": "TaskTree",
+  "name": "commandtree",
+  "displayName": "CommandTree",
   "description": "Unified task runner: discover shell scripts, npm scripts, Makefiles, launch configs, VS Code tasks and more in one filterable tree",
   "version": "0.1.0",
   "author": "Christian Findlay",
@@ -8,11 +8,11 @@
   "publisher": "nimblesite",
   "repository": {
     "type": "git",
-    "url": "https://github.com/MelbourneDeveloper/TaskTree.git"
+    "url": "https://github.com/MelbourneDeveloper/CommandTree.git"
   },
-  "homepage": "https://github.com/MelbourneDeveloper/TaskTree#readme",
+  "homepage": "https://github.com/MelbourneDeveloper/CommandTree#readme",
   "bugs": {
-    "url": "https://github.com/MelbourneDeveloper/TaskTree/issues"
+    "url": "https://github.com/MelbourneDeveloper/CommandTree/issues"
   },
   "engines": {
     "vscode": "^1.80.0"
@@ -40,83 +40,83 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "tasktree-container",
-          "title": "TaskTree",
+          "id": "commandtree-container",
+          "title": "CommandTree",
           "icon": "activitybar-icon.svg"
         }
       ]
     },
     "views": {
-      "tasktree-container": [
+      "commandtree-container": [
         {
-          "id": "tasktree-quick",
-          "name": "TaskTree - Quick Launch",
-          "contextualTitle": "TaskTree - Quick Launch"
+          "id": "commandtree-quick",
+          "name": "CommandTree - Quick Launch",
+          "contextualTitle": "CommandTree - Quick Launch"
         },
         {
-          "id": "tasktree",
-          "name": "TaskTree - All",
-          "contextualTitle": "TaskTree - All"
+          "id": "commandtree",
+          "name": "CommandTree - All",
+          "contextualTitle": "CommandTree - All"
         }
       ]
     },
     "commands": [
       {
-        "command": "tasktree.refresh",
+        "command": "commandtree.refresh",
         "title": "Refresh Tasks",
         "icon": "$(refresh)"
       },
       {
-        "command": "tasktree.run",
+        "command": "commandtree.run",
         "title": "Run Task (New Terminal)",
         "icon": "$(play)"
       },
       {
-        "command": "tasktree.runInCurrentTerminal",
+        "command": "commandtree.runInCurrentTerminal",
         "title": "Run in Current Terminal",
         "icon": "$(play-circle)"
       },
       {
-        "command": "tasktree.filter",
+        "command": "commandtree.filter",
         "title": "Filter Tasks",
         "icon": "$(search)"
       },
       {
-        "command": "tasktree.filterByTag",
+        "command": "commandtree.filterByTag",
         "title": "Filter by Tag",
         "icon": "$(tag)"
       },
       {
-        "command": "tasktree.clearFilter",
+        "command": "commandtree.clearFilter",
         "title": "Clear Filter",
         "icon": "$(clear-all)"
       },
       {
-        "command": "tasktree.editTags",
+        "command": "commandtree.editTags",
         "title": "Edit Tags Configuration"
       },
       {
-        "command": "tasktree.addToQuick",
+        "command": "commandtree.addToQuick",
         "title": "Add to Quick Tasks",
         "icon": "$(star-empty)"
       },
       {
-        "command": "tasktree.removeFromQuick",
+        "command": "commandtree.removeFromQuick",
         "title": "Remove from Quick Tasks",
         "icon": "$(star-full)"
       },
       {
-        "command": "tasktree.refreshQuick",
+        "command": "commandtree.refreshQuick",
         "title": "Refresh Quick Tasks",
         "icon": "$(refresh)"
       },
       {
-        "command": "tasktree.addTag",
+        "command": "commandtree.addTag",
         "title": "Add Tag",
         "icon": "$(tag)"
       },
       {
-        "command": "tasktree.removeTag",
+        "command": "commandtree.removeTag",
         "title": "Remove Tag",
         "icon": "$(close)"
       }
@@ -124,193 +124,193 @@
     "menus": {
       "view/title": [
         {
-          "command": "tasktree.filter",
-          "when": "view == tasktree",
+          "command": "commandtree.filter",
+          "when": "view == commandtree",
           "group": "navigation@1"
         },
         {
-          "command": "tasktree.filterByTag",
-          "when": "view == tasktree",
+          "command": "commandtree.filterByTag",
+          "when": "view == commandtree",
           "group": "navigation@2"
         },
         {
-          "command": "tasktree.clearFilter",
-          "when": "view == tasktree && tasktree.hasFilter",
+          "command": "commandtree.clearFilter",
+          "when": "view == commandtree && commandtree.hasFilter",
           "group": "navigation@3"
         },
         {
-          "command": "tasktree.refresh",
-          "when": "view == tasktree",
+          "command": "commandtree.refresh",
+          "when": "view == commandtree",
           "group": "navigation@4"
         },
         {
-          "command": "tasktree.filter",
-          "when": "view == tasktree-quick",
+          "command": "commandtree.filter",
+          "when": "view == commandtree-quick",
           "group": "navigation@1"
         },
         {
-          "command": "tasktree.filterByTag",
-          "when": "view == tasktree-quick",
+          "command": "commandtree.filterByTag",
+          "when": "view == commandtree-quick",
           "group": "navigation@2"
         },
         {
-          "command": "tasktree.clearFilter",
-          "when": "view == tasktree-quick && tasktree.hasFilter",
+          "command": "commandtree.clearFilter",
+          "when": "view == commandtree-quick && commandtree.hasFilter",
           "group": "navigation@3"
         },
         {
-          "command": "tasktree.refreshQuick",
-          "when": "view == tasktree-quick",
+          "command": "commandtree.refreshQuick",
+          "when": "view == commandtree-quick",
           "group": "navigation@4"
         }
       ],
       "view/item/context": [
         {
-          "command": "tasktree.run",
-          "when": "view == tasktree && viewItem == task",
+          "command": "commandtree.run",
+          "when": "view == commandtree && viewItem == task",
           "group": "inline@1"
         },
         {
-          "command": "tasktree.runInCurrentTerminal",
-          "when": "view == tasktree && viewItem == task",
+          "command": "commandtree.runInCurrentTerminal",
+          "when": "view == commandtree && viewItem == task",
           "group": "inline@3"
         },
         {
-          "command": "tasktree.addToQuick",
-          "when": "view == tasktree && viewItem == task",
+          "command": "commandtree.addToQuick",
+          "when": "view == commandtree && viewItem == task",
           "group": "inline@4"
         },
         {
-          "command": "tasktree.run",
-          "when": "view == tasktree && viewItem == task",
+          "command": "commandtree.run",
+          "when": "view == commandtree && viewItem == task",
           "group": "1_run@1"
         },
         {
-          "command": "tasktree.runInCurrentTerminal",
-          "when": "view == tasktree && viewItem == task",
+          "command": "commandtree.runInCurrentTerminal",
+          "when": "view == commandtree && viewItem == task",
           "group": "1_run@2"
         },
         {
-          "command": "tasktree.addToQuick",
-          "when": "view == tasktree && viewItem == task",
+          "command": "commandtree.addToQuick",
+          "when": "view == commandtree && viewItem == task",
           "group": "2_tags@1"
         },
         {
-          "command": "tasktree.addTag",
-          "when": "view == tasktree && viewItem == task",
+          "command": "commandtree.addTag",
+          "when": "view == commandtree && viewItem == task",
           "group": "3_tagging@1"
         },
         {
-          "command": "tasktree.removeTag",
-          "when": "view == tasktree && viewItem == task",
+          "command": "commandtree.removeTag",
+          "when": "view == commandtree && viewItem == task",
           "group": "3_tagging@2"
         },
         {
-          "command": "tasktree.run",
-          "when": "view == tasktree && viewItem == task-quick",
+          "command": "commandtree.run",
+          "when": "view == commandtree && viewItem == task-quick",
           "group": "inline@1"
         },
         {
-          "command": "tasktree.runInCurrentTerminal",
-          "when": "view == tasktree && viewItem == task-quick",
+          "command": "commandtree.runInCurrentTerminal",
+          "when": "view == commandtree && viewItem == task-quick",
           "group": "inline@3"
         },
         {
-          "command": "tasktree.removeFromQuick",
-          "when": "view == tasktree && viewItem == task-quick",
+          "command": "commandtree.removeFromQuick",
+          "when": "view == commandtree && viewItem == task-quick",
           "group": "inline@4"
         },
         {
-          "command": "tasktree.run",
-          "when": "view == tasktree && viewItem == task-quick",
+          "command": "commandtree.run",
+          "when": "view == commandtree && viewItem == task-quick",
           "group": "1_run@1"
         },
         {
-          "command": "tasktree.runInCurrentTerminal",
-          "when": "view == tasktree && viewItem == task-quick",
+          "command": "commandtree.runInCurrentTerminal",
+          "when": "view == commandtree && viewItem == task-quick",
           "group": "1_run@2"
         },
         {
-          "command": "tasktree.removeFromQuick",
-          "when": "view == tasktree && viewItem == task-quick",
+          "command": "commandtree.removeFromQuick",
+          "when": "view == commandtree && viewItem == task-quick",
           "group": "2_tags@1"
         },
         {
-          "command": "tasktree.addTag",
-          "when": "view == tasktree && viewItem == task-quick",
+          "command": "commandtree.addTag",
+          "when": "view == commandtree && viewItem == task-quick",
           "group": "3_tagging@1"
         },
         {
-          "command": "tasktree.removeTag",
-          "when": "view == tasktree && viewItem == task-quick",
+          "command": "commandtree.removeTag",
+          "when": "view == commandtree && viewItem == task-quick",
           "group": "3_tagging@2"
         },
         {
-          "command": "tasktree.run",
-          "when": "view == tasktree-quick && viewItem == task",
+          "command": "commandtree.run",
+          "when": "view == commandtree-quick && viewItem == task",
           "group": "inline@1"
         },
         {
-          "command": "tasktree.runInCurrentTerminal",
-          "when": "view == tasktree-quick && viewItem == task",
+          "command": "commandtree.runInCurrentTerminal",
+          "when": "view == commandtree-quick && viewItem == task",
           "group": "inline@3"
         },
         {
-          "command": "tasktree.removeFromQuick",
-          "when": "view == tasktree-quick && viewItem == task",
+          "command": "commandtree.removeFromQuick",
+          "when": "view == commandtree-quick && viewItem == task",
           "group": "inline@4"
         },
         {
-          "command": "tasktree.run",
-          "when": "view == tasktree-quick && viewItem == task",
+          "command": "commandtree.run",
+          "when": "view == commandtree-quick && viewItem == task",
           "group": "1_run@1"
         },
         {
-          "command": "tasktree.runInCurrentTerminal",
-          "when": "view == tasktree-quick && viewItem == task",
+          "command": "commandtree.runInCurrentTerminal",
+          "when": "view == commandtree-quick && viewItem == task",
           "group": "1_run@2"
         },
         {
-          "command": "tasktree.removeFromQuick",
-          "when": "view == tasktree-quick && viewItem == task",
+          "command": "commandtree.removeFromQuick",
+          "when": "view == commandtree-quick && viewItem == task",
           "group": "2_tags@1"
         },
         {
-          "command": "tasktree.run",
-          "when": "view == tasktree-quick && viewItem == task-quick",
+          "command": "commandtree.run",
+          "when": "view == commandtree-quick && viewItem == task-quick",
           "group": "inline@1"
         },
         {
-          "command": "tasktree.runInCurrentTerminal",
-          "when": "view == tasktree-quick && viewItem == task-quick",
+          "command": "commandtree.runInCurrentTerminal",
+          "when": "view == commandtree-quick && viewItem == task-quick",
           "group": "inline@3"
         },
         {
-          "command": "tasktree.removeFromQuick",
-          "when": "view == tasktree-quick && viewItem == task-quick",
+          "command": "commandtree.removeFromQuick",
+          "when": "view == commandtree-quick && viewItem == task-quick",
           "group": "inline@4"
         },
         {
-          "command": "tasktree.run",
-          "when": "view == tasktree-quick && viewItem == task-quick",
+          "command": "commandtree.run",
+          "when": "view == commandtree-quick && viewItem == task-quick",
           "group": "1_run@1"
         },
         {
-          "command": "tasktree.runInCurrentTerminal",
-          "when": "view == tasktree-quick && viewItem == task-quick",
+          "command": "commandtree.runInCurrentTerminal",
+          "when": "view == commandtree-quick && viewItem == task-quick",
           "group": "1_run@2"
         },
         {
-          "command": "tasktree.removeFromQuick",
-          "when": "view == tasktree-quick && viewItem == task-quick",
+          "command": "commandtree.removeFromQuick",
+          "when": "view == commandtree-quick && viewItem == task-quick",
           "group": "2_tags@1"
         }
       ]
     },
     "configuration": {
-      "title": "TaskTree",
+      "title": "CommandTree",
       "properties": {
-        "tasktree.excludePatterns": {
+        "commandtree.excludePatterns": {
           "type": "array",
           "default": [
             "**/node_modules/**",
@@ -338,7 +338,7 @@
           ],
           "description": "Glob patterns to exclude from task discovery"
         },
-        "tasktree.sortOrder": {
+        "commandtree.sortOrder": {
           "type": "string",
           "default": "folder",
           "enum": [
@@ -372,8 +372,8 @@
     "coverage:check": "c8 check-coverage --lines 90 --functions 90 --branches 90 --statements 90",
     "clean": "rm -rf node_modules out *.vsix coverage || true",
     "package": "npm run compile && vsce package",
-    "uninstall": "code --uninstall-extension nimblesite.tasktree || true",
-    "install-ext": "code --install-extension tasktree-*.vsix",
+    "uninstall": "code --uninstall-extension nimblesite.commandtree || true",
+    "install-ext": "code --install-extension commandtree-*.vsix",
     "build-and-install": "npm run clean && npm install && npm run uninstall && npm run package && npm run install-ext"
   },
   "devDependencies": {

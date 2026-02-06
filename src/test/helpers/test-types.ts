@@ -90,7 +90,7 @@ export interface LaunchJson {
     }>;
 }
 
-export interface TaskTreeJson {
+export interface CommandTreeJson {
     tags?: Record<string, string[]>;
     version?: string;
 }
@@ -111,15 +111,15 @@ export function parseLaunchJson(content: string): LaunchJson {
     return JSON.parse(content) as LaunchJson;
 }
 
-export function parseTaskTreeJson(content: string): TaskTreeJson {
-    return JSON.parse(content) as TaskTreeJson;
+export function parseCommandTreeJson(content: string): CommandTreeJson {
+    return JSON.parse(content) as CommandTreeJson;
 }
 
 /**
  * Safely access exclude patterns defaults from configuration properties
  */
 export function getExcludePatternsDefault(props: Record<string, ConfigurationProperty>): string[] {
-    const prop = props['tasktree.excludePatterns'];
+    const prop = props['commandtree.excludePatterns'];
     return Array.isArray(prop?.default) ? prop.default as string[] : [];
 }
 
@@ -127,7 +127,7 @@ export function getExcludePatternsDefault(props: Record<string, ConfigurationPro
  * Safely access sortOrder defaults from configuration properties
  */
 export function getSortOrderDefault(props: Record<string, ConfigurationProperty>): string {
-    const prop = props['tasktree.sortOrder'];
+    const prop = props['commandtree.sortOrder'];
     return typeof prop?.default === 'string' ? prop.default : '';
 }
 
@@ -135,7 +135,7 @@ export function getSortOrderDefault(props: Record<string, ConfigurationProperty>
  * Safely access sortOrder enum values from configuration properties
  */
 export function getSortOrderEnum(props: Record<string, ConfigurationProperty>): string[] {
-    const prop = props['tasktree.sortOrder'];
+    const prop = props['commandtree.sortOrder'];
     return Array.isArray(prop?.enum) ? prop.enum : [];
 }
 
@@ -143,7 +143,7 @@ export function getSortOrderEnum(props: Record<string, ConfigurationProperty>): 
  * Safely access sortOrder enum descriptions from configuration properties
  */
 export function getSortOrderEnumDescriptions(props: Record<string, ConfigurationProperty>): string[] {
-    const prop = props['tasktree.sortOrder'];
+    const prop = props['commandtree.sortOrder'];
     return Array.isArray(prop?.enumDescriptions) ? prop.enumDescriptions : [];
 }
 
@@ -151,6 +151,6 @@ export function getSortOrderEnumDescriptions(props: Record<string, Configuration
  * Safely access showEmptyCategories default from configuration properties
  */
 export function getShowEmptyCategoriesDefault(props: Record<string, ConfigurationProperty>): boolean {
-    const prop = props['tasktree.showEmptyCategories'];
+    const prop = props['commandtree.showEmptyCategories'];
     return typeof prop?.default === 'boolean' ? prop.default : false;
 }

@@ -1,5 +1,5 @@
 import type { TaskItem } from '../models/TaskItem';
-import { TaskTreeItem } from '../models/TaskItem';
+import { CommandTreeItem } from '../models/TaskItem';
 import type { DirNode } from './dirTree';
 import {
     groupByFullDir,
@@ -9,7 +9,7 @@ import {
 } from './dirTree';
 
 /**
- * Renders a DirNode as a folder TaskTreeItem.
+ * Renders a DirNode as a folder CommandTreeItem.
  */
 function renderFolder({
     node,
@@ -21,17 +21,17 @@ function renderFolder({
     parentDir: string;
     parentTreeId: string;
     sortTasks: (tasks: TaskItem[]) => TaskItem[];
-}): TaskTreeItem {
+}): CommandTreeItem {
     const label = getFolderLabel(node.dir, parentDir);
     const folderId = `${parentTreeId}/${label}`;
-    const taskItems = sortTasks(node.tasks).map(t => new TaskTreeItem(t, null, [], folderId));
+    const taskItems = sortTasks(node.tasks).map(t => new CommandTreeItem(t, null, [], folderId));
     const subItems = node.subdirs.map(sub => renderFolder({
         node: sub,
         parentDir: node.dir,
         parentTreeId: folderId,
         sortTasks
     }));
-    return new TaskTreeItem(null, label, [...taskItems, ...subItems], parentTreeId);
+    return new CommandTreeItem(null, label, [...taskItems, ...subItems], parentTreeId);
 }
 
 /**
@@ -47,10 +47,10 @@ export function buildNestedFolderItems({
     workspaceRoot: string;
     categoryId: string;
     sortTasks: (tasks: TaskItem[]) => TaskItem[];
-}): TaskTreeItem[] {
+}): CommandTreeItem[] {
     const groups = groupByFullDir(tasks, workspaceRoot);
     const rootNodes = buildDirTree(groups);
-    const result: TaskTreeItem[] = [];
+    const result: CommandTreeItem[] = [];
 
     for (const node of rootNodes) {
         if (needsFolderWrapper(node, rootNodes.length)) {
@@ -61,7 +61,7 @@ export function buildNestedFolderItems({
                 sortTasks
             }));
         } else {
-            const items = sortTasks(node.tasks).map(t => new TaskTreeItem(t, null, [], categoryId));
+            const items = sortTasks(node.tasks).map(t => new CommandTreeItem(t, null, [], categoryId));
             result.push(...items);
         }
     }

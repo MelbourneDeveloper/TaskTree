@@ -25,7 +25,7 @@ suite("Tag Context Menu E2E Tests", () => {
       this.timeout(10000);
       const commands = await vscode.commands.getCommands(true);
       assert.ok(
-        commands.includes("tasktree.addTag"),
+        commands.includes("commandtree.addTag"),
         "addTag command should be registered",
       );
     });
@@ -34,7 +34,7 @@ suite("Tag Context Menu E2E Tests", () => {
       this.timeout(10000);
       const commands = await vscode.commands.getCommands(true);
       assert.ok(
-        commands.includes("tasktree.removeTag"),
+        commands.includes("commandtree.removeTag"),
         "removeTag command should be registered",
       );
     });
@@ -63,10 +63,10 @@ suite("Tag Context Menu E2E Tests", () => {
       const contextMenus = packageJson.contributes.menus["view/item/context"];
 
       const addTagMenu = contextMenus.find(
-        (m) => m.command === "tasktree.addTag",
+        (m) => m.command === "commandtree.addTag",
       );
       const removeTagMenu = contextMenus.find(
-        (m) => m.command === "tasktree.removeTag",
+        (m) => m.command === "commandtree.removeTag",
       );
 
       assert.ok(addTagMenu !== undefined, "addTag should be in context menu");
@@ -86,7 +86,7 @@ suite("Tag Context Menu E2E Tests", () => {
       // Tag commands must also work for quick-tagged tasks (task-quick)
       const addTagQuickMenu = contextMenus.find(
         (m) =>
-          m.command === "tasktree.addTag" &&
+          m.command === "commandtree.addTag" &&
           m.when.includes("viewItem == task-quick"),
       );
       assert.ok(
@@ -96,7 +96,7 @@ suite("Tag Context Menu E2E Tests", () => {
 
       const removeTagQuickMenu = contextMenus.find(
         (m) =>
-          m.command === "tasktree.removeTag" &&
+          m.command === "commandtree.removeTag" &&
           m.when.includes("viewItem == task-quick"),
       );
       assert.ok(
@@ -125,10 +125,10 @@ suite("Tag Context Menu E2E Tests", () => {
       const contextMenus = packageJson.contributes.menus["view/item/context"];
 
       const addTagMenu = contextMenus.find(
-        (m) => m.command === "tasktree.addTag",
+        (m) => m.command === "commandtree.addTag",
       );
       const removeTagMenu = contextMenus.find(
-        (m) => m.command === "tasktree.removeTag",
+        (m) => m.command === "commandtree.removeTag",
       );
 
       assert.ok(addTagMenu !== undefined, "addTag should be in context menu");

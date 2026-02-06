@@ -306,7 +306,7 @@ suite('TagConfig Unit Tests', function () {
     // Spec: filtering/tag
     suite('Tag Filtering Logic', () => {
         /**
-         * Tests the filter logic used in TaskTreeProvider
+         * Tests the filter logic used in CommandTreeProvider
          */
         function filterByTag(tasks: TaskItem[], tagFilter: string | null): TaskItem[] {
             if (tagFilter === null || tagFilter === '') {

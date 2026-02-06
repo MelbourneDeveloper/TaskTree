@@ -15,10 +15,10 @@ import {
     activateExtension,
     sleep,
     getFixturePath,
-    getTaskTreeProvider,
+    getCommandTreeProvider,
     getQuickTasksProvider
 } from '../helpers/helpers';
-import type { TaskTreeProvider, QuickTasksProvider, TaskTreeItem } from '../helpers/helpers';
+import type { CommandTreeProvider, QuickTasksProvider, CommandTreeItem } from '../helpers/helpers';
 
 interface TagPattern {
     id?: string;
@@ -26,20 +26,20 @@ interface TagPattern {
     label?: string;
 }
 
-interface TaskTreeConfig {
+interface CommandTreeConfig {
     tags?: Record<string, Array<string | TagPattern>>;
 }
 
-function writeConfig(config: TaskTreeConfig): void {
-    const configPath = getFixturePath('.vscode/tasktree.json');
+function writeConfig(config: CommandTreeConfig): void {
+    const configPath = getFixturePath('.vscode/commandtree.json');
     fs.writeFileSync(configPath, JSON.stringify(config, null, 4));
 }
 
 async function findTreeItemById(
-    categories: TaskTreeItem[],
+    categories: CommandTreeItem[],
     taskId: string,
-    provider: TaskTreeProvider
-): Promise<TaskTreeItem | undefined> {
+    provider: CommandTreeProvider
+): Promise<CommandTreeItem | undefined> {
     for (const cat of categories) {
         const children = await provider.getChildren(cat);
         for (const child of children) {
@@ -56,17 +56,17 @@ async function findTreeItemById(
 // Spec: tagging/config-file, quick-tasks
 suite('TagConfig E2E Flow Tests', () => {
     let originalConfig: string;
-    let treeProvider: TaskTreeProvider;
+    let treeProvider: CommandTreeProvider;
     let quickProvider: QuickTasksProvider;
 
     suiteSetup(async function () {
         this.timeout(30000);
         await activateExtension();
-        treeProvider = getTaskTreeProvider();
+        treeProvider = getCommandTreeProvider();
         quickProvider = getQuickTasksProvider();
 
         // Save original config
-        const configPath = getFixturePath('.vscode/tasktree.json');
+        const configPath = getFixturePath('.vscode/commandtree.json');
         if (fs.existsSync(configPath)) {
             originalConfig = fs.readFileSync(configPath, 'utf8');
         } else {
@@ -78,7 +78,7 @@ suite('TagConfig E2E Flow Tests', () => {
 
     suiteTeardown(async function () {
         this.timeout(10000);
-        fs.writeFileSync(getFixturePath('.vscode/tasktree.json'), originalConfig);
+        fs.writeFileSync(getFixturePath('.vscode/commandtree.json'), originalConfig);
         await sleep(3000);
     });
 
@@ -88,7 +88,7 @@ suite('TagConfig E2E Flow Tests', () => {
             this.timeout(30000);
 
             // GIVEN: Config with type pattern for npm tasks
-            const config: TaskTreeConfig = {
+            const config: CommandTreeConfig = {
                 tags: {
                     'quick': [{ type: 'npm' }],
                     'build': [{ label: 'build' }]
@@ -142,7 +142,7 @@ suite('TagConfig E2E Flow Tests', () => {
             assert.ok(targetTask !== undefined, 'First task must exist');
 
             // GIVEN: Config with exact ID pattern
-            const config: TaskTreeConfig = {
+            const config: CommandTreeConfig = {
                 tags: {
                     'exact-match': [targetTask.id]
                 }
@@ -185,7 +185,7 @@ suite('TagConfig E2E Flow Tests', () => {
             assert.ok(targetTask !== undefined, 'Must have task');
 
             // GIVEN: Config with task in quick tag
-            const config: TaskTreeConfig = {
+            const config: CommandTreeConfig = {
                 tags: {
                     'quick': [targetTask.id]
                 }

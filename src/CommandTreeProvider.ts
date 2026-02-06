@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import type { TaskItem, Result } from './models/TaskItem';
-import { TaskTreeItem } from './models/TaskItem';
+import { CommandTreeItem } from './models/TaskItem';
 import type { DiscoveryResult } from './discovery';
 import { discoverAllTasks, flattenTasks, getExcludePatterns } from './discovery';
 import { TagConfig } from './config/TagConfig';
@@ -10,10 +10,10 @@ import { buildNestedFolderItems } from './tree/folderTree';
 type SortOrder = 'folder' | 'name' | 'type';
 
 /**
- * Tree data provider for TaskTree view.
+ * Tree data provider for CommandTree view.
  */
-export class TaskTreeProvider implements vscode.TreeDataProvider<TaskTreeItem> {
-    private readonly _onDidChangeTreeData = new vscode.EventEmitter<TaskTreeItem | undefined>();
+export class CommandTreeProvider implements vscode.TreeDataProvider<CommandTreeItem> {
+    private readonly _onDidChangeTreeData = new vscode.EventEmitter<CommandTreeItem | undefined>();
     readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
     private tasks: TaskItem[] = [];
@@ -125,11 +125,11 @@ export class TaskTreeProvider implements vscode.TreeDataProvider<TaskTreeItem> {
         return this.tasks;
     }
 
-    getTreeItem(element: TaskTreeItem): vscode.TreeItem {
+    getTreeItem(element: CommandTreeItem): vscode.TreeItem {
         return element;
     }
 
-    async getChildren(element?: TaskTreeItem): Promise<TaskTreeItem[]> {
+    async getChildren(element?: CommandTreeItem): Promise<CommandTreeItem[]> {
         if (!this.discoveryResult) {
             await this.refresh();
         }
@@ -146,9 +146,9 @@ export class TaskTreeProvider implements vscode.TreeDataProvider<TaskTreeItem> {
     /**
      * Builds the root category nodes.
      */
-    private buildRootCategories(): TaskTreeItem[] {
+    private buildRootCategories(): CommandTreeItem[] {
         const filtered = this.applyFilters(this.tasks);
-        const categories: TaskTreeItem[] = [];
+        const categories: CommandTreeItem[] = [];
 
         // Shell Scripts - grouped by folder
         const shellTasks = filtered.filter(t => t.type === 'shell');
@@ -258,24 +258,24 @@ export class TaskTreeProvider implements vscode.TreeDataProvider<TaskTreeItem> {
     /**
      * Builds a category with tasks grouped into nested folder hierarchy.
      */
-    private buildCategoryWithFolders(name: string, tasks: TaskItem[]): TaskTreeItem {
+    private buildCategoryWithFolders(name: string, tasks: TaskItem[]): CommandTreeItem {
         const children = buildNestedFolderItems({
             tasks,
             workspaceRoot: this.workspaceRoot,
             categoryId: name,
             sortTasks: (t) => this.sortTasks(t)
         });
-        return new TaskTreeItem(null, `${name} (${tasks.length})`, children);
+        return new CommandTreeItem(null, `${name} (${tasks.length})`, children);
     }
 
     /**
      * Builds a flat category without folder grouping.
      */
-    private buildFlatCategory(name: string, tasks: TaskItem[]): TaskTreeItem {
+    private buildFlatCategory(name: string, tasks: TaskItem[]): CommandTreeItem {
         const sorted = this.sortTasks(tasks);
         const categoryId = name;
-        const children = sorted.map(t => new TaskTreeItem(t, null, [], categoryId));
-        return new TaskTreeItem(null, `${name} (${tasks.length})`, children);
+        const children = sorted.map(t => new CommandTreeItem(t, null, [], categoryId));
+        return new CommandTreeItem(null, `${name} (${tasks.length})`, children);
     }
 
     /**
@@ -283,7 +283,7 @@ export class TaskTreeProvider implements vscode.TreeDataProvider<TaskTreeItem> {
      */
     private getSortOrder(): SortOrder {
         return vscode.workspace
-            .getConfiguration('tasktree')
+            .getConfiguration('commandtree')
             .get<SortOrder>('sortOrder', 'folder');
     }
 

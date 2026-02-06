@@ -26,7 +26,7 @@ interface TagConfig {
 // Spec: filtering
 suite("Task Filtering E2E Tests", () => {
   let originalConfig: string;
-  const tagConfigPath = getFixturePath(".vscode/tasktree.json");
+  const tagConfigPath = getFixturePath(".vscode/commandtree.json");
 
   suiteSetup(async function () {
     this.timeout(30000);
@@ -52,7 +52,7 @@ suite("Task Filtering E2E Tests", () => {
 
       const commands = await vscode.commands.getCommands(true);
       assert.ok(
-        commands.includes("tasktree.filter"),
+        commands.includes("commandtree.filter"),
         "filter command should be registered",
       );
     });
@@ -62,7 +62,7 @@ suite("Task Filtering E2E Tests", () => {
 
       const commands = await vscode.commands.getCommands(true);
       assert.ok(
-        commands.includes("tasktree.clearFilter"),
+        commands.includes("commandtree.clearFilter"),
         "clearFilter command should be registered",
       );
     });
@@ -72,7 +72,7 @@ suite("Task Filtering E2E Tests", () => {
 
       const commands = await vscode.commands.getCommands(true);
       assert.ok(
-        commands.includes("tasktree.filterByTag"),
+        commands.includes("commandtree.filterByTag"),
         "filterByTag command should be registered",
       );
     });
@@ -82,7 +82,7 @@ suite("Task Filtering E2E Tests", () => {
 
       const commands = await vscode.commands.getCommands(true);
       assert.ok(
-        commands.includes("tasktree.editTags"),
+        commands.includes("commandtree.editTags"),
         "editTags command should be registered",
       );
     });
@@ -113,7 +113,7 @@ suite("Task Filtering E2E Tests", () => {
     test("tag configuration file exists in fixtures", function () {
       this.timeout(10000);
 
-      assert.ok(fs.existsSync(tagConfigPath), "tasktree.json should exist");
+      assert.ok(fs.existsSync(tagConfigPath), "commandtree.json should exist");
     });
 
     test("tag configuration has valid JSON structure", function () {
@@ -239,7 +239,7 @@ suite("Task Filtering E2E Tests", () => {
       await vscode.commands.executeCommand("workbench.action.closeAllEditors");
       await sleep(500);
 
-      await vscode.commands.executeCommand("tasktree.editTags");
+      await vscode.commands.executeCommand("commandtree.editTags");
       await sleep(1000);
 
       const activeEditor = vscode.window.activeTextEditor;
@@ -247,8 +247,8 @@ suite("Task Filtering E2E Tests", () => {
 
       const fileName = activeEditor.document.fileName;
       assert.ok(
-        fileName.includes("tasktree.json"),
-        "Should open tasktree.json",
+        fileName.includes("commandtree.json"),
+        "Should open commandtree.json",
       );
 
       await vscode.commands.executeCommand("workbench.action.closeAllEditors");

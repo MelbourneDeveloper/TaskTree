@@ -1,0 +1,49 @@
+{
+    "tags": {
+        "build": [
+            {
+                "label": "build"
+            },
+            {
+                "type": "npm"
+            }
+        ],
+        "test": [
+            {
+                "label": "test"
+            },
+            {
+                "type": "npm"
+            }
+        ],
+        "deploy": [
+            {
+                "label": "deploy"
+            }
+        ],
+        "debug": [
+            {
+                "type": "launch"
+            }
+        ],
+        "scripts": [
+            {
+                "type": "shell"
+            }
+        ],
+        "ci": [
+            {
+                "type": "npm",
+                "label": "lint"
+            },
+            {
+                "type": "npm",
+                "label": "test"
+            },
+            {
+                "type": "npm",
+                "label": "build"
+            }
+        ]
+    }
+}

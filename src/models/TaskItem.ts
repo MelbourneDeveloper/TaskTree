@@ -112,13 +112,13 @@ export interface MutableTaskItem {
 }
 
 /**
- * Tree node for the TaskTree view.
+ * Tree node for the CommandTree view.
  */
-export class TaskTreeItem extends vscode.TreeItem {
+export class CommandTreeItem extends vscode.TreeItem {
     constructor(
         public readonly task: TaskItem | null,
         public readonly categoryLabel: string | null,
-        public readonly children: TaskTreeItem[] = [],
+        public readonly children: CommandTreeItem[] = [],
         parentId?: string
     ) {
         super(

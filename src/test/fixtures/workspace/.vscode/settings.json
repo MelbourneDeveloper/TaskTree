@@ -1,7 +1,7 @@
 {
-    "tasktree.sortOrder": "folder",
-    "tasktree.showEmptyCategories": false,
-    "tasktree.excludePatterns": [
+    "commandtree.sortOrder": "folder",
+    "commandtree.showEmptyCategories": false,
+    "commandtree.excludePatterns": [
         "**/node_modules/**",
         "**/.vscode-test/**",
         "**/vendor/**",

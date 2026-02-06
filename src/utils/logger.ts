@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 /**
- * Diagnostic logger for TaskTree extension
+ * Diagnostic logger for CommandTree extension
  * Outputs to VS Code's Output Channel for debugging
  */
 class Logger {
@@ -9,7 +9,7 @@ class Logger {
     private enabled = true;
 
     constructor() {
-        this.channel = vscode.window.createOutputChannel('TaskTree Debug');
+        this.channel = vscode.window.createOutputChannel('CommandTree Debug');
     }
 
     /**

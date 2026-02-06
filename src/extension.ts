@@ -1,16 +1,16 @@
 import * as vscode from 'vscode';
-import { TaskTreeProvider } from './TaskTreeProvider';
-import type { TaskTreeItem } from './models/TaskItem';
+import { CommandTreeProvider } from './CommandTreeProvider';
+import type { CommandTreeItem } from './models/TaskItem';
 import { TaskRunner } from './runners/TaskRunner';
 import { QuickTasksProvider } from './QuickTasksProvider';
 import { logger } from './utils/logger';
 
-let treeProvider: TaskTreeProvider;
+let treeProvider: CommandTreeProvider;
 let quickTasksProvider: QuickTasksProvider;
 let taskRunner: TaskRunner;
 
 export interface ExtensionExports {
-    taskTreeProvider: TaskTreeProvider;
+    commandTreeProvider: CommandTreeProvider;
     quickTasksProvider: QuickTasksProvider;
 }
 
@@ -23,19 +23,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
     }
 
     // Initialize providers
-    treeProvider = new TaskTreeProvider(workspaceRoot);
+    treeProvider = new CommandTreeProvider(workspaceRoot);
     quickTasksProvider = new QuickTasksProvider(workspaceRoot);
     taskRunner = new TaskRunner();
 
     // Register main tree view
-    const treeView = vscode.window.createTreeView('tasktree', {
+    const treeView = vscode.window.createTreeView('commandtree', {
         treeDataProvider: treeProvider,
         showCollapseAll: true
     });
     context.subscriptions.push(treeView);
 
     // Register quick tasks tree view with drag-and-drop support
-    const quickTreeView = vscode.window.createTreeView('tasktree-quick', {
+    const quickTreeView = vscode.window.createTreeView('commandtree-quick', {
         treeDataProvider: quickTasksProvider,
         showCollapseAll: true,
         dragAndDropController: quickTasksProvider
@@ -44,25 +44,25 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
 
     // Register commands
     context.subscriptions.push(
-        vscode.commands.registerCommand('tasktree.refresh', async () => {
+        vscode.commands.registerCommand('commandtree.refresh', async () => {
             await treeProvider.refresh();
             await quickTasksProvider.updateTasks(treeProvider.getAllTasks());
-            vscode.window.showInformationMessage('TaskTree refreshed');
+            vscode.window.showInformationMessage('CommandTree refreshed');
         }),
 
-        vscode.commands.registerCommand('tasktree.run', async (item: TaskTreeItem | undefined) => {
+        vscode.commands.registerCommand('commandtree.run', async (item: CommandTreeItem | undefined) => {
             if (item !== undefined && item.task !== null) {
                 await taskRunner.run(item.task, 'newTerminal');
             }
         }),
 
-        vscode.commands.registerCommand('tasktree.runInCurrentTerminal', async (item: TaskTreeItem | undefined) => {
+        vscode.commands.registerCommand('commandtree.runInCurrentTerminal', async (item: CommandTreeItem | undefined) => {
             if (item !== undefined && item.task !== null) {
                 await taskRunner.run(item.task, 'currentTerminal');
             }
         }),
 
-        vscode.commands.registerCommand('tasktree.filter', async () => {
+        vscode.commands.registerCommand('commandtree.filter', async () => {
             const filter = await vscode.window.showInputBox({
                 prompt: 'Filter tasks by name, path, or description',
                 placeHolder: 'Type to filter...',
@@ -75,7 +75,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
             }
         }),
 
-        vscode.commands.registerCommand('tasktree.filterByTag', async () => {
+        vscode.commands.registerCommand('commandtree.filterByTag', async () => {
             const tags = treeProvider.getAllTags();
             if (tags.length === 0) {
                 const action = await vscode.window.showInformationMessage(
@@ -103,16 +103,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
             }
         }),
 
-        vscode.commands.registerCommand('tasktree.clearFilter', () => {
+        vscode.commands.registerCommand('commandtree.clearFilter', () => {
             treeProvider.clearFilters();
             updateFilterContext();
         }),
 
-        vscode.commands.registerCommand('tasktree.editTags', async () => {
+        vscode.commands.registerCommand('commandtree.editTags', async () => {
             await treeProvider.editTags();
         }),
 
-        vscode.commands.registerCommand('tasktree.addToQuick', async (item: TaskTreeItem | undefined) => {
+        vscode.commands.registerCommand('commandtree.addToQuick', async (item: CommandTreeItem | undefined) => {
             if (item !== undefined && item.task !== null) {
                 await quickTasksProvider.addToQuick(item.task);
                 await treeProvider.refresh();
@@ -120,7 +120,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
             }
         }),
 
-        vscode.commands.registerCommand('tasktree.removeFromQuick', async (item: TaskTreeItem | undefined) => {
+        vscode.commands.registerCommand('commandtree.removeFromQuick', async (item: CommandTreeItem | undefined) => {
             if (item !== undefined && item.task !== null) {
                 await quickTasksProvider.removeFromQuick(item.task);
                 await treeProvider.refresh();
@@ -128,11 +128,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
             }
         }),
 
-        vscode.commands.registerCommand('tasktree.refreshQuick', () => {
+        vscode.commands.registerCommand('commandtree.refreshQuick', () => {
             quickTasksProvider.refresh();
         }),
 
-        vscode.commands.registerCommand('tasktree.addTag', async (item: TaskTreeItem | undefined) => {
+        vscode.commands.registerCommand('commandtree.addTag', async (item: CommandTreeItem | undefined) => {
             const task = item?.task;
             if (task === undefined || task === null) {
                 return;
@@ -147,7 +147,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
             await quickTasksProvider.updateTasks(treeProvider.getAllTasks());
         }),
 
-        vscode.commands.registerCommand('tasktree.removeTag', async (item: TaskTreeItem | undefined) => {
+        vscode.commands.registerCommand('commandtree.removeTag', async (item: CommandTreeItem | undefined) => {
             const task = item?.task;
             if (task === undefined || task === null) {
                 return;
@@ -179,7 +179,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
 
     // Watch for file changes that might affect tasks
     const watcher = vscode.workspace.createFileSystemWatcher(
-        '**/{package.json,Makefile,makefile,tasks.json,launch.json,tasktree.json,*.sh,*.py}'
+        '**/{package.json,Makefile,makefile,tasks.json,launch.json,commandtree.json,*.sh,*.py}'
     );
 
     const syncQuickTasks = async (): Promise<void> => {
@@ -204,7 +204,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
 
     // Export for testing
     return {
-        taskTreeProvider: treeProvider,
+        commandTreeProvider: treeProvider,
         quickTasksProvider
     };
 }
@@ -238,7 +238,7 @@ async function pickOrCreateTag(existingTags: string[], taskLabel: string): Promi
 function updateFilterContext(): void {
     vscode.commands.executeCommand(
         'setContext',
-        'tasktree.hasFilter',
+        'commandtree.hasFilter',
         treeProvider.hasFilter()
     );
 }

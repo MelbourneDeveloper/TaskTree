@@ -15,19 +15,19 @@ interface TagPattern {
     label?: string;
 }
 
-interface TaskTreeConfig {
+interface CommandTreeConfig {
     tags?: TagDefinition;
 }
 
 /**
- * Manages task tags from .vscode/tasktree.json
+ * Manages task tags from .vscode/commandtree.json
  */
 export class TagConfig {
-    private config: TaskTreeConfig = {};
+    private config: CommandTreeConfig = {};
     private readonly configPath: string;
 
     constructor(workspaceRoot: string) {
-        this.configPath = path.join(workspaceRoot, '.vscode', 'tasktree.json');
+        this.configPath = path.join(workspaceRoot, '.vscode', 'commandtree.json');
     }
 
     /**
@@ -38,7 +38,7 @@ export class TagConfig {
             const uri = vscode.Uri.file(this.configPath);
             const bytes = await vscode.workspace.fs.readFile(uri);
             const content = new TextDecoder().decode(bytes);
-            this.config = JSON.parse(content) as TaskTreeConfig;
+            this.config = JSON.parse(content) as CommandTreeConfig;
             logger.config('Loaded config', {
                 path: this.configPath,
                 tags: this.config.tags as Record<string, unknown> | undefined

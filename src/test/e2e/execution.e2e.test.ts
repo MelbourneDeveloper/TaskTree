@@ -45,7 +45,7 @@ suite("Task Execution E2E Tests", () => {
 
       const commands = await vscode.commands.getCommands(true);
       assert.ok(
-        commands.includes("tasktree.run"),
+        commands.includes("commandtree.run"),
         "run command should be registered",
       );
     });
@@ -56,7 +56,7 @@ suite("Task Execution E2E Tests", () => {
       const terminalsBefore = vscode.window.terminals.length;
 
       try {
-        await vscode.commands.executeCommand("tasktree.run", undefined);
+        await vscode.commands.executeCommand("commandtree.run", undefined);
         await sleep(500);
       } catch {
         // Expected to potentially throw or show error
@@ -76,7 +76,7 @@ suite("Task Execution E2E Tests", () => {
       const terminalsBefore = vscode.window.terminals.length;
 
       try {
-        await vscode.commands.executeCommand("tasktree.run", null);
+        await vscode.commands.executeCommand("commandtree.run", null);
         await sleep(500);
       } catch {
         // Expected behavior
@@ -117,7 +117,7 @@ suite("Task Execution E2E Tests", () => {
       });
 
       try {
-        await vscode.commands.executeCommand("tasktree.run", shellTask);
+        await vscode.commands.executeCommand("commandtree.run", shellTask);
         await sleep(2000);
 
         const terminalsAfter = vscode.window.terminals.length;
@@ -464,16 +464,16 @@ suite("Task Execution E2E Tests", () => {
         filePath: path.join(context.workspaceRoot, "scripts/test.sh"),
       });
 
-      const taskTreeItem = { task: shellTask };
-      await vscode.commands.executeCommand("tasktree.run", taskTreeItem);
+      const commandTreeItem = { task: shellTask };
+      await vscode.commands.executeCommand("commandtree.run", commandTreeItem);
       await sleep(1500);
 
-      const taskTreeTerminal = vscode.window.terminals.find((t) =>
-        t.name.includes("TaskTree"),
+      const commandTreeTerminal = vscode.window.terminals.find((t) =>
+        t.name.includes("CommandTree"),
       );
       assert.ok(
-        taskTreeTerminal !== undefined,
-        "Terminal should have TaskTree in name",
+        commandTreeTerminal !== undefined,
+        "Terminal should have CommandTree in name",
       );
     });
 
@@ -495,7 +495,7 @@ suite("Task Execution E2E Tests", () => {
 
   // Spec: task-execution/new-terminal
   suite("Run Task (New Terminal)", () => {
-    test("tasktree.run creates a new terminal", async function () {
+    test("commandtree.run creates a new terminal", async function () {
       this.timeout(15000);
 
       const terminalsBefore = vscode.window.terminals.length;
@@ -508,9 +508,9 @@ suite("Task Execution E2E Tests", () => {
         filePath: path.join(context.workspaceRoot, "scripts/test.sh"),
       });
 
-      const taskTreeItem = { task: shellTask };
+      const commandTreeItem = { task: shellTask };
 
-      await vscode.commands.executeCommand("tasktree.run", taskTreeItem);
+      await vscode.commands.executeCommand("commandtree.run", commandTreeItem);
       await sleep(1500);
 
       const terminalsAfter = vscode.window.terminals.length;
@@ -520,7 +520,7 @@ suite("Task Execution E2E Tests", () => {
       );
     });
 
-    test("tasktree.run terminal has descriptive name", async function () {
+    test("commandtree.run terminal has descriptive name", async function () {
       this.timeout(15000);
 
       const shellTask = createMockTaskItem({
@@ -531,27 +531,27 @@ suite("Task Execution E2E Tests", () => {
         filePath: path.join(context.workspaceRoot, "scripts/test.sh"),
       });
 
-      const taskTreeItem = { task: shellTask };
+      const commandTreeItem = { task: shellTask };
 
-      await vscode.commands.executeCommand("tasktree.run", taskTreeItem);
+      await vscode.commands.executeCommand("commandtree.run", commandTreeItem);
       await sleep(1500);
 
-      const taskTreeTerminal = vscode.window.terminals.find((t) =>
-        t.name.includes("TaskTree"),
+      const commandTreeTerminal = vscode.window.terminals.find((t) =>
+        t.name.includes("CommandTree"),
       );
       assert.ok(
-        taskTreeTerminal !== undefined,
-        "Should create terminal with TaskTree in name",
+        commandTreeTerminal !== undefined,
+        "Should create terminal with CommandTree in name",
       );
     });
 
-    test("tasktree.run handles undefined gracefully", async function () {
+    test("commandtree.run handles undefined gracefully", async function () {
       this.timeout(10000);
 
       const terminalsBefore = vscode.window.terminals.length;
 
       try {
-        await vscode.commands.executeCommand("tasktree.run", undefined);
+        await vscode.commands.executeCommand("commandtree.run", undefined);
       } catch {
         // Expected behavior
       }
@@ -564,13 +564,13 @@ suite("Task Execution E2E Tests", () => {
       );
     });
 
-    test("tasktree.run handles null task property gracefully", async function () {
+    test("commandtree.run handles null task property gracefully", async function () {
       this.timeout(10000);
 
       const terminalsBefore = vscode.window.terminals.length;
 
       try {
-        await vscode.commands.executeCommand("tasktree.run", { task: null });
+        await vscode.commands.executeCommand("commandtree.run", { task: null });
       } catch {
         // Expected behavior
       }
@@ -591,7 +591,7 @@ suite("Task Execution E2E Tests", () => {
 
       const commands = await vscode.commands.getCommands(true);
       assert.ok(
-        commands.includes("tasktree.runInCurrentTerminal"),
+        commands.includes("commandtree.runInCurrentTerminal"),
         "runInCurrentTerminal command should be registered",
       );
     });
@@ -612,11 +612,11 @@ suite("Task Execution E2E Tests", () => {
         filePath: path.join(context.workspaceRoot, "scripts/test.sh"),
       });
 
-      const taskTreeItem = { task: shellTask };
+      const commandTreeItem = { task: shellTask };
 
       await vscode.commands.executeCommand(
-        "tasktree.runInCurrentTerminal",
-        taskTreeItem,
+        "commandtree.runInCurrentTerminal",
+        commandTreeItem,
       );
       await sleep(1500);
 
@@ -644,11 +644,11 @@ suite("Task Execution E2E Tests", () => {
         filePath: path.join(context.workspaceRoot, "scripts/test.sh"),
       });
 
-      const taskTreeItem = { task: shellTask };
+      const commandTreeItem = { task: shellTask };
 
       await vscode.commands.executeCommand(
-        "tasktree.runInCurrentTerminal",
-        taskTreeItem,
+        "commandtree.runInCurrentTerminal",
+        commandTreeItem,
       );
       await sleep(1000);
 
@@ -666,7 +666,7 @@ suite("Task Execution E2E Tests", () => {
 
       try {
         await vscode.commands.executeCommand(
-          "tasktree.runInCurrentTerminal",
+          "commandtree.runInCurrentTerminal",
           undefined,
         );
       } catch {
@@ -691,11 +691,11 @@ suite("Task Execution E2E Tests", () => {
         filePath: path.join(context.workspaceRoot, "scripts/test.sh"),
       });
 
-      const taskTreeItem = { task: shellTask };
+      const commandTreeItem = { task: shellTask };
 
       await vscode.commands.executeCommand(
-        "tasktree.runInCurrentTerminal",
-        taskTreeItem,
+        "commandtree.runInCurrentTerminal",
+        commandTreeItem,
       );
       await sleep(1000);
 
@@ -815,10 +815,10 @@ suite("Task Execution E2E Tests", () => {
         filePath: path.join(context.workspaceRoot, "scripts/test.sh"),
       });
 
-      const taskTreeItem = { task: shellTask };
+      const commandTreeItem = { task: shellTask };
       await vscode.commands.executeCommand(
-        "tasktree.runInCurrentTerminal",
-        taskTreeItem,
+        "commandtree.runInCurrentTerminal",
+        commandTreeItem,
       );
       await sleep(1500);
 
@@ -849,10 +849,10 @@ suite("Task Execution E2E Tests", () => {
         filePath: path.join(context.workspaceRoot, "scripts/test.sh"),
       });
 
-      const taskTreeItem = { task: shellTask };
+      const commandTreeItem = { task: shellTask };
       await vscode.commands.executeCommand(
-        "tasktree.runInCurrentTerminal",
-        taskTreeItem,
+        "commandtree.runInCurrentTerminal",
+        commandTreeItem,
       );
       await sleep(1000);
 
@@ -864,7 +864,7 @@ suite("Task Execution E2E Tests", () => {
       );
     });
 
-    test("new terminal has TaskTree prefix in name", async function () {
+    test("new terminal has CommandTree prefix in name", async function () {
       this.timeout(20000);
 
       // Dispose all existing terminals to ensure clean slate
@@ -881,20 +881,20 @@ suite("Task Execution E2E Tests", () => {
         filePath: path.join(context.workspaceRoot, "scripts/test.sh"),
       });
 
-      const taskTreeItem = { task: shellTask };
-      await vscode.commands.executeCommand("tasktree.run", taskTreeItem);
+      const commandTreeItem = { task: shellTask };
+      await vscode.commands.executeCommand("commandtree.run", commandTreeItem);
       await sleep(3000);
 
       const terminals = vscode.window.terminals;
-      const taskTreeTerminal = terminals.find((t) =>
-        t.name.includes("TaskTree"),
+      const commandTreeTerminal = terminals.find((t) =>
+        t.name.includes("CommandTree"),
       );
       assert.ok(
-        taskTreeTerminal !== undefined,
-        `Should create terminal with TaskTree in name. Found terminals: [${terminals.map(t => t.name).join(", ")}]`,
+        commandTreeTerminal !== undefined,
+        `Should create terminal with CommandTree in name. Found terminals: [${terminals.map(t => t.name).join(", ")}]`,
       );
       assert.ok(
-        taskTreeTerminal.name.includes("Named Terminal Test"),
+        commandTreeTerminal.name.includes("Named Terminal Test"),
         "Terminal name should include task label",
       );
     });
@@ -912,15 +912,15 @@ suite("Task Execution E2E Tests", () => {
         filePath: path.join(subprojectDir, "test.sh"),
       });
 
-      const taskTreeItem = { task: shellTask };
-      await vscode.commands.executeCommand("tasktree.run", taskTreeItem);
+      const commandTreeItem = { task: shellTask };
+      await vscode.commands.executeCommand("commandtree.run", commandTreeItem);
       await sleep(1500);
 
-      const taskTreeTerminal = vscode.window.terminals.find((t) =>
+      const commandTreeTerminal = vscode.window.terminals.find((t) =>
         t.name.includes("CWD Test Task"),
       );
       assert.ok(
-        taskTreeTerminal !== undefined,
+        commandTreeTerminal !== undefined,
         "Should create terminal for task with cwd",
       );
     });

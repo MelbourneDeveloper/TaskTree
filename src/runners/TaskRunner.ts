@@ -130,7 +130,7 @@ export class TaskRunner {
     private runInNewTerminal(task: TaskItem, params: Map<string, string>): void {
         const command = this.buildCommand(task, params);
         const terminalOptions: vscode.TerminalOptions = {
-            name: `TaskTree: ${task.label}`
+            name: `CommandTree: ${task.label}`
         };
         if (task.cwd !== undefined) {
             terminalOptions.cwd = task.cwd;
@@ -149,7 +149,7 @@ export class TaskRunner {
 
         if (terminal === undefined) {
             const terminalOptions: vscode.TerminalOptions = {
-                name: `TaskTree: ${task.label}`
+                name: `CommandTree: ${task.label}`
             };
             if (task.cwd !== undefined) {
                 terminalOptions.cwd = task.cwd;

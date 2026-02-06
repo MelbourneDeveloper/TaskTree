@@ -11,8 +11,8 @@
  * - Waiting for file watcher with await sleep()
  *
  * ILLEGAL actions - DO NOT USE:
- * - ❌ executeCommand('tasktree.refresh') - refresh should be AUTOMATIC via file watcher
- * - ❌ executeCommand('tasktree.clearFilter') - filter state manipulation
+ * - ❌ executeCommand('commandtree.refresh') - refresh should be AUTOMATIC via file watcher
+ * - ❌ executeCommand('commandtree.clearFilter') - filter state manipulation
  * - ❌ provider.refresh(), provider.setTextFilter(), provider.clearFilters()
  * - ❌ assert.ok(true, ...) - FAKE TESTS ARE ILLEGAL
  * - ❌ Any command that manipulates internal state without UI interaction
@@ -59,7 +59,7 @@ interface PackageJson {
   activationEvents?: string[];
   contributes: {
     views: {
-      "tasktree-container": ViewDefinition[];
+      "commandtree-container": ViewDefinition[];
     };
     commands: CommandDefinition[];
     menus: {
@@ -108,10 +108,10 @@ suite("Commands and UI E2E Tests", () => {
       const packageJson = readPackageJson();
 
       const hasActivationEvent =
-        packageJson.activationEvents?.includes("onView:tasktree") ?? false;
+        packageJson.activationEvents?.includes("onView:commandtree") ?? false;
       const hasViewContribution = packageJson.contributes.views[
-        "tasktree-container"
-      ].some((v: ViewDefinition) => v.id === "tasktree");
+        "commandtree-container"
+      ].some((v: ViewDefinition) => v.id === "commandtree");
 
       assert.ok(
         hasActivationEvent || hasViewContribution,
@@ -128,12 +128,12 @@ suite("Commands and UI E2E Tests", () => {
       const commands = await vscode.commands.getCommands(true);
 
       const expectedCommands = [
-        "tasktree.refresh",
-        "tasktree.run",
-        "tasktree.filter",
-        "tasktree.filterByTag",
-        "tasktree.clearFilter",
-        "tasktree.editTags",
+        "commandtree.refresh",
+        "commandtree.run",
+        "commandtree.filter",
+        "commandtree.filterByTag",
+        "commandtree.clearFilter",
+        "commandtree.editTags",
       ];
 
       for (const cmd of expectedCommands) {
@@ -148,20 +148,20 @@ suite("Commands and UI E2E Tests", () => {
     // These commands should be triggered through UI interaction, not direct calls
     // Testing them via executeCommand masks bugs in the file watcher auto-refresh
 
-    test("editTags command opens tasktree.json", async function () {
+    test("editTags command opens commandtree.json", async function () {
       this.timeout(15000);
 
       // editTags is a user-initiated action that opens an editor
       // This is valid because we're testing observable UI behavior
-      await vscode.commands.executeCommand("tasktree.editTags");
+      await vscode.commands.executeCommand("commandtree.editTags");
       await sleep(1000);
 
-      // Verify an editor was opened with tasktree.json
+      // Verify an editor was opened with commandtree.json
       const activeEditor = vscode.window.activeTextEditor;
       assert.ok(activeEditor !== undefined, "editTags should open an editor");
       assert.ok(
-        activeEditor.document.fileName.includes("tasktree.json"),
-        "Should open tasktree.json",
+        activeEditor.document.fileName.includes("commandtree.json"),
+        "Should open commandtree.json",
       );
 
       await vscode.commands.executeCommand("workbench.action.closeAllEditors");
@@ -176,17 +176,17 @@ suite("Commands and UI E2E Tests", () => {
       const packageJson = readPackageJson();
 
       const containerViews =
-        packageJson.contributes.views["tasktree-container"];
+        packageJson.contributes.views["commandtree-container"];
       assert.ok(containerViews.length > 0, "Should have container views");
 
       const taskTreeView = containerViews.find(
-        (v: ViewDefinition) => v.id === "tasktree",
+        (v: ViewDefinition) => v.id === "commandtree",
       );
-      assert.ok(taskTreeView, "tasktree view should be registered");
+      assert.ok(taskTreeView, "commandtree view should be registered");
       assert.strictEqual(
         taskTreeView.name,
-        "TaskTree - All",
-        "View name should be TaskTree - All",
+        "CommandTree - All",
+        "View name should be CommandTree - All",
       );
     });
 
@@ -196,10 +196,10 @@ suite("Commands and UI E2E Tests", () => {
       const packageJson = readPackageJson();
 
       const taskTreeView = packageJson.contributes.views[
-        "tasktree-container"
-      ].find((v: ViewDefinition) => v.id === "tasktree");
+        "commandtree-container"
+      ].find((v: ViewDefinition) => v.id === "commandtree");
 
-      assert.ok(taskTreeView, "Should have tasktree view");
+      assert.ok(taskTreeView, "Should have commandtree view");
       assert.ok(
         taskTreeView.contextualTitle !== undefined &&
           taskTreeView.contextualTitle !== "",
@@ -219,26 +219,26 @@ suite("Commands and UI E2E Tests", () => {
       assert.ok(viewTitleMenus.length > 0, "Should have view/title menus");
 
       const taskTreeMenus = viewTitleMenus.filter(
-        (m) => m.when?.includes("view == tasktree") === true,
+        (m) => m.when?.includes("view == commandtree") === true,
       );
 
       assert.ok(taskTreeMenus.length >= 4, "Should have at least 4 menu items");
 
       const commands = taskTreeMenus.map((m) => m.command);
       assert.ok(
-        commands.includes("tasktree.filter"),
+        commands.includes("commandtree.filter"),
         "Should have filter in menu",
       );
       assert.ok(
-        commands.includes("tasktree.filterByTag"),
+        commands.includes("commandtree.filterByTag"),
         "Should have filterByTag in menu",
       );
       assert.ok(
-        commands.includes("tasktree.clearFilter"),
+        commands.includes("commandtree.clearFilter"),
         "Should have clearFilter in menu",
       );
       assert.ok(
-        commands.includes("tasktree.refresh"),
+        commands.includes("commandtree.refresh"),
         "Should have refresh in menu",
       );
     });
@@ -256,7 +256,7 @@ suite("Commands and UI E2E Tests", () => {
       );
 
       const runMenu = itemContextMenus.find(
-        (m) => m.command === "tasktree.run",
+        (m) => m.command === "commandtree.run",
       );
       assert.ok(runMenu, "Should have run command in context menu");
       assert.ok(
@@ -267,8 +267,8 @@ suite("Commands and UI E2E Tests", () => {
       // Star icon: addToQuick (empty star) for non-quick tasks
       const addToQuickMenu = itemContextMenus.find(
         (m) =>
-          m.command === "tasktree.addToQuick" &&
-          m.when?.includes("view == tasktree") === true &&
+          m.command === "commandtree.addToQuick" &&
+          m.when?.includes("view == commandtree") === true &&
           m.when.includes("viewItem == task"),
       );
       assert.ok(
@@ -279,8 +279,8 @@ suite("Commands and UI E2E Tests", () => {
       // Star icon: removeFromQuick (filled star) for quick tasks
       const removeFromQuickInAllView = itemContextMenus.find(
         (m) =>
-          m.command === "tasktree.removeFromQuick" &&
-          m.when?.includes("view == tasktree") === true &&
+          m.command === "commandtree.removeFromQuick" &&
+          m.when?.includes("view == commandtree") === true &&
           m.when.includes("viewItem == task-quick"),
       );
       assert.ok(
@@ -296,17 +296,17 @@ suite("Commands and UI E2E Tests", () => {
 
       const viewTitleMenus = packageJson.contributes.menus["view/title"];
       const clearFilterMenu = viewTitleMenus.find(
-        (m) => m.command === "tasktree.clearFilter",
+        (m) => m.command === "commandtree.clearFilter",
       );
 
       assert.ok(clearFilterMenu, "Should have clearFilter menu");
       assert.ok(
-        clearFilterMenu.when?.includes("tasktree.hasFilter") === true,
+        clearFilterMenu.when?.includes("commandtree.hasFilter") === true,
         "clearFilter should require hasFilter context",
       );
     });
 
-    test("no duplicate commands in tasktree view/title menu", function () {
+    test("no duplicate commands in commandtree view/title menu", function () {
       this.timeout(10000);
 
       const packageJson = readPackageJson();
@@ -314,8 +314,8 @@ suite("Commands and UI E2E Tests", () => {
       const viewTitleMenus = packageJson.contributes.menus["view/title"];
       const taskTreeMenus = viewTitleMenus.filter(
         (m) =>
-          m.when?.includes("view == tasktree") === true &&
-          !m.when.includes("tasktree-quick"),
+          m.when?.includes("view == commandtree") === true &&
+          !m.when.includes("commandtree-quick"),
       );
 
       const commands = taskTreeMenus.map((m) => m.command);
@@ -324,18 +324,18 @@ suite("Commands and UI E2E Tests", () => {
       assert.strictEqual(
         commands.length,
         uniqueCommands.size,
-        `Duplicate commands in tasktree view/title: ${commands.filter((c, i) => commands.indexOf(c) !== i).join(", ")}`,
+        `Duplicate commands in commandtree view/title: ${commands.filter((c, i) => commands.indexOf(c) !== i).join(", ")}`,
       );
     });
 
-    test("no duplicate commands in tasktree-quick view/title menu", function () {
+    test("no duplicate commands in commandtree-quick view/title menu", function () {
       this.timeout(10000);
 
       const packageJson = readPackageJson();
 
       const viewTitleMenus = packageJson.contributes.menus["view/title"];
       const quickMenus = viewTitleMenus.filter(
-        (m) => m.when?.includes("view == tasktree-quick") === true,
+        (m) => m.when?.includes("view == commandtree-quick") === true,
       );
 
       const commands = quickMenus.map((m) => m.command);
@@ -344,11 +344,11 @@ suite("Commands and UI E2E Tests", () => {
       assert.strictEqual(
         commands.length,
         uniqueCommands.size,
-        `Duplicate commands in tasktree-quick view/title: ${commands.filter((c, i) => commands.indexOf(c) !== i).join(", ")}`,
+        `Duplicate commands in commandtree-quick view/title: ${commands.filter((c, i) => commands.indexOf(c) !== i).join(", ")}`,
       );
     });
 
-    test("tasktree view has exactly 4 title bar icons", function () {
+    test("commandtree view has exactly 4 title bar icons", function () {
       this.timeout(10000);
 
       const packageJson = readPackageJson();
@@ -356,21 +356,21 @@ suite("Commands and UI E2E Tests", () => {
       const viewTitleMenus = packageJson.contributes.menus["view/title"];
       const taskTreeMenus = viewTitleMenus.filter(
         (m) =>
-          m.when?.includes("view == tasktree") === true &&
-          !m.when.includes("tasktree-quick"),
+          m.when?.includes("view == commandtree") === true &&
+          !m.when.includes("commandtree-quick"),
       );
 
       assert.strictEqual(
         taskTreeMenus.length,
         4,
-        `Expected exactly 4 view/title items for tasktree, got ${taskTreeMenus.length}: ${taskTreeMenus.map((m) => m.command).join(", ")}`,
+        `Expected exactly 4 view/title items for commandtree, got ${taskTreeMenus.length}: ${taskTreeMenus.map((m) => m.command).join(", ")}`,
       );
 
       const expectedCommands = [
-        "tasktree.filter",
-        "tasktree.filterByTag",
-        "tasktree.clearFilter",
-        "tasktree.refresh",
+        "commandtree.filter",
+        "commandtree.filterByTag",
+        "commandtree.clearFilter",
+        "commandtree.refresh",
       ];
       for (const cmd of expectedCommands) {
         assert.ok(
@@ -380,27 +380,27 @@ suite("Commands and UI E2E Tests", () => {
       }
     });
 
-    test("tasktree-quick view has exactly 4 title bar icons", function () {
+    test("commandtree-quick view has exactly 4 title bar icons", function () {
       this.timeout(10000);
 
       const packageJson = readPackageJson();
 
       const viewTitleMenus = packageJson.contributes.menus["view/title"];
       const quickMenus = viewTitleMenus.filter(
-        (m) => m.when?.includes("view == tasktree-quick") === true,
+        (m) => m.when?.includes("view == commandtree-quick") === true,
       );
 
       assert.strictEqual(
         quickMenus.length,
         4,
-        `Expected exactly 4 view/title items for tasktree-quick, got ${quickMenus.length}: ${quickMenus.map((m) => m.command).join(", ")}`,
+        `Expected exactly 4 view/title items for commandtree-quick, got ${quickMenus.length}: ${quickMenus.map((m) => m.command).join(", ")}`,
       );
 
       const expectedCommands = [
-        "tasktree.filter",
-        "tasktree.filterByTag",
-        "tasktree.clearFilter",
-        "tasktree.refreshQuick",
+        "commandtree.filter",
+        "commandtree.filterByTag",
+        "commandtree.clearFilter",
+        "commandtree.refreshQuick",
       ];
       for (const cmd of expectedCommands) {
         assert.ok(
@@ -420,23 +420,23 @@ suite("Commands and UI E2E Tests", () => {
 
       const commands = packageJson.contributes.commands;
 
-      const refreshCmd = commands.find((c) => c.command === "tasktree.refresh");
+      const refreshCmd = commands.find((c) => c.command === "commandtree.refresh");
       assert.ok(
         refreshCmd?.icon === "$(refresh)",
         "Refresh should have refresh icon",
       );
 
-      const runCmd = commands.find((c) => c.command === "tasktree.run");
+      const runCmd = commands.find((c) => c.command === "commandtree.run");
       assert.ok(runCmd?.icon === "$(play)", "Run should have play icon");
 
-      const filterCmd = commands.find((c) => c.command === "tasktree.filter");
+      const filterCmd = commands.find((c) => c.command === "commandtree.filter");
       assert.ok(
         filterCmd?.icon === "$(search)",
         "Filter should have search icon",
       );
 
       const tagFilterCmd = commands.find(
-        (c) => c.command === "tasktree.filterByTag",
+        (c) => c.command === "commandtree.filterByTag",
       );
       assert.ok(
         tagFilterCmd?.icon === "$(tag)",
@@ -444,7 +444,7 @@ suite("Commands and UI E2E Tests", () => {
       );
 
       const clearFilterCmd = commands.find(
-        (c) => c.command === "tasktree.clearFilter",
+        (c) => c.command === "commandtree.clearFilter",
       );
       assert.ok(
         clearFilterCmd?.icon === "$(clear-all)",
@@ -453,7 +453,7 @@ suite("Commands and UI E2E Tests", () => {
 
       // Star icons: empty for add, filled for remove
       const addToQuickCmd = commands.find(
-        (c) => c.command === "tasktree.addToQuick",
+        (c) => c.command === "commandtree.addToQuick",
       );
       assert.strictEqual(
         addToQuickCmd?.icon,
@@ -462,7 +462,7 @@ suite("Commands and UI E2E Tests", () => {
       );
 
       const removeFromQuickCmd = commands.find(
-        (c) => c.command === "tasktree.removeFromQuick",
+        (c) => c.command === "commandtree.removeFromQuick",
       );
       assert.strictEqual(
         removeFromQuickCmd?.icon,
@@ -485,13 +485,13 @@ suite("Commands and UI E2E Tests", () => {
 
       assert.strictEqual(
         packageJson.name,
-        "tasktree",
-        "Name should be tasktree",
+        "commandtree",
+        "Name should be commandtree",
       );
       assert.strictEqual(
         packageJson.displayName,
-        "TaskTree",
-        "Display name should be TaskTree",
+        "CommandTree",
+        "Display name should be CommandTree",
       );
       assert.ok(packageJson.description !== "", "Should have description");
       assert.ok(packageJson.version !== "", "Should have version");
@@ -534,8 +534,8 @@ suite("Commands and UI E2E Tests", () => {
       const packageJson = readPackageJson();
 
       assert.ok(
-        packageJson.contributes.views["tasktree-container"].length > 0,
-        "Views should be in tasktree-container",
+        packageJson.contributes.views["commandtree-container"].length > 0,
+        "Views should be in commandtree-container",
       );
     });
   });
@@ -551,11 +551,11 @@ suite("Commands and UI E2E Tests", () => {
   });
 
   // NOTE: The following test suites were removed because they contained ILLEGAL patterns:
-  // - Error Handling UI: Called executeCommand('tasktree.refresh') and used fake assertions
+  // - Error Handling UI: Called executeCommand('commandtree.refresh') and used fake assertions
   // - Tag Commands Integration: Called commands directly with fake assertions
   // - Quick Tasks Commands Integration: Called commands directly with fake assertions
   // - Run Commands Integration: Called commands directly with fake assertions
-  // - Filter Context Behavior: Called executeCommand('tasktree.clearFilter') with fake assertions
+  // - Filter Context Behavior: Called executeCommand('commandtree.clearFilter') with fake assertions
   //
   // These behaviors should be tested through UI interaction, not direct command execution.
   // Tests with assert.ok(true, ...) are explicitly ILLEGAL per CLAUDE.md.

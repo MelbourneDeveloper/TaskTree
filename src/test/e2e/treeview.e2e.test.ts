@@ -2,7 +2,7 @@
  * TREEVIEW E2E TESTS
  * TODO: No corresponding section in spec
  *
- * Tests tree view behavior by observing TaskTreeItem properties.
+ * Tests tree view behavior by observing CommandTreeItem properties.
  * Verifies click behavior, item rendering, etc.
  */
 
@@ -10,9 +10,9 @@ import * as assert from "assert";
 import {
   activateExtension,
   sleep,
-  getTaskTreeProvider,
+  getCommandTreeProvider,
 } from "../helpers/helpers";
-import type { TaskTreeItem } from "../../models/TaskItem";
+import type { CommandTreeItem } from "../../models/TaskItem";
 
 // TODO: No corresponding section in spec
 suite("TreeView E2E Tests", () => {
@@ -25,8 +25,8 @@ suite("TreeView E2E Tests", () => {
   /**
    * Finds the first task item (leaf node with a task) in the tree.
    */
-  async function findFirstTaskItem(): Promise<TaskTreeItem | undefined> {
-    const provider = getTaskTreeProvider();
+  async function findFirstTaskItem(): Promise<CommandTreeItem | undefined> {
+    const provider = getCommandTreeProvider();
     const categories = await provider.getChildren();
 
     for (const category of categories) {
@@ -64,7 +64,7 @@ suite("TreeView E2E Tests", () => {
       assert.strictEqual(
         taskItem.command.command,
         "vscode.open",
-        "Clicking a task MUST open the file (vscode.open), NOT run it (tasktree.run)",
+        "Clicking a task MUST open the file (vscode.open), NOT run it (commandtree.run)",
       );
       // Non-quick task must have 'task' contextValue so the EMPTY star icon shows
       assert.strictEqual(
