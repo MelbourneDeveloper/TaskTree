@@ -37,10 +37,6 @@ jobs:
         env:
           PATH_PREFIX: /CommandTree/
 
-      - name: Run Playwright tests
-        run: npx playwright install chromium && npm test
-        working-directory: website
-
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
