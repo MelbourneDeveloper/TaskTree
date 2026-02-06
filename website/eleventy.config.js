@@ -20,18 +20,33 @@ export default function(eleventyConfig) {
   eleventyConfig.addPassthroughCopy("src/assets");
   eleventyConfig.addPassthroughCopy({ "src/favicon.ico": "favicon.ico" });
 
-  // Inject favicon links into all HTML (plugin base layout has no favicon support)
+  // Override any favicon/icon links from plugins, then inject ours
   const prefix = pathPrefix.endsWith("/") ? pathPrefix : pathPrefix + "/";
   const faviconLinks = [
     `  <link rel="icon" href="${prefix}favicon.ico" sizes="48x48">`,
     `  <link rel="icon" href="${prefix}assets/images/favicon.svg" type="image/svg+xml">`,
     `  <link rel="apple-touch-icon" href="${prefix}assets/images/apple-touch-icon.png">`,
   ].join("\n");
+
+  const isIconLink = (line) => {
+    const t = line.trim();
+    if (!t.startsWith("<link")) return false;
+    return t.includes('rel="icon"')
+      || t.includes("rel='icon'")
+      || t.includes('rel="shortcut icon"')
+      || t.includes("rel='shortcut icon'")
+      || t.includes('rel="apple-touch-icon"')
+      || t.includes("rel='apple-touch-icon'");
+  };
+
   eleventyConfig.addTransform("favicon", function(content) {
-    if (this.page.outputPath?.endsWith(".html")) {
-      return content.replace("</head>", faviconLinks + "\n</head>");
+    if (!this.page.outputPath?.endsWith(".html")) {
+      return content;
     }
-    return content;
+    // Strip any existing icon links (e.g. from techdoc plugin)
+    const cleaned = content.split("\n").filter(l => !isIconLink(l)).join("\n");
+    // Inject our favicon links
+    return cleaned.replace("</head>", faviconLinks + "\n</head>");
   });
 
   // Rewrite absolute paths for GitHub Pages subpath deployment
