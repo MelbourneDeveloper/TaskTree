@@ -10,18 +10,24 @@ You are working with many other agents. Make sure there is effective cooperation
 ## Coding Rules
 
 - **Zero duplication - TOP PRIORITY** - Always search for existing code before adding. Move; don't copy files. Add assertions to tests rather than duplicating tests. AIM FOR LESS CODE!
-- **TypeScript strict mode** - No `any`, no implicit types, turn all lints up to error
 - **Functional style** - Prefer pure functions, avoid classes where possible
 - **No suppressing warnings** - Fix them properly
 - **No REGEX** It is absolutely ⛔️ illegal
-- **Ignoring lints = ⛔️ illegal** - Fix violations immediately
 - **Don't run long runnings tasks** like docker builds, tests. Ask the user to do it!!
-- **No throwing** - Only return `Result<T,E>`
 - **Expressions over assignments** - Prefer const and immutable patterns
 - **Named parameters** - Use object params for functions with 3+ args
 - **Keep files under 450 LOC and functions under 20 LOC**
 - **No commented-out code** - Delete it
 - **No placeholders** - If incomplete, leave LOUD compilation error with TODO
+
+### Typescript
+- **TypeScript strict mode** - No `any`, no implicit types, turn all lints up to error
+- **Ignoring lints = ⛔️ illegal** - Fix violations immediately
+- **No throwing** - Only return `Result<T,E>`
+
+### CSS
+- **Minimize duplication** - fewer classes is better
+- **Don't include section in class name** - name them after what they are - not the section they sit in
 
 ## Testing
 

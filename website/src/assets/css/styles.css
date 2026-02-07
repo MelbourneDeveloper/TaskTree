@@ -211,7 +211,7 @@ a:hover { color: var(--color-primary-hover); }
 /* --- Hero Section --- */
 .hero {
   background: var(--gradient-hero);
-  padding: 5rem 2rem 6rem;
+  padding: 5rem 2rem 2rem;
   text-align: center;
   color: white;
   position: relative;
@@ -313,6 +313,70 @@ a:hover { color: var(--color-primary-hover); }
   animation: fadeInUp 0.8s ease-out 0.45s both;
 }
 .install-cmd .prompt { color: var(--color-leaf); user-select: none; }
+
+/* --- Demo Showcase --- */
+.demo-section {
+  background: var(--gradient-hero);
+  padding: 2.5rem 2rem 2.5rem;
+  position: relative;
+}
+.demo-inner {
+  max-width: 780px;
+  margin: 0 auto;
+}
+.demo-window {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.35),
+    0 10px 24px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  animation: fadeInUp 0.8s ease-out 0.6s both;
+}
+.demo-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.9rem;
+  background: #252526;
+}
+.demo-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.demo-dot-close { background: #ff5f57; }
+.demo-dot-min { background: #febc2e; }
+.demo-dot-max { background: #28c840; }
+.demo-titlebar-text {
+  flex: 1;
+  text-align: center;
+  color: #7a7a7a;
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-family: var(--font-sans);
+  margin-right: 2rem;
+}
+.demo-gif {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #1e1e1e;
+}
+.demo-caption {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.875rem;
+  margin-top: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+@media (max-width: 768px) {
+  .demo-section { padding: 0 1rem 2rem; }
+  .demo-window { border-radius: var(--radius); }
+  .demo-inner { max-width: 100%; }
+}
 
 /* --- Feature Grid --- */
 .features-section {

@@ -1,6 +1,10 @@
 # CommandTree
 
-One sidebar. Every command in your workspace.
+**One sidebar. Every command in your workspace.**
+
+<p align="center">
+  <img src="website/src/assets/images/CommandTree.gif" alt="CommandTree in action" width="780">
+</p>
 
 CommandTree scans your project and surfaces all runnable commands in a single tree view: shell scripts, npm scripts, Makefile targets, VS Code tasks, launch configurations, and Python scripts. Filter by text or tag, run in terminal or debugger.
 
