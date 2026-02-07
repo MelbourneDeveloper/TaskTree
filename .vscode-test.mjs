@@ -20,6 +20,8 @@ export default defineConfig({
     },
     launchArgs: [
         '--disable-extensions',
+        '--enable-extension', 'github.copilot',
+        '--enable-extension', 'github.copilot-chat',
         '--disable-gpu'
     ],
     coverage: {

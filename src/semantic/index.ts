@@ -9,7 +9,7 @@ import { ok, err } from '../models/TaskItem';
 import { logger } from '../utils/logger';
 import { readFile } from '../utils/fileUtils';
 import { computeContentHash } from './store';
-import { selectCopilotModel, summariseScript } from './summariser';
+import { selectCopilotModel, summariseScript, buildFallbackSummary } from './summariser';
 import { initDb, getDb, getOrCreateEmbedder, disposeSemantic } from './lifecycle';
 import { getAllRows, upsertRow, getRow, importFromJsonStore } from './db';
 import type { EmbeddingRow } from './db';
@@ -20,6 +20,9 @@ import {
     readSummaryStore,
     deleteLegacyJsonStore
 } from './store';
+
+const SEARCH_TOP_K = 20;
+const SEARCH_SIMILARITY_THRESHOLD = 0.3;
 
 /**
  * Checks if the user has enabled AI summaries.
@@ -85,33 +88,45 @@ async function readTaskContent(task: TaskItem): Promise<string> {
 }
 
 /**
- * Summarises and embeds a single task, storing in SQLite.
+ * Gets a summary for a task, using Copilot if available, else fallback.
  */
-async function processOneTask(params: {
-    readonly model: vscode.LanguageModelChat;
+async function getSummary(params: {
+    readonly model: vscode.LanguageModelChat | null;
     readonly task: TaskItem;
     readonly content: string;
-    readonly hash: string;
-    readonly workspaceRoot: string;
-}): Promise<Result<void, string>> {
-    const summaryResult = await summariseScript({
+}): Promise<string | null> {
+    if (params.model === null) {
+        return buildFallbackSummary({
+            label: params.task.label,
+            type: params.task.type,
+            command: params.task.command,
+            content: params.content
+        });
+    }
+    const result = await summariseScript({
         model: params.model,
         label: params.task.label,
         type: params.task.type,
         command: params.task.command,
         content: params.content
     });
+    return result.ok ? result.value : null;
+}
 
-    if (!summaryResult.ok) {
-        logger.warn('Skipping summary', { id: params.task.id });
-        return ok(undefined);
-    }
+/**
+ * Summarises and embeds a single task, storing in SQLite.
+ */
+async function processOneTask(params: {
+    readonly model: vscode.LanguageModelChat | null;
+    readonly task: TaskItem;
+    readonly content: string;
+    readonly hash: string;
+    readonly workspaceRoot: string;
+}): Promise<Result<void, string>> {
+    const summary = await getSummary(params);
+    if (summary === null) { return ok(undefined); }
 
-    const embedding = await tryEmbed({
-        text: summaryResult.value,
-        workspaceRoot: params.workspaceRoot
-    });
-
+    const embedding = await tryEmbed({ text: summary, workspaceRoot: params.workspaceRoot });
     const dbResult = getDb();
     if (!dbResult.ok) { return err(dbResult.error); }
 
@@ -120,7 +135,7 @@ async function processOneTask(params: {
         row: {
             commandId: params.task.id,
             contentHash: params.hash,
-            summary: summaryResult.value,
+            summary,
             embedding,
             lastUpdated: new Date().toISOString()
         }
@@ -155,7 +170,8 @@ export async function summariseAllTasks(params: {
     readonly onProgress?: (done: number, total: number) => void;
 }): Promise<Result<number, string>> {
     const modelResult = await selectCopilotModel();
-    if (!modelResult.ok) { return modelResult; }
+    const model = modelResult.ok ? modelResult.value : null;
+    if (model === null) { logger.info('Copilot unavailable, using fallback summaries'); }
 
     const dbResult = getDb();
     if (!dbResult.ok) { return err(dbResult.error); }
@@ -171,7 +187,7 @@ export async function summariseAllTasks(params: {
 
     for (const item of pending) {
         await processOneTask({
-            model: modelResult.value,
+            model,
             task: item.task,
             content: item.content,
             hash: item.hash,
@@ -244,23 +260,32 @@ export async function semanticSearch(params: {
     const ranked = rankBySimilarity({
         query: queryEmbedding,
         candidates,
-        topK: 20,
-        threshold: 0.3
+        topK: SEARCH_TOP_K,
+        threshold: SEARCH_SIMILARITY_THRESHOLD
     });
+
+    if (ranked.length === 0) {
+        return fallbackTextSearch(rowsResult.value, params.query);
+    }
 
     return ok(ranked.map(r => r.id));
 }
 
 /**
  * Text search fallback when embedder is unavailable.
+ * Matches rows where ALL query words appear in the summary.
  */
 function fallbackTextSearch(
     rows: readonly EmbeddingRow[],
     query: string
 ): Result<string[], string> {
-    const lower = query.toLowerCase();
+    const words = query.toLowerCase().split(' ').filter(w => w.length > 0);
+    if (words.length === 0) { return ok([]); }
     const matched = rows
-        .filter(r => r.summary.toLowerCase().includes(lower))
+        .filter(r => {
+            const summary = r.summary.toLowerCase();
+            return words.every(w => summary.includes(w));
+        })
         .map(r => r.commandId);
     return ok(matched);
 }

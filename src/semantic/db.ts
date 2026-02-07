@@ -3,6 +3,8 @@
  * Uses node-sqlite3-wasm for WASM-based SQLite with BLOB embedding storage.
  */
 
+import * as fs from 'fs';
+import * as path from 'path';
 import type { Result } from '../models/TaskItem';
 import { ok, err } from '../models/TaskItem';
 import type { SummaryStoreData } from './store';
@@ -47,8 +49,9 @@ export function bytesToEmbedding(bytes: Uint8Array): Float32Array {
  */
 export async function openDatabase(dbPath: string): Promise<Result<DbHandle, string>> {
     try {
+        fs.mkdirSync(path.dirname(dbPath), { recursive: true });
         const mod = await import('node-sqlite3-wasm');
-        const db = new mod.Database(dbPath);
+        const db = new mod.default.Database(dbPath);
         return ok({ db, path: dbPath });
     } catch (e) {
         const msg = e instanceof Error ? e.message : 'Failed to open database';

@@ -4,23 +4,45 @@ import { ok, err } from '../models/TaskItem';
 import { logger } from '../utils/logger';
 
 const MAX_CONTENT_LENGTH = 4000;
+const FALLBACK_DETAIL_LENGTH = 100;
+const MODEL_RETRY_COUNT = 10;
+const MODEL_RETRY_DELAY_MS = 2000;
+
+/**
+ * Waits for a delay (used for retry backoff).
+ */
+async function delay(ms: number): Promise<void> {
+    await new Promise<void>(resolve => { setTimeout(resolve, ms); });
+}
+
+/**
+ * Attempts to select a Copilot model once.
+ */
+async function trySelectModel(): Promise<vscode.LanguageModelChat | null> {
+    const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
+    return models[0] ?? null;
+}
 
 /**
  * Selects a Copilot chat model for summarisation.
+ * Retries to allow Copilot time to initialise after VS Code starts.
  */
 export async function selectCopilotModel(): Promise<Result<vscode.LanguageModelChat, string>> {
-    try {
-        const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
-        const model = models[0];
-        if (model === undefined) {
-            return err('No Copilot model available. Is GitHub Copilot installed?');
+    for (let attempt = 0; attempt < MODEL_RETRY_COUNT; attempt++) {
+        try {
+            const model = await trySelectModel();
+            if (model !== null) {
+                logger.info('Selected Copilot model', { id: model.id, name: model.name });
+                return ok(model);
+            }
+            logger.info('Copilot not ready, retrying', { attempt });
+        } catch (e) {
+            const msg = e instanceof Error ? e.message : 'Unknown';
+            logger.warn('Model selection error', { attempt, error: msg });
         }
-        logger.info('Selected Copilot model', { id: model.id, name: model.name });
-        return ok(model);
-    } catch (e) {
-        const message = e instanceof Error ? e.message : 'Failed to select Copilot model';
-        return err(message);
+        if (attempt < MODEL_RETRY_COUNT - 1) { await delay(MODEL_RETRY_DELAY_MS); }
     }
+    return err('No Copilot model available after retries');
 }
 
 /**
@@ -97,5 +119,23 @@ export async function summariseScript(params: {
 
     logger.info('Generated summary', { label: params.label, summary: result.value });
     return result;
+}
+
+/**
+ * Generates a basic summary from script metadata when Copilot is unavailable.
+ */
+export function buildFallbackSummary(params: {
+    readonly label: string;
+    readonly type: string;
+    readonly command: string;
+    readonly content: string;
+}): string {
+    const lines = params.content.split('\n');
+    const first = lines.find(
+        l => l.trim().length > 0 && !l.startsWith('#!')
+    ) ?? '';
+    const detail = first.trim().substring(0, FALLBACK_DETAIL_LENGTH);
+    const base = `${params.type} command "${params.label}": ${params.command}`;
+    return detail.length > 0 ? `${base}. ${detail}` : base;
 }
 

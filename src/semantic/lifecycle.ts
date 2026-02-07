@@ -4,6 +4,7 @@
  * to avoid race conditions on module-level state.
  */
 
+import * as fs from 'fs';
 import * as path from 'path';
 import type { Result } from '../models/TaskItem';
 import { ok, err } from '../models/TaskItem';
@@ -22,8 +23,21 @@ let dbHandle: DbHandle | null = null;
 let embedderPromise: Promise<Result<EmbedderHandle, string>> | null = null;
 let embedderHandle: EmbedderHandle | null = null;
 
+function ensureDirectory(dir: string): Result<void, string> {
+    try {
+        fs.mkdirSync(dir, { recursive: true });
+        return ok(undefined);
+    } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Failed to create directory';
+        return err(msg);
+    }
+}
+
 async function doInitDb(workspaceRoot: string): Promise<Result<DbHandle, string>> {
-    const dbPath = path.join(workspaceRoot, COMMANDTREE_DIR, DB_FILENAME);
+    const dbDir = path.join(workspaceRoot, COMMANDTREE_DIR);
+    const dirResult = ensureDirectory(dbDir);
+    if (!dirResult.ok) { return err(dirResult.error); }
+    const dbPath = path.join(dbDir, DB_FILENAME);
     const openResult = await openDatabase(dbPath);
     if (!openResult.ok) { return openResult; }
 
@@ -68,6 +82,8 @@ async function doCreateEmbedder(params: {
     readonly onProgress?: (progress: unknown) => void;
 }): Promise<Result<EmbedderHandle, string>> {
     const modelDir = path.join(params.workspaceRoot, COMMANDTREE_DIR, MODEL_DIR);
+    const dirResult = ensureDirectory(modelDir);
+    if (!dirResult.ok) { return err(dirResult.error); }
     const embedderParams = params.onProgress !== undefined
         ? { modelCacheDir: modelDir, onProgress: params.onProgress }
         : { modelCacheDir: modelDir };

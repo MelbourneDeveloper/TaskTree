@@ -58,50 +58,34 @@ export class TagConfig {
      */
     applyTags(tasks: TaskItem[]): TaskItem[] {
         logger.tag('applyTags called', { taskCount: tasks.length });
-
         if (this.config.tags === undefined) {
             logger.tag('No tags configured', {});
             return tasks;
         }
+        const result = tasks.map(task => this.tagOneTask(task));
+        const taggedCount = result.filter(t => t.tags.length > 0).length;
+        logger.tag('applyTags complete', { taskCount: tasks.length, taggedCount });
+        return result;
+    }
 
-        const tags = this.config.tags;
-        const result = tasks.map(task => {
-            const matchedTags: string[] = [];
-
-            for (const [tagName, patterns] of Object.entries(tags)) {
-                for (const pattern of patterns) {
-                    // String patterns: check exact ID match first, then type:label format
-                    const matches = typeof pattern === 'string'
-                        ? this.matchesStringPattern(task, pattern)
-                        : this.matchesPattern(task, pattern);
-
-                    if (matches) {
-                        logger.tag('Pattern matched', {
-                            tagName,
-                            taskId: task.id,
-                            taskLabel: task.label,
-                            pattern
-                        });
-                        matchedTags.push(tagName);
-                        break;
-                    }
+    /**
+     * Applies matching tag patterns to a single task.
+     */
+    private tagOneTask(task: TaskItem): TaskItem {
+        if (this.config.tags === undefined) { return task; }
+        const matchedTags: string[] = [];
+        for (const [tagName, patterns] of Object.entries(this.config.tags)) {
+            for (const pattern of patterns) {
+                const matches = typeof pattern === 'string'
+                    ? this.matchesStringPattern(task, pattern)
+                    : this.matchesPattern(task, pattern);
+                if (matches) {
+                    matchedTags.push(tagName);
+                    break;
                 }
             }
-
-            if (matchedTags.length > 0) {
-                return { ...task, tags: matchedTags };
-            }
-            return task;
-        });
-
-        const taggedCount = result.filter(t => t.tags.length > 0).length;
-        logger.tag('applyTags complete', {
-            taskCount: tasks.length,
-            taggedCount,
-            result: result.map(t => ({ id: t.id, label: t.label, tags: t.tags }))
-        });
-
-        return result;
+        }
+        return matchedTags.length > 0 ? { ...task, tags: matchedTags } : task;
     }
 
     /**
@@ -172,8 +156,8 @@ export class TagConfig {
         const filtered = patterns.filter(p => p !== pattern);
 
         if (filtered.length === 0) {
-            // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-            delete this.config.tags[tagName];
+            const entries = Object.entries(this.config.tags).filter(([key]) => key !== tagName);
+            this.config.tags = Object.fromEntries(entries);
         } else {
             this.config.tags[tagName] = filtered;
         }

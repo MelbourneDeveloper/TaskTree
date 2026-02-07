@@ -27,29 +27,13 @@ export class TaskRunner {
      */
     async run(task: TaskItem, mode: RunMode = 'newTerminal'): Promise<void> {
         const params = await this.collectParams(task.params);
-        if (params === null) {
-            return;
-        }
-
-        if (task.type === 'launch') {
-            await this.runLaunch(task);
-            return;
-        }
-
-        if (task.type === 'vscode') {
-            await this.runVsCodeTask(task);
-            return;
-        }
-
-        switch (mode) {
-            case 'newTerminal': {
-                this.runInNewTerminal(task, params);
-                break;
-            }
-            case 'currentTerminal': {
-                this.runInCurrentTerminal(task, params);
-                break;
-            }
+        if (params === null) { return; }
+        if (task.type === 'launch') { await this.runLaunch(task); return; }
+        if (task.type === 'vscode') { await this.runVsCodeTask(task); return; }
+        if (mode === 'currentTerminal') {
+            this.runInCurrentTerminal(task, params);
+        } else {
+            this.runInNewTerminal(task, params);
         }
     }
 
@@ -60,36 +44,30 @@ export class TaskRunner {
         params?: readonly ParamDef[]
     ): Promise<Map<string, string> | null> {
         const values = new Map<string, string>();
-        if (params === undefined || params.length === 0) {
-            return values;
-        }
-
+        if (params === undefined || params.length === 0) { return values; }
         for (const param of params) {
-            let value: string | undefined;
-
-            if (param.options !== undefined && param.options.length > 0) {
-                value = await vscode.window.showQuickPick([...param.options], {
-                    placeHolder: param.description ?? `Select ${param.name}`,
-                    title: param.name
-                });
-            } else {
-                const inputOptions: vscode.InputBoxOptions = {
-                    prompt: param.description ?? `Enter ${param.name}`,
-                    title: param.name
-                };
-                if (param.default !== undefined) {
-                    inputOptions.value = param.default;
-                }
-                value = await vscode.window.showInputBox(inputOptions);
-            }
-
-            if (value === undefined) {
-                return null;
-            }
+            const value = await this.promptForParam(param);
+            if (value === undefined) { return null; }
             values.set(param.name, value);
         }
-
         return values;
+    }
+
+    private async promptForParam(param: ParamDef): Promise<string | undefined> {
+        if (param.options !== undefined && param.options.length > 0) {
+            return await vscode.window.showQuickPick([...param.options], {
+                placeHolder: param.description ?? `Select ${param.name}`,
+                title: param.name
+            });
+        }
+        const inputOptions: vscode.InputBoxOptions = {
+            prompt: param.description ?? `Enter ${param.name}`,
+            title: param.name
+        };
+        if (param.default !== undefined) {
+            inputOptions.value = param.default;
+        }
+        return await vscode.window.showInputBox(inputOptions);
     }
 
     /**
@@ -178,9 +156,11 @@ export class TaskRunner {
             terminal.shellIntegration.executeCommand(command);
             return;
         }
+        this.waitForShellIntegration(terminal, command);
+    }
 
+    private waitForShellIntegration(terminal: vscode.Terminal, command: string): void {
         let resolved = false;
-
         const listener = vscode.window.onDidChangeTerminalShellIntegration(
             ({ terminal: t, shellIntegration }) => {
                 if (t === terminal && !resolved) {
@@ -190,7 +170,6 @@ export class TaskRunner {
                 }
             }
         );
-
         setTimeout(() => {
             if (!resolved) {
                 resolved = true;

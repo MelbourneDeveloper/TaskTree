@@ -29,108 +29,92 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
         logger.warn('No workspace root found, extension not activating');
         return;
     }
+    await initSemanticSubsystem(workspaceRoot);
+    treeProvider = new CommandTreeProvider(workspaceRoot);
+    quickTasksProvider = new QuickTasksProvider(workspaceRoot);
+    taskRunner = new TaskRunner();
+    registerTreeViews(context);
+    registerCommands(context, workspaceRoot);
+    setupFileWatcher(context, workspaceRoot);
+    await syncQuickTasks(workspaceRoot);
+    initAiSummaries(workspaceRoot);
+    return { commandTreeProvider: treeProvider, quickTasksProvider };
+}
 
-    // Initialize semantic search SQLite database in .commandtree/
+async function initSemanticSubsystem(workspaceRoot: string): Promise<void> {
     const storeResult = await initSemanticStore(workspaceRoot);
     if (!storeResult.ok) {
         logger.warn('SQLite init failed, semantic search unavailable', { error: storeResult.error });
     }
-
-    // Migrate legacy JSON store if present
     migrateIfNeeded({ workspaceRoot }).catch((e: unknown) => {
         logger.warn('Migration failed', { error: e instanceof Error ? e.message : 'Unknown' });
     });
+}
 
-    // Initialize providers
-    treeProvider = new CommandTreeProvider(workspaceRoot);
-    quickTasksProvider = new QuickTasksProvider(workspaceRoot);
-    taskRunner = new TaskRunner();
+function registerTreeViews(context: vscode.ExtensionContext): void {
+    context.subscriptions.push(
+        vscode.window.createTreeView('commandtree', {
+            treeDataProvider: treeProvider,
+            showCollapseAll: true
+        }),
+        vscode.window.createTreeView('commandtree-quick', {
+            treeDataProvider: quickTasksProvider,
+            showCollapseAll: true,
+            dragAndDropController: quickTasksProvider
+        })
+    );
+}
 
-    // Register main tree view
-    const treeView = vscode.window.createTreeView('commandtree', {
-        treeDataProvider: treeProvider,
-        showCollapseAll: true
-    });
-    context.subscriptions.push(treeView);
+function registerCommands(context: vscode.ExtensionContext, workspaceRoot: string): void {
+    registerCoreCommands(context);
+    registerFilterCommands(context, workspaceRoot);
+    registerTagCommands(context);
+    registerQuickCommands(context);
+}
 
-    // Register Quick Launch tree view with drag-and-drop support
-    const quickTreeView = vscode.window.createTreeView('commandtree-quick', {
-        treeDataProvider: quickTasksProvider,
-        showCollapseAll: true,
-        dragAndDropController: quickTasksProvider
-    });
-    context.subscriptions.push(quickTreeView);
-
-    // Register commands
+function registerCoreCommands(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
         vscode.commands.registerCommand('commandtree.refresh', async () => {
             await treeProvider.refresh();
             await quickTasksProvider.updateTasks(treeProvider.getAllTasks());
             vscode.window.showInformationMessage('CommandTree refreshed');
         }),
-
         vscode.commands.registerCommand('commandtree.run', async (item: CommandTreeItem | undefined) => {
             if (item !== undefined && item.task !== null) {
                 await taskRunner.run(item.task, 'newTerminal');
             }
         }),
-
         vscode.commands.registerCommand('commandtree.runInCurrentTerminal', async (item: CommandTreeItem | undefined) => {
             if (item !== undefined && item.task !== null) {
                 await taskRunner.run(item.task, 'currentTerminal');
             }
-        }),
+        })
+    );
+}
 
-        vscode.commands.registerCommand('commandtree.filter', async () => {
-            const filter = await vscode.window.showInputBox({
-                prompt: 'Filter commands by name, path, or description',
-                placeHolder: 'Type to filter...',
-                value: ''
-            });
-
-            if (filter !== undefined) {
-                treeProvider.setTextFilter(filter);
-                updateFilterContext();
-            }
-        }),
-
-        vscode.commands.registerCommand('commandtree.filterByTag', async () => {
-            const tags = treeProvider.getAllTags();
-            if (tags.length === 0) {
-                const action = await vscode.window.showInformationMessage(
-                    'No tags defined. Create tag configuration?',
-                    'Create'
-                );
-                if (action === 'Create') {
-                    await treeProvider.editTags();
-                }
-                return;
-            }
-
-            const items = [
-                { label: '$(close) Clear tag filter', tag: null },
-                ...tags.map(t => ({ label: `$(tag) ${t}`, tag: t }))
-            ];
-
-            const selected = await vscode.window.showQuickPick(items, {
-                placeHolder: 'Select tag to filter by'
-            });
-
-            if (selected) {
-                treeProvider.setTagFilter(selected.tag);
-                updateFilterContext();
-            }
-        }),
-
+function registerFilterCommands(context: vscode.ExtensionContext, workspaceRoot: string): void {
+    context.subscriptions.push(
+        vscode.commands.registerCommand('commandtree.filter', handleFilter),
+        vscode.commands.registerCommand('commandtree.filterByTag', handleFilterByTag),
         vscode.commands.registerCommand('commandtree.clearFilter', () => {
             treeProvider.clearFilters();
             updateFilterContext();
         }),
+        vscode.commands.registerCommand('commandtree.semanticSearch', async (q?: string) => { await handleSemanticSearch(q, workspaceRoot); }),
+        vscode.commands.registerCommand('commandtree.generateSummaries', async () => { await runSummarisation(workspaceRoot); })
+    );
+}
 
-        vscode.commands.registerCommand('commandtree.editTags', async () => {
-            await treeProvider.editTags();
-        }),
+function registerTagCommands(context: vscode.ExtensionContext): void {
+    context.subscriptions.push(
+        vscode.commands.registerCommand('commandtree.editTags', async () => { await treeProvider.editTags(); }),
+        vscode.commands.registerCommand('commandtree.addTag', handleAddTag),
+        vscode.commands.registerCommand('commandtree.removeTag', handleRemoveTag)
+    );
+}
 
+function registerQuickCommands(context: vscode.ExtensionContext): void {
+    context.subscriptions.push(
         vscode.commands.registerCommand('commandtree.addToQuick', async (item: CommandTreeItem | undefined) => {
             if (item !== undefined && item.task !== null) {
                 await quickTasksProvider.addToQuick(item.task);
@@ -138,7 +122,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
                 await quickTasksProvider.updateTasks(treeProvider.getAllTasks());
             }
         }),
-
         vscode.commands.registerCommand('commandtree.removeFromQuick', async (item: CommandTreeItem | undefined) => {
             if (item !== undefined && item.task !== null) {
                 await quickTasksProvider.removeFromQuick(item.task);
@@ -146,131 +129,122 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
                 await quickTasksProvider.updateTasks(treeProvider.getAllTasks());
             }
         }),
-
         vscode.commands.registerCommand('commandtree.refreshQuick', () => {
             quickTasksProvider.refresh();
-        }),
-
-        vscode.commands.registerCommand('commandtree.addTag', async (item: CommandTreeItem | undefined) => {
-            const task = item?.task;
-            if (task === undefined || task === null) {
-                return;
-            }
-
-            const tagName = await pickOrCreateTag(treeProvider.getAllTags(), task.label);
-            if (tagName === undefined) {
-                return;
-            }
-
-            await treeProvider.addTaskToTag(task, tagName);
-            await quickTasksProvider.updateTasks(treeProvider.getAllTasks());
-        }),
-
-        vscode.commands.registerCommand('commandtree.removeTag', async (item: CommandTreeItem | undefined) => {
-            const task = item?.task;
-            if (task === undefined || task === null) {
-                return;
-            }
-
-            const taskTags = task.tags;
-            if (taskTags.length === 0) {
-                vscode.window.showInformationMessage('This command has no tags');
-                return;
-            }
-
-            const options = taskTags.map(t => ({
-                label: `$(tag) ${t}`,
-                tag: t
-            }));
-
-            const selected = await vscode.window.showQuickPick(options, {
-                placeHolder: `Remove tag from "${task.label}"`
-            });
-
-            if (selected === undefined) {
-                return;
-            }
-
-            await treeProvider.removeTaskFromTag(task, selected.tag);
-            await quickTasksProvider.updateTasks(treeProvider.getAllTasks());
-        }),
-
-        vscode.commands.registerCommand('commandtree.semanticSearch', async (queryArg?: string) => {
-            const query = queryArg ?? await vscode.window.showInputBox({
-                prompt: 'Describe what you are looking for',
-                placeHolder: 'e.g. "deploy to staging", "run tests"'
-            });
-
-            if (query === undefined || query === '') {
-                return;
-            }
-
-            const result = await semanticSearch({ query, workspaceRoot });
-            if (!result.ok) {
-                vscode.window.showErrorMessage(`Semantic search failed: ${result.error}`);
-                return;
-            }
-
-            if (result.value.length === 0) {
-                vscode.window.showInformationMessage('No matching commands found');
-                return;
-            }
-
-            treeProvider.setSemanticFilter(result.value);
-            updateFilterContext();
-        }),
-
-        vscode.commands.registerCommand('commandtree.generateSummaries', async () => {
-            await runSummarisation(workspaceRoot);
         })
     );
+}
 
-    // Watch for file changes that might affect commands
+async function handleFilter(): Promise<void> {
+    const filter = await vscode.window.showInputBox({
+        prompt: 'Filter commands by name, path, or description',
+        placeHolder: 'Type to filter...',
+        value: ''
+    });
+    if (filter !== undefined) {
+        treeProvider.setTextFilter(filter);
+        updateFilterContext();
+    }
+}
+
+async function handleFilterByTag(): Promise<void> {
+    const tags = treeProvider.getAllTags();
+    if (tags.length === 0) {
+        const action = await vscode.window.showInformationMessage(
+            'No tags defined. Create tag configuration?', 'Create'
+        );
+        if (action === 'Create') { await treeProvider.editTags(); }
+        return;
+    }
+    const items = [
+        { label: '$(close) Clear tag filter', tag: null },
+        ...tags.map(t => ({ label: `$(tag) ${t}`, tag: t }))
+    ];
+    const selected = await vscode.window.showQuickPick(items, {
+        placeHolder: 'Select tag to filter by'
+    });
+    if (selected) {
+        treeProvider.setTagFilter(selected.tag);
+        updateFilterContext();
+    }
+}
+
+async function handleAddTag(item: CommandTreeItem | undefined): Promise<void> {
+    const task = item?.task;
+    if (task === undefined || task === null) { return; }
+    const tagName = await pickOrCreateTag(treeProvider.getAllTags(), task.label);
+    if (tagName === undefined) { return; }
+    await treeProvider.addTaskToTag(task, tagName);
+    await quickTasksProvider.updateTasks(treeProvider.getAllTasks());
+}
+
+async function handleRemoveTag(item: CommandTreeItem | undefined): Promise<void> {
+    const task = item?.task;
+    if (task === undefined || task === null) { return; }
+    if (task.tags.length === 0) {
+        vscode.window.showInformationMessage('This command has no tags');
+        return;
+    }
+    const options = task.tags.map(t => ({ label: `$(tag) ${t}`, tag: t }));
+    const selected = await vscode.window.showQuickPick(options, {
+        placeHolder: `Remove tag from "${task.label}"`
+    });
+    if (selected === undefined) { return; }
+    await treeProvider.removeTaskFromTag(task, selected.tag);
+    await quickTasksProvider.updateTasks(treeProvider.getAllTasks());
+}
+
+async function handleSemanticSearch(queryArg: string | undefined, workspaceRoot: string): Promise<void> {
+    const query = queryArg ?? await vscode.window.showInputBox({
+        prompt: 'Describe what you are looking for',
+        placeHolder: 'e.g. "deploy to staging", "run tests"'
+    });
+    if (query === undefined || query === '') { return; }
+    const result = await semanticSearch({ query, workspaceRoot });
+    if (!result.ok) {
+        vscode.window.showErrorMessage(`Semantic search failed: ${result.error}`);
+        return;
+    }
+    if (result.value.length === 0) {
+        vscode.window.showInformationMessage('No matching commands found');
+        return;
+    }
+    treeProvider.setSemanticFilter(result.value);
+    updateFilterContext();
+}
+
+function setupFileWatcher(context: vscode.ExtensionContext, workspaceRoot: string): void {
     const watcher = vscode.workspace.createFileSystemWatcher(
         '**/{package.json,Makefile,makefile,tasks.json,launch.json,commandtree.json,*.sh,*.py}'
     );
-
-    const syncQuickTasks = async (): Promise<void> => {
-        logger.info('syncQuickTasks START');
-        await treeProvider.refresh();
-        const allTasks = treeProvider.getAllTasks();
-        logger.info('syncQuickTasks after refresh', {
-            taskCount: allTasks.length,
-            taskIds: allTasks.map(t => t.id)
+    const onFileChange = (): void => {
+        syncQuickTasks(workspaceRoot).catch((e: unknown) => {
+            logger.error('Sync failed', { error: e instanceof Error ? e.message : 'Unknown' });
         });
-        await quickTasksProvider.updateTasks(allTasks);
-        logger.info('syncQuickTasks END');
-
-        // Re-summarise if AI summaries enabled
-        if (isAiEnabled()) {
-            runSummarisation(workspaceRoot).catch((e: unknown) => {
-                logger.error('Re-summarisation failed', { error: e instanceof Error ? e.message : 'Unknown' });
-            });
-        }
     };
-
-    watcher.onDidChange(syncQuickTasks);
-    watcher.onDidCreate(syncQuickTasks);
-    watcher.onDidDelete(syncQuickTasks);
+    watcher.onDidChange(onFileChange);
+    watcher.onDidCreate(onFileChange);
+    watcher.onDidDelete(onFileChange);
     context.subscriptions.push(watcher);
-
-    // Initial load
-    await syncQuickTasks();
-
-    // AI summaries: opt-in prompt and background summarisation
-    initAiSummaries(context, workspaceRoot);
-
-    // Export for testing
-    return {
-        commandTreeProvider: treeProvider,
-        quickTasksProvider
-    };
 }
 
-/**
- * Shows a QuickPick that accepts both existing tag selection AND typed new tag names.
- * Type a name and press Enter to create a new tag, or select an existing one.
- */
+async function syncQuickTasks(workspaceRoot: string): Promise<void> {
+    logger.info('syncQuickTasks START');
+    await treeProvider.refresh();
+    const allTasks = treeProvider.getAllTasks();
+    logger.info('syncQuickTasks after refresh', {
+        taskCount: allTasks.length,
+        taskIds: allTasks.map(t => t.id)
+    });
+    await quickTasksProvider.updateTasks(allTasks);
+    logger.info('syncQuickTasks END');
+    if (isAiEnabled()) {
+        runSummarisation(workspaceRoot).catch((e: unknown) => {
+            logger.error('Re-summarisation failed', { error: e instanceof Error ? e.message : 'Unknown' });
+        });
+    }
+}
+
 async function pickOrCreateTag(existingTags: string[], taskLabel: string): Promise<string | undefined> {
     return await new Promise<string | undefined>((resolve) => {
         const qp = vscode.window.createQuickPick();
@@ -293,11 +267,8 @@ async function pickOrCreateTag(existingTags: string[], taskLabel: string): Promi
     });
 }
 
-function initAiSummaries(_context: vscode.ExtensionContext, workspaceRoot: string): void {
-    if (!isAiEnabled()) {
-        return;
-    }
-
+function initAiSummaries(workspaceRoot: string): void {
+    if (!isAiEnabled()) { return; }
     vscode.commands.executeCommand('setContext', 'commandtree.aiSummariesEnabled', true);
     runSummarisation(workspaceRoot).catch((e: unknown) => {
         logger.error('AI summarisation failed', { error: e instanceof Error ? e.message : 'Unknown' });
@@ -306,12 +277,8 @@ function initAiSummaries(_context: vscode.ExtensionContext, workspaceRoot: strin
 
 async function runSummarisation(workspaceRoot: string): Promise<void> {
     const tasks = treeProvider.getAllTasks();
-    if (tasks.length === 0) {
-        return;
-    }
-
+    if (tasks.length === 0) { return; }
     logger.info('Starting AI summarisation', { taskCount: tasks.length });
-
     const result = await summariseAllTasks({
         tasks,
         workspaceRoot,
@@ -319,11 +286,15 @@ async function runSummarisation(workspaceRoot: string): Promise<void> {
             logger.info('Summarisation progress', { done, total });
         }
     });
-
     if (result.ok) {
+        if (result.value > 0) {
+            await treeProvider.refresh();
+            await quickTasksProvider.updateTasks(treeProvider.getAllTasks());
+        }
         vscode.window.showInformationMessage(`CommandTree: Summarised ${result.value} commands`);
     } else {
         logger.error('Summarisation failed', { error: result.error });
+        vscode.window.showErrorMessage(`CommandTree: Summarisation failed — ${result.error}`);
     }
 }
 
