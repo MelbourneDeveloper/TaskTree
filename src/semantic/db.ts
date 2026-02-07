@@ -7,7 +7,7 @@ import type { Result } from '../models/TaskItem';
 import { ok, err } from '../models/TaskItem';
 import type { SummaryStoreData } from './store';
 
-type SqliteDatabase = import('node-sqlite3-wasm').Database;
+import type { Database as SqliteDatabase } from 'node-sqlite3-wasm';
 
 export interface EmbeddingRow {
     readonly commandId: string;
@@ -45,10 +45,10 @@ export function bytesToEmbedding(bytes: Uint8Array): Float32Array {
 /**
  * Opens a SQLite database at the given path.
  */
-export function openDatabase(dbPath: string): Result<DbHandle, string> {
+export async function openDatabase(dbPath: string): Promise<Result<DbHandle, string>> {
     try {
-        const Database = require('node-sqlite3-wasm').Database as new (path: string) => SqliteDatabase;
-        const db = new Database(dbPath);
+        const mod = await import('node-sqlite3-wasm');
+        const db = new mod.Database(dbPath);
         return ok({ db, path: dbPath });
     } catch (e) {
         const msg = e instanceof Error ? e.message : 'Failed to open database';

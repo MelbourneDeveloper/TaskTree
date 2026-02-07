@@ -260,7 +260,7 @@ The preferred integration path is **GitHub Copilot** via the VS Code Language Mo
 Embeddings are generated locally using `@huggingface/transformers` with the `all-MiniLM-L6-v2` model:
 
 - **384 dimensions** per embedding vector
-- **~23 MB** model, downloaded on first use to `{globalStorageUri}/models/`
+- **~23 MB** model, downloaded on first use to `{workspaceFolder}/.commandtree/models/`
 - **~10ms** per embedding on modern hardware
 - **Pure JS/WASM** — no native binaries, works cross-platform
 - Same model embeds both stored summaries and search queries for consistent vector space

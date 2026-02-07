@@ -33,8 +33,8 @@ export function isAiEnabled(): boolean {
 /**
  * Initialises the semantic search subsystem.
  */
-export function initSemanticStore(workspaceRoot: string): Result<void, string> {
-    const result = initDb(workspaceRoot);
+export async function initSemanticStore(workspaceRoot: string): Promise<Result<void, string>> {
+    const result = await initDb(workspaceRoot);
     return result.ok ? ok(undefined) : err(result.error);
 }
 

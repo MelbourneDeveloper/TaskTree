@@ -9,7 +9,7 @@ import { logger } from '../utils/logger';
 
 interface Pipeline {
     (text: string, options: { pooling: string; normalize: boolean }): Promise<{ data: Float32Array }>;
-    dispose(): Promise<void>;
+    dispose: () => Promise<void>;
 }
 
 export interface EmbedderHandle {

@@ -31,7 +31,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
     }
 
     // Initialize semantic search SQLite database in .commandtree/
-    const storeResult = initSemanticStore(workspaceRoot);
+    const storeResult = await initSemanticStore(workspaceRoot);
     if (!storeResult.ok) {
         logger.warn('SQLite init failed, semantic search unavailable', { error: storeResult.error });
     }
