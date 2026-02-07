@@ -88,6 +88,25 @@ async function summariseOne(
 }
 
 /**
+ * Processes all pending tasks through the LLM, reporting progress.
+ */
+async function processPending(params: {
+    readonly model: vscode.LanguageModelChat;
+    readonly pending: readonly PendingTask[];
+    readonly store: SummaryStoreData;
+    readonly onProgress?: ((done: number, total: number) => void) | undefined;
+}): Promise<SummaryStoreData> {
+    let store = params.store;
+    let done = 0;
+    for (const item of params.pending) {
+        store = await summariseOne(params.model, item, store);
+        done++;
+        params.onProgress?.(done, params.pending.length);
+    }
+    return store;
+}
+
+/**
  * Summarises all tasks that are new or have changed.
  */
 export async function summariseAllTasks(params: {
@@ -96,14 +115,10 @@ export async function summariseAllTasks(params: {
     readonly onProgress?: (done: number, total: number) => void;
 }): Promise<Result<SummaryStoreData, string>> {
     const modelResult = await selectCopilotModel();
-    if (!modelResult.ok) {
-        return modelResult;
-    }
+    if (!modelResult.ok) { return modelResult; }
 
     const storeResult = await readSummaryStore(params.workspaceRoot);
-    if (!storeResult.ok) {
-        return storeResult;
-    }
+    if (!storeResult.ok) { return storeResult; }
 
     const pending = await findTasksToSummarise(params.tasks, storeResult.value);
     if (pending.length === 0) {
@@ -112,20 +127,12 @@ export async function summariseAllTasks(params: {
     }
 
     logger.info('Summarising tasks', { count: pending.length });
-    let store = storeResult.value;
-    let done = 0;
-
-    for (const item of pending) {
-        store = await summariseOne(modelResult.value, item, store);
-        done++;
-        params.onProgress?.(done, pending.length);
-    }
+    const store = await processPending({
+        model: modelResult.value, pending, store: storeResult.value, onProgress: params.onProgress
+    });
 
     const writeResult = await writeSummaryStore(params.workspaceRoot, store);
-    if (!writeResult.ok) {
-        return err(writeResult.error);
-    }
-
+    if (!writeResult.ok) { return err(writeResult.error); }
     return ok(store);
 }
 

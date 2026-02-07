@@ -29,7 +29,7 @@
   - [Sort Order](#sort-order)
   - [Show Empty Categories](#show-empty-categories)
 - [User Data Storage](#user-data-storage)
-- [Semantic Search (FUTURE FEATURE)](#semantic-search-future-feature)
+- [Semantic Search](#semantic-search)
   - [Overview](#overview-1)
   - [LLM Integration](#llm-integration)
   - [Database and Config Migration](#database-and-config-migration)
