@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0
+
+### Fixed
+
+- Corrected homepage link to commandtree.dev in package.json and README
+- Fixed website deployment prefix issue for custom domain
+
 ## 0.3.0
 
 ### Added
