@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.0
+
+### Added
+
+- Demo GIF showcasing CommandTree in action on README and website
+- Website demo section with window-chrome frame and caption below the hero
+- Deployment script fix for release workflow
+
+## 0.2.0
+
+### Added
+
+- See [Release 0.2.0](https://github.com/MelbourneDeveloper/CommandTree/releases/tag/v0.2.0)
+
 ## 0.1.0 - Initial Release
 
 ### Features
