@@ -104,9 +104,8 @@ suite('Command Registration Unit Tests', function () {
         assert.strictEqual(row.value.contentHash, hash);
         assert.strictEqual(row.value.summary, '', 'Summary is empty');
 
-        // Simulate what findPendingSummaries should do:
-        const needsSummary = row.value.summary === '' || row.value.contentHash !== hash;
-        assert.ok(needsSummary, 'Command with empty summary MUST be queued for summarisation');
+        // Summary is empty (asserted above), so this command MUST be queued for summarisation
+        assert.strictEqual(row.value.summary.length, 0, 'Command with empty summary MUST be queued for summarisation');
     });
 
     test('all discovered commands land in DB with correct content hashes', () => {
