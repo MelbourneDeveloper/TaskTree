@@ -10,11 +10,18 @@
 
 CommandTree scans your project and surfaces all runnable commands in a single tree view: shell scripts, npm scripts, Makefile targets, VS Code tasks, launch configurations, and Python scripts. Filter by text or tag, run in terminal or debugger.
 
+## AI Summaries (powered by GitHub Copilot)
+
+When [GitHub Copilot](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot) is installed, CommandTree automatically generates plain-language summaries of every discovered command. Hover over any command to see what it does, without reading the script. Commands that perform dangerous operations (like `rm -rf` or force-push) are flagged with a security warning.
+
+Summaries are stored locally and only regenerate when the underlying script changes.
+
 ## Features
 
+- **AI Summaries** - GitHub Copilot describes each command in plain language, with security warnings for dangerous operations
 - **Auto-discovery** - Shell scripts (`.sh`, `.bash`, `.zsh`), npm scripts, Makefile targets, VS Code tasks, launch configurations, and Python scripts
 - **Quick Launch** - Pin frequently-used commands to a dedicated panel at the top
-- **Tagging** - Auto-tag commands by type, label, or exact ID using pattern rules in `.vscode/commandtree.json`
+- **Tagging** - Right-click any command to add or remove tags
 - **Filtering** - Filter the tree by text search or by tag
 - **Run anywhere** - Execute in a new terminal, the current terminal, or launch with the debugger
 - **Folder grouping** - Commands grouped by directory with collapsible nested hierarchy
@@ -52,31 +59,14 @@ Open a workspace and the CommandTree panel appears in the sidebar. All discovere
 - **Star a command** - Click the star icon to pin it to Quick Launch
 - **Filter** - Use the toolbar icons to filter by text or tag
 - **Tag commands** - Right-click > "Add Tag" to group related commands
-- **Edit tags** - Configure auto-tagging patterns in `.vscode/commandtree.json`
 
 ## Settings
 
 | Setting | Description | Default |
 |---------|-------------|---------|
+| `commandtree.enableAiSummaries` | Use GitHub Copilot to generate plain-language summaries | `true` |
 | `commandtree.excludePatterns` | Glob patterns to exclude from discovery | `**/node_modules/**`, `**/.git/**`, etc. |
 | `commandtree.sortOrder` | Sort commands by `folder`, `name`, or `type` | `folder` |
-
-## Tag Configuration
-
-Create `.vscode/commandtree.json` to define tag patterns:
-
-```json
-{
-    "tags": {
-        "build": [{ "type": "npm", "label": "build" }],
-        "test": [{ "label": "test" }],
-        "scripts": [{ "type": "shell" }],
-        "quick": ["npm:/project/package.json:build"]
-    }
-}
-```
-
-Patterns match by `type`, `label`, exact `id`, or any combination.
 
 ## License
 

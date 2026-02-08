@@ -1,41 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-
-/**
- * Success variant of Result.
- */
-export interface Ok<T> {
-    readonly ok: true;
-    readonly value: T;
-}
-
-/**
- * Error variant of Result.
- */
-export interface Err<E> {
-    readonly ok: false;
-    readonly error: E;
-}
-
-/**
- * Result type for operations that can fail.
- * Use instead of throwing errors.
- */
-export type Result<T, E> = Ok<T> | Err<E>;
-
-/**
- * Creates a success result.
- */
-export function ok<T>(value: T): Ok<T> {
-    return { ok: true, value };
-}
-
-/**
- * Creates an error result.
- */
-export function err<E>(error: E): Err<E> {
-    return { ok: false, error };
-}
+export type { Result, Ok, Err } from './Result';
+export { ok, err } from './Result';
 
 /**
  * Command type identifiers.
@@ -57,7 +23,18 @@ export type TaskType =
     | 'deno'
     | 'rake'
     | 'composer'
-    | 'docker';
+    | 'docker'
+    | 'dotnet'
+    | 'markdown';
+
+/**
+ * Parameter format types for flexible argument handling across different tools.
+ */
+export type ParamFormat =
+    | 'positional'       // Append as quoted arg: "value"
+    | 'flag'             // Append as flag: --flag "value"
+    | 'flag-equals'      // Append as flag with equals: --flag=value
+    | 'dashdash-args';   // Prepend with --: -- value1 value2
 
 /**
  * Parameter definition for commands requiring input.
@@ -67,6 +44,8 @@ export interface ParamDef {
     readonly description?: string;
     readonly default?: string;
     readonly options?: readonly string[];
+    readonly format?: ParamFormat;
+    readonly flag?: string;
 }
 
 /**
@@ -77,6 +56,8 @@ export interface MutableParamDef {
     description?: string;
     default?: string;
     options?: string[];
+    format?: ParamFormat;
+    flag?: string;
 }
 
 /**
@@ -93,6 +74,8 @@ export interface TaskItem {
     readonly tags: readonly string[];
     readonly params?: readonly ParamDef[];
     readonly description?: string;
+    readonly summary?: string;
+    readonly securityWarning?: string;
 }
 
 /**
@@ -109,6 +92,8 @@ export interface MutableTaskItem {
     tags: string[];
     params?: ParamDef[];
     description?: string;
+    summary?: string;
+    securityWarning?: string;
 }
 
 /**
@@ -119,10 +104,18 @@ export class CommandTreeItem extends vscode.TreeItem {
         public readonly task: TaskItem | null,
         public readonly categoryLabel: string | null,
         public readonly children: CommandTreeItem[] = [],
-        parentId?: string
+        parentId?: string,
+        similarityScore?: number
     ) {
+        const rawLabel = task?.label ?? categoryLabel ?? '';
+        const hasWarning = task?.securityWarning !== undefined && task.securityWarning !== '';
+        const baseLabel = hasWarning ? `\u26A0\uFE0F ${rawLabel}` : rawLabel;
+        const labelWithScore = similarityScore !== undefined
+            ? `${baseLabel} (${Math.round(similarityScore * 100)}%)`
+            : baseLabel;
+
         super(
-            task?.label ?? categoryLabel ?? '',
+            labelWithScore,
             children.length > 0
                 ? vscode.TreeItemCollapsibleState.Collapsed
                 : vscode.TreeItemCollapsibleState.None
@@ -131,7 +124,19 @@ export class CommandTreeItem extends vscode.TreeItem {
         // Set unique id for proper tree rendering and indentation
         if (task !== null) {
             this.id = task.id;
-            this.contextValue = task.tags.includes('quick') ? 'task-quick' : 'task';
+            const isQuick = task.tags.includes('quick');
+            const isMarkdown = task.type === 'markdown';
+
+            if (isMarkdown && isQuick) {
+                this.contextValue = 'task-markdown-quick';
+            } else if (isMarkdown) {
+                this.contextValue = 'task-markdown';
+            } else if (isQuick) {
+                this.contextValue = 'task-quick';
+            } else {
+                this.contextValue = 'task';
+            }
+
             this.tooltip = this.buildTooltip(task);
             this.iconPath = this.getIcon(task.type);
             const tagStr = task.tags.length > 0 ? ` [${task.tags.join(', ')}]` : '';
@@ -151,6 +156,14 @@ export class CommandTreeItem extends vscode.TreeItem {
     private buildTooltip(task: TaskItem): vscode.MarkdownString {
         const md = new vscode.MarkdownString();
         md.appendMarkdown(`**${task.label}**\n\n`);
+        if (task.securityWarning !== undefined && task.securityWarning !== '') {
+            md.appendMarkdown(`\u26A0\uFE0F **Security Warning:** ${task.securityWarning}\n\n`);
+            md.appendMarkdown(`---\n\n`);
+        }
+        if (task.summary !== undefined && task.summary !== '') {
+            md.appendMarkdown(`> ${task.summary}\n\n`);
+            md.appendMarkdown(`---\n\n`);
+        }
         md.appendMarkdown(`Type: \`${task.type}\`\n\n`);
         md.appendMarkdown(`Command: \`${task.command}\`\n\n`);
         if (task.cwd !== undefined && task.cwd !== '') {
@@ -216,6 +229,16 @@ export class CommandTreeItem extends vscode.TreeItem {
             case 'docker': {
                 return new vscode.ThemeIcon('server-environment', new vscode.ThemeColor('terminal.ansiBlue'));
             }
+            case 'dotnet': {
+                return new vscode.ThemeIcon('circuit-board', new vscode.ThemeColor('terminal.ansiMagenta'));
+            }
+            case 'markdown': {
+                return new vscode.ThemeIcon('markdown', new vscode.ThemeColor('terminal.ansiCyan'));
+            }
+            default: {
+                const exhaustiveCheck: never = type;
+                return exhaustiveCheck;
+            }
         }
     }
 
@@ -271,6 +294,12 @@ export class CommandTreeItem extends vscode.TreeItem {
         }
         if (lower.includes('docker')) {
             return new vscode.ThemeIcon('server-environment', new vscode.ThemeColor('terminal.ansiBlue'));
+        }
+        if (lower.includes('dotnet') || lower.includes('.net') || lower.includes('csharp') || lower.includes('fsharp')) {
+            return new vscode.ThemeIcon('circuit-board', new vscode.ThemeColor('terminal.ansiMagenta'));
+        }
+        if (lower.includes('markdown') || lower.includes('docs')) {
+            return new vscode.ThemeIcon('markdown', new vscode.ThemeColor('terminal.ansiCyan'));
         }
         return new vscode.ThemeIcon('folder');
     }

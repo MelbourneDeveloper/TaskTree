@@ -1,7 +1,19 @@
 {
   "title": "CommandTree",
-  "description": "One sidebar. Every command in your workspace.",
+  "description": "One sidebar. Every command in your workspace, one click away.",
   "url": "https://commandtree.dev",
   "stylesheet": "/assets/css/styles.css",
-  "author": "Christian Findlay"
+  "author": "Christian Findlay",
+  "keywords": "VS Code extension, command runner, task runner, script discovery, npm scripts, shell scripts, makefile, workspace automation, developer tools",
+  "ogImage": "/assets/images/og-image.png",
+  "ogImageWidth": "1200",
+  "ogImageHeight": "630",
+  "organization": {
+    "name": "Nimblesite Pty Ltd",
+    "logo": "/assets/images/logo.png",
+    "sameAs": [
+      "https://github.com/melbournedeveloper/CommandTree",
+      "https://marketplace.visualstudio.com/items?itemName=nimblesite.commandtree"
+    ]
+  }
 }

@@ -178,6 +178,49 @@ export function getQuickTasksProvider(): QuickTasksProvider {
 
 export { CommandTreeProvider, CommandTreeItem, QuickTasksProvider };
 
+export function getLabelString(label: string | vscode.TreeItemLabel | undefined): string {
+    if (label === undefined) {
+        return "";
+    }
+    if (typeof label === "string") {
+        return label;
+    }
+    return label.label;
+}
+
+export async function collectLeafItems(
+    p: CommandTreeProvider,
+): Promise<CommandTreeItem[]> {
+    const out: CommandTreeItem[] = [];
+    async function walk(node: CommandTreeItem): Promise<void> {
+        if (node.task !== null) {
+            out.push(node);
+        }
+        for (const child of await p.getChildren(node)) {
+            await walk(child);
+        }
+    }
+    for (const root of await p.getChildren()) {
+        await walk(root);
+    }
+    return out;
+}
+
+export async function collectLeafTasks(p: CommandTreeProvider): Promise<TaskItem[]> {
+    const items = await collectLeafItems(p);
+    return items.map((i) => i.task).filter((t): t is TaskItem => t !== null);
+}
+
+export function getTooltipText(item: CommandTreeItem): string {
+    if (item.tooltip instanceof vscode.MarkdownString) {
+        return item.tooltip.value;
+    }
+    if (typeof item.tooltip === "string") {
+        return item.tooltip;
+    }
+    return "";
+}
+
 export async function captureTerminalOutput(terminalName: string, timeout = 5000): Promise<string> {
     // Find the terminal by name
     const terminal = vscode.window.terminals.find(t => t.name === terminalName);

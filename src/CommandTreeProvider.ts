@@ -6,8 +6,38 @@ import { discoverAllTasks, flattenTasks, getExcludePatterns } from './discovery'
 import { TagConfig } from './config/TagConfig';
 import { logger } from './utils/logger';
 import { buildNestedFolderItems } from './tree/folderTree';
+import { getAllEmbeddingRows } from './semantic';
+import type { EmbeddingRow } from './semantic/db';
 
 type SortOrder = 'folder' | 'name' | 'type';
+
+interface CategoryDef {
+    readonly type: string;
+    readonly label: string;
+    readonly flat?: boolean;
+}
+
+const CATEGORY_DEFS: readonly CategoryDef[] = [
+    { type: 'shell', label: 'Shell Scripts' },
+    { type: 'npm', label: 'NPM Scripts' },
+    { type: 'make', label: 'Make Targets' },
+    { type: 'launch', label: 'VS Code Launch', flat: true },
+    { type: 'vscode', label: 'VS Code Tasks', flat: true },
+    { type: 'python', label: 'Python Scripts' },
+    { type: 'powershell', label: 'PowerShell/Batch' },
+    { type: 'gradle', label: 'Gradle Tasks' },
+    { type: 'cargo', label: 'Cargo (Rust)' },
+    { type: 'maven', label: 'Maven Goals' },
+    { type: 'ant', label: 'Ant Targets' },
+    { type: 'just', label: 'Just Recipes' },
+    { type: 'taskfile', label: 'Taskfile' },
+    { type: 'deno', label: 'Deno Tasks' },
+    { type: 'rake', label: 'Rake Tasks' },
+    { type: 'composer', label: 'Composer Scripts' },
+    { type: 'docker', label: 'Docker Compose' },
+    { type: 'dotnet', label: '.NET Projects' },
+    { type: 'markdown', label: 'Markdown Files' },
+];
 
 /**
  * Tree data provider for CommandTree view.
@@ -18,33 +48,65 @@ export class CommandTreeProvider implements vscode.TreeDataProvider<CommandTreeI
 
     private tasks: TaskItem[] = [];
     private discoveryResult: DiscoveryResult | null = null;
-    private textFilter = '';
     private tagFilter: string | null = null;
+    private semanticFilter: ReadonlyMap<string, number> | null = null;
+    private summaries: ReadonlyMap<string, EmbeddingRow> = new Map();
     private readonly tagConfig: TagConfig;
     private readonly workspaceRoot: string;
 
     constructor(workspaceRoot: string) {
         this.workspaceRoot = workspaceRoot;
-        this.tagConfig = new TagConfig(workspaceRoot);
+        // SPEC.md **user-data-storage**: Tags stored in SQLite, not .vscode/commandtree.json
+        this.tagConfig = new TagConfig();
     }
 
     /**
      * Refreshes all commands.
      */
     async refresh(): Promise<void> {
-        await this.tagConfig.load();
+        this.tagConfig.load();
         const excludePatterns = getExcludePatterns();
         this.discoveryResult = await discoverAllTasks(this.workspaceRoot, excludePatterns);
         this.tasks = this.tagConfig.applyTags(flattenTasks(this.discoveryResult));
+        this.loadSummaries();
+        this.tasks = this.attachSummaries(this.tasks);
         this._onDidChangeTreeData.fire(undefined);
     }
 
     /**
-     * Sets text filter and refreshes tree.
+     * Loads summaries from SQLite into memory.
      */
-    setTextFilter(filter: string): void {
-        this.textFilter = filter.toLowerCase();
-        this._onDidChangeTreeData.fire(undefined);
+    private loadSummaries(): void {
+        const result = getAllEmbeddingRows();
+        if (!result.ok) {
+            return;
+        }
+        const map = new Map<string, EmbeddingRow>();
+        for (const row of result.value) {
+            map.set(row.commandId, row);
+        }
+        this.summaries = map;
+    }
+
+    /**
+     * Attaches loaded summaries to task items for tooltip display.
+     */
+    private attachSummaries(tasks: TaskItem[]): TaskItem[] {
+        if (this.summaries.size === 0) {
+            return tasks;
+        }
+        return tasks.map(task => {
+            const record = this.summaries.get(task.id);
+            if (record === undefined) {
+                return task;
+            }
+            const warning = record.securityWarning;
+            return {
+                ...task,
+                summary: record.summary,
+                ...(warning !== null ? { securityWarning: warning } : {})
+            };
+        });
     }
 
     /**
@@ -57,11 +119,24 @@ export class CommandTreeProvider implements vscode.TreeDataProvider<CommandTreeI
     }
 
     /**
+     * Sets semantic filter with command IDs and their similarity scores.
+     * SPEC.md **ai-search-implementation**: Scores preserved for display.
+     */
+    setSemanticFilter(results: ReadonlyArray<{ readonly id: string; readonly score: number }>): void {
+        const map = new Map<string, number>();
+        for (const r of results) {
+            map.set(r.id, r.score);
+        }
+        this.semanticFilter = map;
+        this._onDidChangeTreeData.fire(undefined);
+    }
+
+    /**
      * Clears all filters.
      */
     clearFilters(): void {
-        this.textFilter = '';
         this.tagFilter = null;
+        this.semanticFilter = null;
         this._onDidChangeTreeData.fire(undefined);
     }
 
@@ -69,7 +144,7 @@ export class CommandTreeProvider implements vscode.TreeDataProvider<CommandTreeI
      * Returns whether any filter is active.
      */
     hasFilter(): boolean {
-        return this.textFilter.length > 0 || this.tagFilter !== null;
+        return this.tagFilter !== null || this.semanticFilter !== null;
     }
 
     /**
@@ -90,17 +165,10 @@ export class CommandTreeProvider implements vscode.TreeDataProvider<CommandTreeI
     }
 
     /**
-     * Opens the tag config file.
-     */
-    async editTags(): Promise<void> {
-        await this.tagConfig.openConfig();
-    }
-
-    /**
      * Adds a command to a tag.
      */
     async addTaskToTag(task: TaskItem, tagName: string): Promise<Result<void, string>> {
-        const result = await this.tagConfig.addTaskToTag(task, tagName);
+        const result = this.tagConfig.addTaskToTag(task, tagName);
         if (result.ok) {
             await this.refresh();
         }
@@ -111,7 +179,7 @@ export class CommandTreeProvider implements vscode.TreeDataProvider<CommandTreeI
      * Removes a command from a tag.
      */
     async removeTaskFromTag(task: TaskItem, tagName: string): Promise<Result<void, string>> {
-        const result = await this.tagConfig.removeTaskFromTag(task, tagName);
+        const result = this.tagConfig.removeTaskFromTag(task, tagName);
         if (result.ok) {
             await this.refresh();
         }
@@ -144,115 +212,27 @@ export class CommandTreeProvider implements vscode.TreeDataProvider<CommandTreeI
     }
 
     /**
-     * Builds the root category nodes.
+     * Builds the root category nodes from filtered tasks.
      */
     private buildRootCategories(): CommandTreeItem[] {
         const filtered = this.applyFilters(this.tasks);
-        const categories: CommandTreeItem[] = [];
+        return CATEGORY_DEFS
+            .map(def => this.buildCategoryIfNonEmpty(filtered, def))
+            .filter((c): c is CommandTreeItem => c !== null);
+    }
 
-        // Shell Scripts - grouped by folder
-        const shellTasks = filtered.filter(t => t.type === 'shell');
-        if (shellTasks.length > 0) {
-            categories.push(this.buildCategoryWithFolders('Shell Scripts', shellTasks));
-        }
-
-        // NPM Scripts - grouped by package location
-        const npmTasks = filtered.filter(t => t.type === 'npm');
-        if (npmTasks.length > 0) {
-            categories.push(this.buildCategoryWithFolders('NPM Scripts', npmTasks));
-        }
-
-        // Make Targets - grouped by Makefile location
-        const makeTasks = filtered.filter(t => t.type === 'make');
-        if (makeTasks.length > 0) {
-            categories.push(this.buildCategoryWithFolders('Make Targets', makeTasks));
-        }
-
-        // VS Code Launch - flat list
-        const launchTasks = filtered.filter(t => t.type === 'launch');
-        if (launchTasks.length > 0) {
-            categories.push(this.buildFlatCategory('VS Code Launch', launchTasks));
-        }
-
-        // VS Code Tasks - flat list
-        const vscodeTasks = filtered.filter(t => t.type === 'vscode');
-        if (vscodeTasks.length > 0) {
-            categories.push(this.buildFlatCategory('VS Code Tasks', vscodeTasks));
-        }
-
-        // Python Scripts - grouped by folder
-        const pythonTasks = filtered.filter(t => t.type === 'python');
-        if (pythonTasks.length > 0) {
-            categories.push(this.buildCategoryWithFolders('Python Scripts', pythonTasks));
-        }
-
-        // PowerShell/Batch Scripts - grouped by folder
-        const powershellTasks = filtered.filter(t => t.type === 'powershell');
-        if (powershellTasks.length > 0) {
-            categories.push(this.buildCategoryWithFolders('PowerShell/Batch', powershellTasks));
-        }
-
-        // Gradle Tasks - grouped by project
-        const gradleTasks = filtered.filter(t => t.type === 'gradle');
-        if (gradleTasks.length > 0) {
-            categories.push(this.buildCategoryWithFolders('Gradle Tasks', gradleTasks));
-        }
-
-        // Cargo Tasks - grouped by project
-        const cargoTasks = filtered.filter(t => t.type === 'cargo');
-        if (cargoTasks.length > 0) {
-            categories.push(this.buildCategoryWithFolders('Cargo (Rust)', cargoTasks));
-        }
-
-        // Maven Goals - grouped by project
-        const mavenTasks = filtered.filter(t => t.type === 'maven');
-        if (mavenTasks.length > 0) {
-            categories.push(this.buildCategoryWithFolders('Maven Goals', mavenTasks));
-        }
-
-        // Ant Targets - grouped by project
-        const antTasks = filtered.filter(t => t.type === 'ant');
-        if (antTasks.length > 0) {
-            categories.push(this.buildCategoryWithFolders('Ant Targets', antTasks));
-        }
-
-        // Just Recipes - grouped by location
-        const justTasks = filtered.filter(t => t.type === 'just');
-        if (justTasks.length > 0) {
-            categories.push(this.buildCategoryWithFolders('Just Recipes', justTasks));
-        }
-
-        // Taskfile Tasks - grouped by location
-        const taskfileTasks = filtered.filter(t => t.type === 'taskfile');
-        if (taskfileTasks.length > 0) {
-            categories.push(this.buildCategoryWithFolders('Taskfile', taskfileTasks));
-        }
-
-        // Deno Tasks - grouped by project
-        const denoTasks = filtered.filter(t => t.type === 'deno');
-        if (denoTasks.length > 0) {
-            categories.push(this.buildCategoryWithFolders('Deno Tasks', denoTasks));
-        }
-
-        // Rake Tasks - grouped by project
-        const rakeTasks = filtered.filter(t => t.type === 'rake');
-        if (rakeTasks.length > 0) {
-            categories.push(this.buildCategoryWithFolders('Rake Tasks', rakeTasks));
-        }
-
-        // Composer Scripts - grouped by project
-        const composerTasks = filtered.filter(t => t.type === 'composer');
-        if (composerTasks.length > 0) {
-            categories.push(this.buildCategoryWithFolders('Composer Scripts', composerTasks));
-        }
-
-        // Docker Compose - grouped by project
-        const dockerTasks = filtered.filter(t => t.type === 'docker');
-        if (dockerTasks.length > 0) {
-            categories.push(this.buildCategoryWithFolders('Docker Compose', dockerTasks));
-        }
-
-        return categories;
+    /**
+     * Builds a single category node if tasks of that type exist.
+     */
+    private buildCategoryIfNonEmpty(
+        tasks: readonly TaskItem[],
+        def: CategoryDef
+    ): CommandTreeItem | null {
+        const matched = tasks.filter(t => t.type === def.type);
+        if (matched.length === 0) { return null; }
+        return def.flat === true
+            ? this.buildFlatCategory(def.label, matched)
+            : this.buildCategoryWithFolders(def.label, matched);
     }
 
     /**
@@ -263,7 +243,8 @@ export class CommandTreeProvider implements vscode.TreeDataProvider<CommandTreeI
             tasks,
             workspaceRoot: this.workspaceRoot,
             categoryId: name,
-            sortTasks: (t) => this.sortTasks(t)
+            sortTasks: (t) => this.sortTasks(t),
+            getScore: (id: string) => this.getSemanticScore(id)
         });
         return new CommandTreeItem(null, `${name} (${tasks.length})`, children);
     }
@@ -274,8 +255,22 @@ export class CommandTreeProvider implements vscode.TreeDataProvider<CommandTreeI
     private buildFlatCategory(name: string, tasks: TaskItem[]): CommandTreeItem {
         const sorted = this.sortTasks(tasks);
         const categoryId = name;
-        const children = sorted.map(t => new CommandTreeItem(t, null, [], categoryId));
+        const children = sorted.map(t => new CommandTreeItem(
+            t,
+            null,
+            [],
+            categoryId,
+            this.getSemanticScore(t.id)
+        ));
         return new CommandTreeItem(null, `${name} (${tasks.length})`, children);
+    }
+
+    /**
+     * Gets similarity score for a task if semantic filtering is active.
+     * SPEC.md **ai-search-implementation**: Scores displayed as percentages.
+     */
+    private getSemanticScore(taskId: string): number | undefined {
+        return this.semanticFilter?.get(taskId);
     }
 
     /**
@@ -291,79 +286,51 @@ export class CommandTreeProvider implements vscode.TreeDataProvider<CommandTreeI
      * Sorts commands based on the configured sort order.
      */
     private sortTasks(tasks: TaskItem[]): TaskItem[] {
-        const sortOrder = this.getSortOrder();
-        const sorted = [...tasks];
+        const comparator = this.getComparator();
+        return [...tasks].sort(comparator);
+    }
 
-        sorted.sort((a, b) => {
-            switch (sortOrder) {
-                case 'folder': {
-                    // Sort by folder first, then by name
-                    const folderCmp = a.category.localeCompare(b.category);
-                    if (folderCmp !== 0) {
-                        return folderCmp;
-                    }
-                    return a.label.localeCompare(b.label);
-                }
-
-                case 'name':
-                    // Sort alphabetically by name
-                    return a.label.localeCompare(b.label);
-
-                case 'type': {
-                    // Sort by type first, then by name
-                    const typeCmp = a.type.localeCompare(b.type);
-                    if (typeCmp !== 0) {
-                        return typeCmp;
-                    }
-                    return a.label.localeCompare(b.label);
-                }
-
-                default:
-                    return a.label.localeCompare(b.label);
-            }
-        });
-
-        return sorted;
+    private getComparator(): (a: TaskItem, b: TaskItem) => number {
+        // SPEC.md **ai-search-implementation**: Sort by score when semantic filter is active
+        if (this.semanticFilter !== null) {
+            const scoreMap = this.semanticFilter;
+            return (a, b) => {
+                const scoreA = scoreMap.get(a.id) ?? 0;
+                const scoreB = scoreMap.get(b.id) ?? 0;
+                return scoreB - scoreA;
+            };
+        }
+        const order = this.getSortOrder();
+        if (order === 'folder') {
+            return (a, b) => a.category.localeCompare(b.category) || a.label.localeCompare(b.label);
+        }
+        if (order === 'type') {
+            return (a, b) => a.type.localeCompare(b.type) || a.label.localeCompare(b.label);
+        }
+        return (a, b) => a.label.localeCompare(b.label);
     }
 
     /**
-     * Applies text and tag filters.
+     * Applies tag and semantic filters in sequence.
      */
     private applyFilters(tasks: TaskItem[]): TaskItem[] {
-        logger.filter('applyFilters START', {
-            textFilter: this.textFilter,
-            tagFilter: this.tagFilter,
-            inputCount: tasks.length
-        });
-
+        logger.filter('applyFilters START', { inputCount: tasks.length });
         let result = tasks;
-
-        // Apply text filter
-        if (this.textFilter !== '') {
-            result = result.filter(t =>
-                t.label.toLowerCase().includes(this.textFilter) ||
-                t.category.toLowerCase().includes(this.textFilter) ||
-                t.filePath.toLowerCase().includes(this.textFilter) ||
-                (t.description?.toLowerCase().includes(this.textFilter) ?? false)
-            );
-            logger.filter('After text filter', { outputCount: result.length });
-        }
-
-        // Apply tag filter
-        if (this.tagFilter !== null && this.tagFilter !== '') {
-            const filterTag = this.tagFilter;
-            logger.filter('Applying tag filter', {
-                tagFilter: filterTag,
-                tasksWithTags: tasks.map(t => ({ id: t.id, label: t.label, tags: t.tags }))
-            });
-            result = result.filter(t => t.tags.includes(filterTag));
-            logger.filter('After tag filter', {
-                outputCount: result.length,
-                matchedTasks: result.map(t => ({ id: t.id, label: t.label, tags: t.tags }))
-            });
-        }
-
+        result = this.applyTagFilter(result);
+        result = this.applySemanticFilter(result);
         logger.filter('applyFilters END', { outputCount: result.length });
         return result;
+    }
+
+    private applyTagFilter(tasks: TaskItem[]): TaskItem[] {
+        if (this.tagFilter === null || this.tagFilter === '') { return tasks; }
+        const tag = this.tagFilter;
+        return tasks.filter(t => t.tags.includes(tag));
+    }
+
+    private applySemanticFilter(tasks: TaskItem[]): TaskItem[] {
+        if (this.semanticFilter === null) { return tasks; }
+        const scoreMap = this.semanticFilter;
+        return tasks.filter(t => scoreMap.has(t.id));
     }
 }

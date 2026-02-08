@@ -10,9 +10,11 @@ You are working with many other agents. Make sure there is effective cooperation
 ## Coding Rules
 
 - **Zero duplication - TOP PRIORITY** - Always search for existing code before adding. Move; don't copy files. Add assertions to tests rather than duplicating tests. AIM FOR LESS CODE!
+- **No string literals** - Named constants only, and it ONE location
+- DO NOT USE GIT
 - **Functional style** - Prefer pure functions, avoid classes where possible
 - **No suppressing warnings** - Fix them properly
-- **No REGEX** It is absolutely ⛔️ illegal
+- **No REGEX** It is absolutely ⛔️ illegal, and no text matching in general
 - **Don't run long runnings tasks** like docker builds, tests. Ask the user to do it!!
 - **Expressions over assignments** - Prefer const and immutable patterns
 - **Named parameters** - Use object params for functions with 3+ args
@@ -22,6 +24,8 @@ You are working with many other agents. Make sure there is effective cooperation
 
 ### Typescript
 - **TypeScript strict mode** - No `any`, no implicit types, turn all lints up to error
+- **Regularly run the linter** - Fix lint errors IMMEDIATELY
+- **Decouple providers from the VSCODE SDK** - No vscode sdk use within the providers
 - **Ignoring lints = ⛔️ illegal** - Fix violations immediately
 - **No throwing** - Only return `Result<T,E>`
 
@@ -35,7 +39,6 @@ You are working with many other agents. Make sure there is effective cooperation
 
 #### Rules
 - **Prefer e2e tests over unit tests** - only unit tests for isolating bugs
-- DO NOT USE GIT
 - Separate e2e tests from unit tests by file. They should not be in the same file together.
 - Prefer adding assertions to existing tests rather than adding new tests
 - Test files in `src/test/suite/*.test.ts`
@@ -95,8 +98,21 @@ assert.ok(true, 'Command ran');
 
 ## Critical Docs
 
+### Vscode SDK
 [VSCode Extension API](https://code.visualstudio.com/api/)
-[SCode Extension Testing API](https://code.visualstudio.com/api/extension-guides/testing)
+[VSCode Extension Testing API](https://code.visualstudio.com/api/extension-guides/testing)
+[VSCODE Language Model API](https://code.visualstudio.com/api/extension-guides/ai/language-model)
+[Language Model Tool API](https://code.visualstudio.com/api/extension-guides/ai/tools)
+[AI extensibility in VS Cod](https://code.visualstudio.com/api/extension-guides/ai/ai-extensibility-overview)
+[AI language models in VS Code](https://code.visualstudio.com/docs/copilot/customization/language-models)
+
+### Website
+
+https://developers.google.com/search/blog/2025/05/succeeding-in-ai-search
+https://developers.google.com/search/docs/fundamentals/seo-starter-guide
+
+https://studiohawk.com.au/blog/how-to-optimise-ai-overviews/
+https://about.ads.microsoft.com/en/blog/post/october-2025/optimizing-your-content-for-inclusion-in-ai-search-answers
 
 ## Project Structure
 
@@ -109,11 +125,25 @@ CommandTree/
 │   │   └── TagConfig.ts      # Tag configuration from commandtree.json
 │   ├── discovery/
 │   │   ├── index.ts          # Discovery orchestration
-│   │   ├── shell.ts          # Shell script discovery
-│   │   ├── npm.ts            # NPM script discovery
-│   │   ├── make.ts           # Makefile target discovery
-│   │   ├── launch.ts         # launch.json discovery
-│   │   └── tasks.ts          # tasks.json discovery
+│   │   ├── shell.ts          # Shell scripts (.sh, .bash, .zsh)
+│   │   ├── npm.ts            # NPM scripts (package.json)
+│   │   ├── make.ts           # Makefile targets
+│   │   ├── launch.ts         # VS Code launch configs
+│   │   ├── tasks.ts          # VS Code tasks
+│   │   ├── python.ts         # Python scripts (.py)
+│   │   ├── powershell.ts     # PowerShell scripts (.ps1)
+│   │   ├── gradle.ts         # Gradle tasks
+│   │   ├── cargo.ts          # Cargo (Rust) tasks
+│   │   ├── maven.ts          # Maven goals (pom.xml)
+│   │   ├── ant.ts            # Ant targets (build.xml)
+│   │   ├── just.ts           # Just recipes (justfile)
+│   │   ├── taskfile.ts       # Taskfile tasks (Taskfile.yml)
+│   │   ├── deno.ts           # Deno tasks (deno.json)
+│   │   ├── rake.ts           # Rake tasks (Rakefile)
+│   │   ├── composer.ts       # Composer scripts (composer.json)
+│   │   ├── docker.ts         # Docker Compose services
+│   │   ├── dotnet.ts         # .NET projects (.csproj)
+│   │   └── markdown.ts       # Markdown files (.md)
 │   ├── models/
 │   │   └── TaskItem.ts       # Task data model and TreeItem
 │   ├── runners/
@@ -179,5 +209,4 @@ vscode.commands.executeCommand('setContext', 'commandtree.hasFilter', true);
 
 Settings defined in `package.json` under `contributes.configuration`:
 - `commandtree.excludePatterns` - Glob patterns to exclude
-- `commandtree.showEmptyCategories` - Show empty category nodes
 - `commandtree.sortOrder` - Task sort order (folder/name/type)

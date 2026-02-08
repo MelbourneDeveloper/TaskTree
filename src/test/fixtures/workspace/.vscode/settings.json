@@ -1,6 +1,5 @@
 {
     "commandtree.sortOrder": "folder",
-    "commandtree.showEmptyCategories": false,
     "commandtree.excludePatterns": [
         "**/node_modules/**",
         "**/.vscode-test/**",

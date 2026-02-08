@@ -30,11 +30,72 @@ export function parseJson<T>(content: string): Result<T, string> {
 
 /**
  * Removes single-line and multi-line comments from JSONC.
+ * Uses a character-by-character state machine (no regex).
  */
 export function removeJsonComments(content: string): string {
-    let result = content.replace(/\/\/.*$/gm, '');
-    result = result.replace(/\/\*[\s\S]*?\*\//g, '');
-    return result;
+    const out: string[] = [];
+    let i = 0;
+    let inString = false;
+
+    while (i < content.length) {
+        const ch = content[i];
+        const next = content[i + 1];
+
+        if (inString) {
+            out.push(ch ?? '');
+            if (ch === '\\') {
+                out.push(next ?? '');
+                i += 2;
+                continue;
+            }
+            if (ch === '"') {
+                inString = false;
+            }
+            i++;
+            continue;
+        }
+
+        if (ch === '"') {
+            inString = true;
+            out.push(ch);
+            i++;
+            continue;
+        }
+
+        if (ch === '/' && next === '/') {
+            i = skipUntilNewline(content, i);
+            continue;
+        }
+
+        if (ch === '/' && next === '*') {
+            i = skipUntilBlockEnd(content, i);
+            continue;
+        }
+
+        out.push(ch ?? '');
+        i++;
+    }
+
+    return out.join('');
+}
+
+function skipUntilNewline(content: string, start: number): number {
+    let i = start + 2;
+    while (i < content.length && content[i] !== '\n') {
+        i++;
+    }
+    return i;
+}
+
+function skipUntilBlockEnd(content: string, start: number): number {
+    let i = start + 2;
+    while (i < content.length) {
+        if (content[i] === '*' && content[i + 1] === '/') {
+            return i + 2;
+        }
+        i++;
+    }
+    return i;
 }
 
 /**

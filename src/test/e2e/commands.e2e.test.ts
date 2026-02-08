@@ -1,4 +1,6 @@
 /**
+ * SPEC: command-execution, quick-launch, filtering
+ *
  * Commands E2E Tests
  *
  * E2E Test Rules (from CLAUDE.md):
@@ -13,7 +15,7 @@
  * ILLEGAL actions - DO NOT USE:
  * - ❌ executeCommand('commandtree.refresh') - refresh should be AUTOMATIC via file watcher
  * - ❌ executeCommand('commandtree.clearFilter') - filter state manipulation
- * - ❌ provider.refresh(), provider.setTextFilter(), provider.clearFilters()
+ * - ❌ provider.refresh(), provider.clearFilters()
  * - ❌ assert.ok(true, ...) - FAKE TESTS ARE ILLEGAL
  * - ❌ Any command that manipulates internal state without UI interaction
  */
@@ -130,10 +132,9 @@ suite("Commands and UI E2E Tests", () => {
       const expectedCommands = [
         "commandtree.refresh",
         "commandtree.run",
-        "commandtree.filter",
         "commandtree.filterByTag",
         "commandtree.clearFilter",
-        "commandtree.editTags",
+        "commandtree.semanticSearch",
       ];
 
       for (const cmd of expectedCommands) {
@@ -147,25 +148,6 @@ suite("Commands and UI E2E Tests", () => {
     // NOTE: Tests for executing refresh/clearFilter commands removed
     // These commands should be triggered through UI interaction, not direct calls
     // Testing them via executeCommand masks bugs in the file watcher auto-refresh
-
-    test("editTags command opens commandtree.json", async function () {
-      this.timeout(15000);
-
-      // editTags is a user-initiated action that opens an editor
-      // This is valid because we're testing observable UI behavior
-      await vscode.commands.executeCommand("commandtree.editTags");
-      await sleep(1000);
-
-      // Verify an editor was opened with commandtree.json
-      const activeEditor = vscode.window.activeTextEditor;
-      assert.ok(activeEditor !== undefined, "editTags should open an editor");
-      assert.ok(
-        activeEditor.document.fileName.includes("commandtree.json"),
-        "Should open commandtree.json",
-      );
-
-      await vscode.commands.executeCommand("workbench.action.closeAllEditors");
-    });
   });
 
   // TODO: No corresponding section in spec
@@ -226,12 +208,12 @@ suite("Commands and UI E2E Tests", () => {
 
       const commands = taskTreeMenus.map((m) => m.command);
       assert.ok(
-        commands.includes("commandtree.filter"),
-        "Should have filter in menu",
-      );
-      assert.ok(
         commands.includes("commandtree.filterByTag"),
         "Should have filterByTag in menu",
+      );
+      assert.ok(
+        commands.includes("commandtree.semanticSearch"),
+        "Should have semanticSearch in menu",
       );
       assert.ok(
         commands.includes("commandtree.clearFilter"),
@@ -367,9 +349,9 @@ suite("Commands and UI E2E Tests", () => {
       );
 
       const expectedCommands = [
-        "commandtree.filter",
         "commandtree.filterByTag",
         "commandtree.clearFilter",
+        "commandtree.semanticSearch",
         "commandtree.refresh",
       ];
       for (const cmd of expectedCommands) {
@@ -380,7 +362,7 @@ suite("Commands and UI E2E Tests", () => {
       }
     });
 
-    test("commandtree-quick view has exactly 4 title bar icons", function () {
+    test("commandtree-quick view has exactly 3 title bar icons", function () {
       this.timeout(10000);
 
       const packageJson = readPackageJson();
@@ -392,12 +374,11 @@ suite("Commands and UI E2E Tests", () => {
 
       assert.strictEqual(
         quickMenus.length,
-        4,
-        `Expected exactly 4 view/title items for commandtree-quick, got ${quickMenus.length}: ${quickMenus.map((m) => m.command).join(", ")}`,
+        3,
+        `Expected exactly 3 view/title items for commandtree-quick, got ${quickMenus.length}: ${quickMenus.map((m) => m.command).join(", ")}`,
       );
 
       const expectedCommands = [
-        "commandtree.filter",
         "commandtree.filterByTag",
         "commandtree.clearFilter",
         "commandtree.refreshQuick",
@@ -429,10 +410,10 @@ suite("Commands and UI E2E Tests", () => {
       const runCmd = commands.find((c) => c.command === "commandtree.run");
       assert.ok(runCmd?.icon === "$(play)", "Run should have play icon");
 
-      const filterCmd = commands.find((c) => c.command === "commandtree.filter");
+      const semanticSearchCmd = commands.find((c) => c.command === "commandtree.semanticSearch");
       assert.ok(
-        filterCmd?.icon === "$(search)",
-        "Filter should have search icon",
+        semanticSearchCmd?.icon === "$(search)",
+        "SemanticSearch should have search icon",
       );
 
       const tagFilterCmd = commands.find(

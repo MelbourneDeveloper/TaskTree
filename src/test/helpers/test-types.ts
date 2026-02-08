@@ -147,10 +147,3 @@ export function getSortOrderEnumDescriptions(props: Record<string, Configuration
     return Array.isArray(prop?.enumDescriptions) ? prop.enumDescriptions : [];
 }
 
-/**
- * Safely access showEmptyCategories default from configuration properties
- */
-export function getShowEmptyCategoriesDefault(props: Record<string, ConfigurationProperty>): boolean {
-    const prop = props['commandtree.showEmptyCategories'];
-    return typeof prop?.default === 'boolean' ? prop.default : false;
-}

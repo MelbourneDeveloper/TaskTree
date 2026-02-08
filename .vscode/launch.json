@@ -23,7 +23,7 @@
         {
             /* Multi-line comment for test */
             "name": "Debug Python",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/main.py"
         }

@@ -1,332 +1,297 @@
 /**
- * Spec: quick-launch, user-data-storage
- * E2E Tests for Quick Launch functionality
+ * SPEC: quick-launch, database-schema/command-tags-junction
+ * E2E Tests for Quick Launch functionality with SQLite junction table storage.
  *
- * These tests verify config file behavior and command registration.
- * They do NOT call internal provider methods.
- *
- * For unit tests that test provider internals, see quicktasks.unit.test.ts
+ * Black-box testing: Tests verify UI commands and database state only.
+ * No internal provider method calls.
  */
 
 import * as assert from "assert";
 import * as vscode from "vscode";
-import * as fs from "fs";
-import { activateExtension, sleep, getFixturePath } from "../helpers/helpers";
+import {
+  activateExtension,
+  sleep,
+  getCommandTreeProvider,
+} from "../helpers/helpers";
+import type { CommandTreeProvider } from "../helpers/helpers";
+import { getDb } from "../../semantic/lifecycle";
+import { getCommandIdsByTag, getTagsForCommand } from "../../semantic/db";
+import { CommandTreeItem } from "../../models/TaskItem";
 
-interface TagPattern {
-  id?: string;
-  type?: string;
-  label?: string;
-}
+const QUICK_TAG = "quick";
 
-interface CommandTreeConfig {
-  tags?: Record<string, Array<string | TagPattern>>;
-}
-
-function readCommandTreeConfig(): CommandTreeConfig {
-  const configPath = getFixturePath(".vscode/commandtree.json");
-  return JSON.parse(fs.readFileSync(configPath, "utf8")) as CommandTreeConfig;
-}
-
-function writeCommandTreeConfig(config: CommandTreeConfig): void {
-  const configPath = getFixturePath(".vscode/commandtree.json");
-  fs.writeFileSync(configPath, JSON.stringify(config, null, 4));
-}
-
-// Spec: quick-launch
-suite("Quick Launch E2E Tests", () => {
-  let originalConfig: CommandTreeConfig;
+// SPEC: quick-launch
+suite("Quick Launch E2E Tests (SQLite Junction Table)", () => {
+  let treeProvider: CommandTreeProvider;
 
   suiteSetup(async function () {
     this.timeout(30000);
     await activateExtension();
+    treeProvider = getCommandTreeProvider();
     await sleep(2000);
-    originalConfig = readCommandTreeConfig();
   });
 
-  suiteTeardown(() => {
-    writeCommandTreeConfig(originalConfig);
-  });
-
-  setup(() => {
-    writeCommandTreeConfig(originalConfig);
-  });
-
-  // Spec: quick-launch
+  // SPEC: quick-launch
   suite("Quick Launch Commands", () => {
     test("addToQuick command is registered", async function () {
       this.timeout(10000);
-
       const commands = await vscode.commands.getCommands(true);
       assert.ok(
         commands.includes("commandtree.addToQuick"),
-        "addToQuick command should be registered",
+        "addToQuick command should be registered"
       );
     });
 
     test("removeFromQuick command is registered", async function () {
       this.timeout(10000);
-
       const commands = await vscode.commands.getCommands(true);
       assert.ok(
         commands.includes("commandtree.removeFromQuick"),
-        "removeFromQuick command should be registered",
+        "removeFromQuick command should be registered"
       );
     });
 
     test("refreshQuick command is registered", async function () {
       this.timeout(10000);
-
       const commands = await vscode.commands.getCommands(true);
       assert.ok(
         commands.includes("commandtree.refreshQuick"),
-        "refreshQuick command should be registered",
+        "refreshQuick command should be registered"
       );
     });
   });
 
-  // Spec: quick-launch, user-data-storage
-  suite("Quick Launch Storage", () => {
-    test("quick commands are stored in commandtree.json", function () {
-      this.timeout(10000);
-
-      const config: CommandTreeConfig = {
-        tags: {
-          quick: ["build.sh", "test"],
-        },
-      };
-      writeCommandTreeConfig(config);
-
-      const savedConfig = readCommandTreeConfig();
-      const quickTags = savedConfig.tags?.["quick"];
-      assert.ok(quickTags !== undefined, "Should have quick tag");
-      assert.strictEqual(quickTags.length, 2, "Should have 2 quick commands");
-    });
-
-    test("quick commands order is preserved", function () {
-      this.timeout(10000);
-
-      const config: CommandTreeConfig = {
-        tags: {
-          quick: ["task-c", "task-a", "task-b"],
-        },
-      };
-      writeCommandTreeConfig(config);
-
-      const savedConfig = readCommandTreeConfig();
-      const quickTasks = savedConfig.tags?.["quick"] ?? [];
-
-      assert.strictEqual(
-        quickTasks[0],
-        "task-c",
-        "First task should be task-c",
-      );
-      assert.strictEqual(
-        quickTasks[1],
-        "task-a",
-        "Second task should be task-a",
-      );
-      assert.strictEqual(
-        quickTasks[2],
-        "task-b",
-        "Third task should be task-b",
-      );
-    });
-
-    test("empty quick commands array is valid", function () {
-      this.timeout(10000);
-
-      const config: CommandTreeConfig = {
-        tags: {
-          quick: [],
-        },
-      };
-      writeCommandTreeConfig(config);
-
-      const savedConfig = readCommandTreeConfig();
-      const quickTags = savedConfig.tags?.["quick"];
-      assert.ok(Array.isArray(quickTags), "quick should be an array");
-      assert.strictEqual(quickTags.length, 0, "Should have 0 quick commands");
-    });
-
-    test("missing quick tag is handled gracefully", function () {
-      this.timeout(10000);
-
-      const config: CommandTreeConfig = {
-        tags: {
-          build: ["npm:build"],
-        },
-      };
-      writeCommandTreeConfig(config);
-
-      const savedConfig = readCommandTreeConfig();
-      assert.ok(
-        savedConfig.tags?.["quick"] === undefined,
-        "quick tag should not exist",
-      );
-    });
-  });
-
-  // Spec: quick-launch
-  suite("Quick Launch Deterministic Ordering", () => {
-    test("quick commands maintain insertion order", function () {
+  // SPEC: quick-launch, database-schema/command-tags-junction
+  suite("Quick Launch SQLite Storage", () => {
+    test("E2E: Add quick command → stored in junction table", async function () {
       this.timeout(15000);
 
-      writeCommandTreeConfig({
-        tags: { quick: ["deploy.sh", "build.sh", "test.sh"] },
+      const allTasks = treeProvider.getAllTasks();
+      assert.ok(allTasks.length > 0, "Must have tasks");
+      const task = allTasks[0];
+      assert.ok(task !== undefined, "First task must exist");
+
+      // Add to quick via UI command
+      const item = new CommandTreeItem(task, null, []);
+      await vscode.commands.executeCommand("commandtree.addToQuick", item);
+      await sleep(1000);
+
+      // Verify stored in database with 'quick' tag
+      const dbResult = getDb();
+      assert.ok(dbResult.ok, "Database must be available");
+
+      const tagsResult = getTagsForCommand({
+        handle: dbResult.value,
+        commandId: task.id,
       });
-
-      const savedConfig = readCommandTreeConfig();
-      const quickTasks = savedConfig.tags?.["quick"] ?? [];
-
-      assert.strictEqual(
-        quickTasks[0],
-        "deploy.sh",
-        "First should be deploy.sh",
+      assert.ok(tagsResult.ok, "Should get tags for command");
+      assert.ok(
+        tagsResult.value.includes(QUICK_TAG),
+        `Task ${task.id} should have 'quick' tag in database`
       );
-      assert.strictEqual(
-        quickTasks[1],
-        "build.sh",
-        "Second should be build.sh",
-      );
-      assert.strictEqual(quickTasks[2], "test.sh", "Third should be test.sh");
+
+      // Clean up
+      const removeItem = new CommandTreeItem(task, null, []);
+      await vscode.commands.executeCommand("commandtree.removeFromQuick", removeItem);
+      await sleep(500);
     });
 
-    test("reordering updates config file", async function () {
+    test("E2E: Remove quick command → junction record deleted", async function () {
       this.timeout(15000);
 
-      const config: CommandTreeConfig = {
-        tags: {
-          quick: ["first", "second", "third"],
-        },
-      };
-      writeCommandTreeConfig(config);
+      const allTasks = treeProvider.getAllTasks();
+      const task = allTasks[0];
+      assert.ok(task !== undefined, "First task must exist");
 
-      const reorderedConfig: CommandTreeConfig = {
-        tags: {
-          quick: ["third", "first", "second"],
-        },
-      };
-      writeCommandTreeConfig(reorderedConfig);
+      // Add to quick first
+      const addItem = new CommandTreeItem(task, null, []);
+      await vscode.commands.executeCommand("commandtree.addToQuick", addItem);
+      await sleep(1000);
 
-      await sleep(500);
+      const dbResult = getDb();
+      assert.ok(dbResult.ok, "Database must be available");
 
-      const savedConfig = readCommandTreeConfig();
-      const quickTasks = savedConfig.tags?.["quick"] ?? [];
+      // Verify quick tag exists
+      let tagsResult = getTagsForCommand({
+        handle: dbResult.value,
+        commandId: task.id,
+      });
+      assert.ok(
+        tagsResult.ok && tagsResult.value.includes(QUICK_TAG),
+        "Quick tag should exist before removal"
+      );
 
-      assert.strictEqual(quickTasks[0], "third", "First should be third");
-      assert.strictEqual(quickTasks[1], "first", "Second should be first");
-      assert.strictEqual(quickTasks[2], "second", "Third should be second");
-    });
+      // Remove from quick via UI
+      const removeItem = new CommandTreeItem(task, null, []);
+      await vscode.commands.executeCommand("commandtree.removeFromQuick", removeItem);
+      await sleep(1000);
 
-    test("adding task appends to end", async function () {
-      this.timeout(15000);
-
-      const config: CommandTreeConfig = {
-        tags: {
-          quick: ["existing1", "existing2"],
-        },
-      };
-      writeCommandTreeConfig(config);
-
-      const updatedConfig: CommandTreeConfig = {
-        tags: {
-          quick: ["existing1", "existing2", "new-task"],
-        },
-      };
-      writeCommandTreeConfig(updatedConfig);
-
-      await sleep(500);
-
-      const savedConfig = readCommandTreeConfig();
-      const quickTasks = savedConfig.tags?.["quick"] ?? [];
-
-      assert.strictEqual(quickTasks.length, 3, "Should have 3 tasks");
-      assert.strictEqual(
-        quickTasks[2],
-        "new-task",
-        "New task should be at end",
+      // Verify junction record removed
+      tagsResult = getTagsForCommand({
+        handle: dbResult.value,
+        commandId: task.id,
+      });
+      assert.ok(tagsResult.ok, "Should get tags for command");
+      assert.ok(
+        !tagsResult.value.includes(QUICK_TAG),
+        `Task ${task.id} should NOT have 'quick' tag after removal`
       );
     });
 
-    test("removing task preserves remaining order", async function () {
+    test("E2E: Quick commands ordered by display_order", async function () {
+      this.timeout(20000);
+
+      const allTasks = treeProvider.getAllTasks();
+      assert.ok(allTasks.length >= 3, "Need at least 3 tasks for ordering test");
+
+      const task1 = allTasks[0];
+      const task2 = allTasks[1];
+      const task3 = allTasks[2];
+      assert.ok(
+        task1 !== undefined && task2 !== undefined && task3 !== undefined,
+        "All three tasks must exist"
+      );
+
+      // Add tasks in specific order
+      const item1 = new CommandTreeItem(task1, null, []);
+      await vscode.commands.executeCommand("commandtree.addToQuick", item1);
+      await sleep(500);
+      const item2 = new CommandTreeItem(task2, null, []);
+      await vscode.commands.executeCommand("commandtree.addToQuick", item2);
+      await sleep(500);
+      const item3 = new CommandTreeItem(task3, null, []);
+      await vscode.commands.executeCommand("commandtree.addToQuick", item3);
+      await sleep(1000);
+
+      // Verify order in database
+      const dbResult = getDb();
+      assert.ok(dbResult.ok, "Database must be available");
+
+      const orderedIdsResult = getCommandIdsByTag({
+        handle: dbResult.value,
+        tagName: QUICK_TAG,
+      });
+      assert.ok(orderedIdsResult.ok, "Should get ordered command IDs");
+
+      const orderedIds = orderedIdsResult.value;
+      const index1 = orderedIds.indexOf(task1.id);
+      const index2 = orderedIds.indexOf(task2.id);
+      const index3 = orderedIds.indexOf(task3.id);
+
+      assert.ok(index1 !== -1, "Task1 should be in quick list");
+      assert.ok(index2 !== -1, "Task2 should be in quick list");
+      assert.ok(index3 !== -1, "Task3 should be in quick list");
+      assert.ok(
+        index1 < index2 && index2 < index3,
+        "Tasks should be ordered by insertion order via display_order column"
+      );
+
+      // Clean up
+      const removeItem1 = new CommandTreeItem(task1, null, []);
+      const removeItem2 = new CommandTreeItem(task2, null, []);
+      const removeItem3 = new CommandTreeItem(task3, null, []);
+      await vscode.commands.executeCommand("commandtree.removeFromQuick", removeItem1);
+      await vscode.commands.executeCommand("commandtree.removeFromQuick", removeItem2);
+      await vscode.commands.executeCommand("commandtree.removeFromQuick", removeItem3);
+      await sleep(500);
+    });
+
+    test("E2E: Cannot add same command to quick twice", async function () {
       this.timeout(15000);
 
-      const config: CommandTreeConfig = {
-        tags: {
-          quick: ["first", "middle", "last"],
-        },
-      };
-      writeCommandTreeConfig(config);
+      const allTasks = treeProvider.getAllTasks();
+      const task = allTasks[0];
+      assert.ok(task !== undefined, "First task must exist");
 
-      const updatedConfig: CommandTreeConfig = {
-        tags: {
-          quick: ["first", "last"],
-        },
-      };
-      writeCommandTreeConfig(updatedConfig);
+      // Add to quick once
+      const item = new CommandTreeItem(task, null, []);
+      await vscode.commands.executeCommand("commandtree.addToQuick", item);
+      await sleep(1000);
 
+      const dbResult = getDb();
+      assert.ok(dbResult.ok, "Database must be available");
+
+      const initialIdsResult = getCommandIdsByTag({
+        handle: dbResult.value,
+        tagName: QUICK_TAG,
+      });
+      assert.ok(initialIdsResult.ok, "Should get command IDs");
+      const initialCount = initialIdsResult.value.filter((id) => id === task.id).length;
+      assert.strictEqual(initialCount, 1, "Should have exactly one instance of task");
+
+      // Try to add again (should be ignored by INSERT OR IGNORE)
+      const item2 = new CommandTreeItem(task, null, []);
+      await vscode.commands.executeCommand("commandtree.addToQuick", item2);
+      await sleep(1000);
+
+      const afterIdsResult = getCommandIdsByTag({
+        handle: dbResult.value,
+        tagName: QUICK_TAG,
+      });
+      assert.ok(afterIdsResult.ok, "Should get command IDs");
+      const afterCount = afterIdsResult.value.filter((id) => id === task.id).length;
+      assert.strictEqual(
+        afterCount,
+        1,
+        "Should still have exactly one instance (no duplicates)"
+      );
+
+      // Clean up
+      const removeItem = new CommandTreeItem(task, null, []);
+      await vscode.commands.executeCommand("commandtree.removeFromQuick", removeItem);
       await sleep(500);
-
-      const savedConfig = readCommandTreeConfig();
-      const quickTasks = savedConfig.tags?.["quick"] ?? [];
-
-      assert.strictEqual(quickTasks.length, 2, "Should have 2 tasks");
-      assert.strictEqual(quickTasks[0], "first", "First should remain first");
-      assert.strictEqual(quickTasks[1], "last", "Last should now be second");
     });
   });
 
-  // Spec: quick-launch
-  suite("Quick Launch Integration", () => {
-    test("config persistence works", function () {
-      this.timeout(15000);
+  // SPEC: quick-launch, database-schema/command-tags-junction
+  suite("Quick Launch Ordering with display_order", () => {
+    test("display_order column maintains insertion order", async function () {
+      this.timeout(20000);
 
-      writeCommandTreeConfig({ tags: { quick: ["build"] } });
+      const allTasks = treeProvider.getAllTasks();
+      assert.ok(allTasks.length >= 3, "Need at least 3 tasks");
 
-      const savedConfig = readCommandTreeConfig();
-      const quickTags = savedConfig.tags?.["quick"] ?? [];
-      assert.ok(quickTags.includes("build"), "Config should have build");
-    });
+      const tasks = [allTasks[0], allTasks[1], allTasks[2]];
+      assert.ok(tasks.every((t) => t !== undefined), "All tasks must exist");
 
-    test("main tree and Quick Launch sync on config change", async function () {
-      this.timeout(15000);
+      // Add in specific order
+      for (const task of tasks) {
+        const item = new CommandTreeItem(task, null, []);
+        await vscode.commands.executeCommand("commandtree.addToQuick", item);
+        await sleep(500);
+      }
+      await sleep(1000);
 
-      writeCommandTreeConfig({ tags: { quick: ["sync-test-task"] } });
-      await sleep(3000);
+      // Check database directly for display_order values
+      const dbResult = getDb();
+      assert.ok(dbResult.ok, "Database must be available");
 
-      const savedConfig = readCommandTreeConfig();
-      const quickTags = savedConfig.tags?.["quick"] ?? [];
-      assert.ok(quickTags.includes("sync-test-task"), "Config should persist");
-    });
-  });
+      const orderedIdsResult = getCommandIdsByTag({
+        handle: dbResult.value,
+        tagName: QUICK_TAG,
+      });
+      assert.ok(orderedIdsResult.ok, "Should get ordered IDs");
 
-  // Spec: quick-launch, user-data-storage
-  suite("Quick Launch File Watching", () => {
-    test("commandtree.json changes trigger refresh", async function () {
-      this.timeout(15000);
+      // Verify tasks appear in insertion order
+      const orderedIds = orderedIdsResult.value;
+      for (let i = 0; i < tasks.length; i++) {
+        const task = tasks[i];
+        if (task !== undefined) {
+          const position = orderedIds.indexOf(task.id);
+          assert.ok(position !== -1, `Task ${i} should be in quick list`);
+          assert.ok(
+            position >= i,
+            `Task ${i} should be at position ${i} or later (found at ${position})`
+          );
+        }
+      }
 
-      const config1: CommandTreeConfig = {
-        tags: {
-          quick: ["initial-task"],
-        },
-      };
-      writeCommandTreeConfig(config1);
-
-      await sleep(2000);
-
-      const config2: CommandTreeConfig = {
-        tags: {
-          quick: ["updated-task"],
-        },
-      };
-      writeCommandTreeConfig(config2);
-
-      await sleep(2000);
-
-      const savedConfig = readCommandTreeConfig();
-      const quickTags = savedConfig.tags?.["quick"] ?? [];
-      assert.ok(quickTags.includes("updated-task"), "Should have updated task");
+      // Clean up
+      for (const task of tasks) {
+        const removeItem = new CommandTreeItem(task, null, []);
+        await vscode.commands.executeCommand("commandtree.removeFromQuick", removeItem);
+      }
+      await sleep(500);
     });
   });
 });

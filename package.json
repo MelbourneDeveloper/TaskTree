@@ -2,7 +2,7 @@
   "name": "commandtree",
   "displayName": "CommandTree",
   "description": "Unified command runner: discover shell scripts, npm scripts, Makefiles, launch configs, VS Code tasks and more in one filterable tree",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "author": "Christian Findlay",
   "license": "MIT",
   "publisher": "nimblesite",
@@ -77,11 +77,6 @@
         "icon": "$(play-circle)"
       },
       {
-        "command": "commandtree.filter",
-        "title": "Filter Commands",
-        "icon": "$(search)"
-      },
-      {
         "command": "commandtree.filterByTag",
         "title": "Filter by Tag",
         "icon": "$(tag)"
@@ -90,10 +85,6 @@
         "command": "commandtree.clearFilter",
         "title": "Clear Filter",
         "icon": "$(clear-all)"
-      },
-      {
-        "command": "commandtree.editTags",
-        "title": "Edit Tags Configuration"
       },
       {
         "command": "commandtree.addToQuick",
@@ -119,15 +110,28 @@
         "command": "commandtree.removeTag",
         "title": "Remove Tag",
         "icon": "$(close)"
+      },
+      {
+        "command": "commandtree.semanticSearch",
+        "title": "Semantic Search",
+        "icon": "$(search)"
+      },
+      {
+        "command": "commandtree.generateSummaries",
+        "title": "Generate AI Summaries"
+      },
+      {
+        "command": "commandtree.selectModel",
+        "title": "CommandTree: Select AI Model"
+      },
+      {
+        "command": "commandtree.openPreview",
+        "title": "Open Preview",
+        "icon": "$(open-preview)"
       }
     ],
     "menus": {
       "view/title": [
-        {
-          "command": "commandtree.filter",
-          "when": "view == commandtree",
-          "group": "navigation@1"
-        },
         {
           "command": "commandtree.filterByTag",
           "when": "view == commandtree",
@@ -139,14 +143,14 @@
           "group": "navigation@3"
         },
         {
-          "command": "commandtree.refresh",
-          "when": "view == commandtree",
-          "group": "navigation@4"
+          "command": "commandtree.semanticSearch",
+          "when": "view == commandtree && commandtree.aiSummariesEnabled",
+          "group": "9_search"
         },
         {
-          "command": "commandtree.filter",
-          "when": "view == commandtree-quick",
-          "group": "navigation@1"
+          "command": "commandtree.refresh",
+          "when": "view == commandtree",
+          "group": "navigation@5"
         },
         {
           "command": "commandtree.filterByTag",
@@ -165,6 +169,11 @@
         }
       ],
       "view/item/context": [
+        {
+          "command": "commandtree.openPreview",
+          "when": "view == commandtree && viewItem =~ /task-markdown.*/",
+          "group": "inline@1"
+        },
         {
           "command": "commandtree.run",
           "when": "view == commandtree && viewItem == task",
@@ -352,12 +361,27 @@
             "Sort by command type, then alphabetically by name"
           ],
           "description": "How to sort commands within categories"
+        },
+        "commandtree.enableAiSummaries": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use GitHub Copilot to generate plain-language summaries of scripts, enabling semantic search"
+        },
+        "commandtree.aiModel": {
+          "type": "string",
+          "default": "",
+          "description": "Copilot model ID to use for summaries (e.g. 'gpt-4o-mini'). Leave empty to be prompted on first use."
         }
       }
     },
     "configurationDefaults": {
       "workbench.tree.indent": 16
-    }
+    },
+    "languageModels": [
+      {
+        "vendor": "copilot"
+      }
+    ]
   },
   "scripts": {
     "compile": "tsc -p ./",
@@ -394,5 +418,8 @@
   },
   "overrides": {
     "glob": "^13.0.1"
+  },
+  "dependencies": {
+    "node-sqlite3-wasm": "^0.8.53"
   }
 }

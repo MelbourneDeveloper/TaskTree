@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import type { TaskItem, ParamDef } from '../models/TaskItem';
 
 /**
+ * SPEC: command-execution, parameterized-commands
+ *
  * Shows error message without blocking (fire and forget).
  */
 function showError(message: string): void {
@@ -27,69 +29,48 @@ export class TaskRunner {
      */
     async run(task: TaskItem, mode: RunMode = 'newTerminal'): Promise<void> {
         const params = await this.collectParams(task.params);
-        if (params === null) {
-            return;
-        }
-
-        if (task.type === 'launch') {
-            await this.runLaunch(task);
-            return;
-        }
-
-        if (task.type === 'vscode') {
-            await this.runVsCodeTask(task);
-            return;
-        }
-
-        switch (mode) {
-            case 'newTerminal': {
-                this.runInNewTerminal(task, params);
-                break;
-            }
-            case 'currentTerminal': {
-                this.runInCurrentTerminal(task, params);
-                break;
-            }
+        if (params === null) { return; }
+        if (task.type === 'launch') { await this.runLaunch(task); return; }
+        if (task.type === 'vscode') { await this.runVsCodeTask(task); return; }
+        if (task.type === 'markdown') { await this.runMarkdownPreview(task); return; }
+        if (mode === 'currentTerminal') {
+            this.runInCurrentTerminal(task, params);
+        } else {
+            this.runInNewTerminal(task, params);
         }
     }
 
     /**
-     * Collects parameter values from user.
+     * Collects parameter values from user with their definitions.
      */
     private async collectParams(
         params?: readonly ParamDef[]
-    ): Promise<Map<string, string> | null> {
-        const values = new Map<string, string>();
-        if (params === undefined || params.length === 0) {
-            return values;
-        }
-
+    ): Promise<Array<{ def: ParamDef; value: string }> | null> {
+        const collected: Array<{ def: ParamDef; value: string }> = [];
+        if (params === undefined || params.length === 0) { return collected; }
         for (const param of params) {
-            let value: string | undefined;
-
-            if (param.options !== undefined && param.options.length > 0) {
-                value = await vscode.window.showQuickPick([...param.options], {
-                    placeHolder: param.description ?? `Select ${param.name}`,
-                    title: param.name
-                });
-            } else {
-                const inputOptions: vscode.InputBoxOptions = {
-                    prompt: param.description ?? `Enter ${param.name}`,
-                    title: param.name
-                };
-                if (param.default !== undefined) {
-                    inputOptions.value = param.default;
-                }
-                value = await vscode.window.showInputBox(inputOptions);
-            }
-
-            if (value === undefined) {
-                return null;
-            }
-            values.set(param.name, value);
+            const value = await this.promptForParam(param);
+            if (value === undefined) { return null; }
+            collected.push({ def: param, value });
         }
+        return collected;
+    }
 
-        return values;
+    private async promptForParam(param: ParamDef): Promise<string | undefined> {
+        if (param.options !== undefined && param.options.length > 0) {
+            return await vscode.window.showQuickPick([...param.options], {
+                placeHolder: param.description ?? `Select ${param.name}`,
+                title: param.name
+            });
+        }
+        const inputOptions: vscode.InputBoxOptions = {
+            prompt: param.description ?? `Enter ${param.name}`,
+            title: param.name
+        };
+        if (param.default !== undefined) {
+            inputOptions.value = param.default;
+        }
+        return await vscode.window.showInputBox(inputOptions);
     }
 
     /**
@@ -127,9 +108,19 @@ export class TaskRunner {
     }
 
     /**
+     * Opens a markdown file in preview mode.
+     */
+    private async runMarkdownPreview(task: TaskItem): Promise<void> {
+        await vscode.commands.executeCommand('markdown.showPreview', vscode.Uri.file(task.filePath));
+    }
+
+    /**
      * Runs a command in a new terminal.
      */
-    private runInNewTerminal(task: TaskItem, params: Map<string, string>): void {
+    private runInNewTerminal(
+        task: TaskItem,
+        params: Array<{ def: ParamDef; value: string }>
+    ): void {
         const command = this.buildCommand(task, params);
         const terminalOptions: vscode.TerminalOptions = {
             name: `CommandTree: ${task.label}`
@@ -145,7 +136,10 @@ export class TaskRunner {
     /**
      * Runs a command in the current (active) terminal.
      */
-    private runInCurrentTerminal(task: TaskItem, params: Map<string, string>): void {
+    private runInCurrentTerminal(
+        task: TaskItem,
+        params: Array<{ def: ParamDef; value: string }>
+    ): void {
         const command = this.buildCommand(task, params);
         let terminal = vscode.window.activeTerminal;
 
@@ -178,39 +172,92 @@ export class TaskRunner {
             terminal.shellIntegration.executeCommand(command);
             return;
         }
+        this.waitForShellIntegration(terminal, command);
+    }
 
+    private waitForShellIntegration(terminal: vscode.Terminal, command: string): void {
         let resolved = false;
-
         const listener = vscode.window.onDidChangeTerminalShellIntegration(
             ({ terminal: t, shellIntegration }) => {
                 if (t === terminal && !resolved) {
                     resolved = true;
                     listener.dispose();
-                    shellIntegration.executeCommand(command);
+                    this.safeSendText(terminal, command, shellIntegration);
                 }
             }
         );
-
         setTimeout(() => {
             if (!resolved) {
                 resolved = true;
                 listener.dispose();
-                terminal.sendText(command);
+                this.safeSendText(terminal, command);
             }
         }, SHELL_INTEGRATION_TIMEOUT_MS);
     }
 
     /**
-     * Builds the full command string with parameters.
+     * Sends text to terminal, preferring shell integration when available.
+     * Guards against xterm viewport not being initialized (no dimensions).
      */
-    private buildCommand(task: TaskItem, params: Map<string, string>): string {
+    private safeSendText(
+        terminal: vscode.Terminal,
+        command: string,
+        shellIntegration?: vscode.TerminalShellIntegration
+    ): void {
+        try {
+            if (shellIntegration !== undefined) {
+                shellIntegration.executeCommand(command);
+            } else {
+                terminal.sendText(command);
+            }
+        } catch {
+            showError(`Failed to send command to terminal: ${command}`);
+        }
+    }
+
+    /**
+     * Builds the full command string with formatted parameters.
+     */
+    private buildCommand(
+        task: TaskItem,
+        params: Array<{ def: ParamDef; value: string }>
+    ): string {
         let command = task.command;
-        if (params.size > 0) {
-            const args = Array.from(params.values())
-                .map(v => `"${v}"`)
-                .join(' ');
-            command = `${command} ${args}`;
+        const parts: string[] = [];
+
+        for (const { def, value } of params) {
+            if (value === '') { continue; }
+            const formatted = this.formatParam(def, value);
+            if (formatted !== '') { parts.push(formatted); }
+        }
+
+        if (parts.length > 0) {
+            command = `${command} ${parts.join(' ')}`;
         }
         return command;
+    }
+
+    /**
+     * Formats a parameter value according to its format type.
+     */
+    private formatParam(def: ParamDef, value: string): string {
+        const format = def.format ?? 'positional';
+
+        switch (format) {
+            case 'positional': {
+                return `"${value}"`;
+            }
+            case 'flag': {
+                const flagName = def.flag ?? `--${def.name}`;
+                return `${flagName} "${value}"`;
+            }
+            case 'flag-equals': {
+                const flagName = def.flag ?? `--${def.name}`;
+                return `${flagName}=${value}`;
+            }
+            case 'dashdash-args': {
+                return `-- ${value}`;
+            }
+        }
     }
 }

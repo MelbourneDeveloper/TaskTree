@@ -1,14 +1,24 @@
+/**
+ * SPEC: quick-launch, tagging
+ * Provider for the Quick Launch view - shows commands tagged as "quick".
+ * Uses junction table for ordering (display_order column).
+ */
+
 import * as vscode from 'vscode';
 import type { TaskItem, Result } from './models/TaskItem';
 import { CommandTreeItem } from './models/TaskItem';
 import { TagConfig } from './config/TagConfig';
 import { logger } from './utils/logger';
+import { getDb } from './semantic/lifecycle';
+import { getCommandIdsByTag } from './semantic/db';
 
 const QUICK_TASK_MIME_TYPE = 'application/vnd.commandtree.quicktask';
+const QUICK_TAG = 'quick';
 
 /**
+ * SPEC: quick-launch
  * Provider for the Quick Launch view - shows commands tagged as "quick".
- * Supports drag-and-drop reordering.
+ * Supports drag-and-drop reordering via display_order column.
  */
 export class QuickTasksProvider implements vscode.TreeDataProvider<CommandTreeItem>, vscode.TreeDragAndDropController<CommandTreeItem> {
     private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<CommandTreeItem | undefined>();
@@ -20,35 +30,35 @@ export class QuickTasksProvider implements vscode.TreeDataProvider<CommandTreeIt
     private readonly tagConfig: TagConfig;
     private allTasks: TaskItem[] = [];
 
-    constructor(
-        workspaceRoot: string
-    ) {
-        this.tagConfig = new TagConfig(workspaceRoot);
+    constructor() {
+        this.tagConfig = new TagConfig();
     }
 
     /**
+     * SPEC: quick-launch
      * Updates the list of all tasks and refreshes the view.
      */
-    async updateTasks(tasks: TaskItem[]): Promise<void> {
+    updateTasks(tasks: TaskItem[]): void {
         logger.quick('updateTasks called', { taskCount: tasks.length });
-        await this.tagConfig.load();
+        this.tagConfig.load();
         this.allTasks = this.tagConfig.applyTags(tasks);
-        const quickCount = this.allTasks.filter(t => t.tags.includes('quick')).length;
+        const quickCount = this.allTasks.filter(t => t.tags.includes(QUICK_TAG)).length;
         logger.quick('updateTasks complete', {
             taskCount: this.allTasks.length,
             quickTaskCount: quickCount,
-            quickTasks: this.allTasks.filter(t => t.tags.includes('quick')).map(t => t.id)
+            quickTasks: this.allTasks.filter(t => t.tags.includes(QUICK_TAG)).map(t => t.id)
         });
         this.onDidChangeTreeDataEmitter.fire(undefined);
     }
 
     /**
+     * SPEC: quick-launch
      * Adds a command to the quick list.
      */
-    async addToQuick(task: TaskItem): Promise<Result<void, string>> {
-        const result = await this.tagConfig.addTaskToTag(task, 'quick');
+    addToQuick(task: TaskItem): Result<void, string> {
+        const result = this.tagConfig.addTaskToTag(task, QUICK_TAG);
         if (result.ok) {
-            await this.tagConfig.load();
+            this.tagConfig.load();
             this.allTasks = this.tagConfig.applyTags(this.allTasks);
             this.onDidChangeTreeDataEmitter.fire(undefined);
         }
@@ -56,12 +66,13 @@ export class QuickTasksProvider implements vscode.TreeDataProvider<CommandTreeIt
     }
 
     /**
+     * SPEC: quick-launch
      * Removes a command from the quick list.
      */
-    async removeFromQuick(task: TaskItem): Promise<Result<void, string>> {
-        const result = await this.tagConfig.removeTaskFromTag(task, 'quick');
+    removeFromQuick(task: TaskItem): Result<void, string> {
+        const result = this.tagConfig.removeTaskFromTag(task, QUICK_TAG);
         if (result.ok) {
-            await this.tagConfig.load();
+            this.tagConfig.load();
             this.allTasks = this.tagConfig.applyTags(this.allTasks);
             this.onDidChangeTreeDataEmitter.fire(undefined);
         }
@@ -80,54 +91,57 @@ export class QuickTasksProvider implements vscode.TreeDataProvider<CommandTreeIt
     }
 
     getChildren(element?: CommandTreeItem): CommandTreeItem[] {
-        if (element !== undefined) {
-            return element.children;
-        }
-
+        if (element !== undefined) { return element.children; }
         logger.quick('getChildren called', {
             allTasksCount: this.allTasks.length,
             allTasksWithTags: this.allTasks.map(t => ({ id: t.id, label: t.label, tags: t.tags }))
         });
+        const items = this.buildQuickItems();
+        logger.quick('Returning quick tasks', { count: items.length });
+        return items;
+    }
 
-        const quickTasks = this.allTasks.filter(task => task.tags.includes('quick'));
-
-        logger.quick('Filtered quick tasks', {
-            quickTaskCount: quickTasks.length,
-            quickTaskIds: quickTasks.map(t => t.id)
-        });
-
+    /**
+     * SPEC: quick-launch
+     * Builds quick task tree items ordered by display_order from junction table.
+     */
+    private buildQuickItems(): CommandTreeItem[] {
+        const quickTasks = this.allTasks.filter(task => task.tags.includes(QUICK_TAG));
+        logger.quick('Filtered quick tasks', { count: quickTasks.length });
         if (quickTasks.length === 0) {
-            logger.quick('No quick tasks found', {});
             return [new CommandTreeItem(null, 'No quick commands - star commands to add them here', [])];
         }
+        const sorted = this.sortByDisplayOrder(quickTasks);
+        return sorted.map(task => new CommandTreeItem(task, null, []));
+    }
 
-        // Sort by the order in the tag patterns array for deterministic ordering
-        // Use task.id for matching since patterns now store full task IDs
-        const quickPatterns = this.tagConfig.getTagPatterns('quick');
-        logger.quick('Quick patterns from config', { patterns: quickPatterns });
+    /**
+     * SPEC: quick-launch, tagging
+     * Sorts tasks by display_order from junction table.
+     */
+    private sortByDisplayOrder(tasks: TaskItem[]): TaskItem[] {
+        const dbResult = getDb();
+        if (!dbResult.ok) {
+            return tasks.sort((a, b) => a.label.localeCompare(b.label));
+        }
 
-        const sortedTasks = [...quickTasks].sort((a, b) => {
-            const indexA = quickPatterns.indexOf(a.id);
-            const indexB = quickPatterns.indexOf(b.id);
-            // If not found in patterns, put at end sorted alphabetically
-            if (indexA === -1 && indexB === -1) {
-                return a.label.localeCompare(b.label);
-            }
-            if (indexA === -1) {
-                return 1;
-            }
-            if (indexB === -1) {
-                return -1;
-            }
+        const orderedIdsResult = getCommandIdsByTag({
+            handle: dbResult.value,
+            tagName: QUICK_TAG
+        });
+        if (!orderedIdsResult.ok) {
+            return tasks.sort((a, b) => a.label.localeCompare(b.label));
+        }
+
+        const orderedIds = orderedIdsResult.value;
+        return [...tasks].sort((a, b) => {
+            const indexA = orderedIds.indexOf(a.id);
+            const indexB = orderedIds.indexOf(b.id);
+            if (indexA === -1 && indexB === -1) { return a.label.localeCompare(b.label); }
+            if (indexA === -1) { return 1; }
+            if (indexB === -1) { return -1; }
             return indexA - indexB;
         });
-
-        logger.quick('Returning sorted quick tasks', {
-            count: sortedTasks.length,
-            tasks: sortedTasks.map(t => t.label)
-        });
-
-        return sortedTasks.map(task => new CommandTreeItem(task, null, []));
     }
 
     /**
@@ -138,50 +152,67 @@ export class QuickTasksProvider implements vscode.TreeDataProvider<CommandTreeIt
         if (taskItem?.task === null) {
             return;
         }
-        // Use task.id for unique identification during drag/drop
         dataTransfer.set(QUICK_TASK_MIME_TYPE, new vscode.DataTransferItem(taskItem?.task?.id ?? ''));
     }
 
     /**
-     * Called when dropping.
+     * SPEC: quick-launch
+     * Called when dropping - reorders tasks in junction table.
      */
-    async handleDrop(target: CommandTreeItem | undefined, dataTransfer: vscode.DataTransfer): Promise<void> {
-        const transferItem = dataTransfer.get(QUICK_TASK_MIME_TYPE);
-        if (transferItem === undefined) {
-            return;
-        }
+    handleDrop(target: CommandTreeItem | undefined, dataTransfer: vscode.DataTransfer): void {
+        const draggedTask = this.extractDraggedTask(dataTransfer);
+        if (draggedTask === undefined) { return; }
 
-        const draggedId = transferItem.value as string;
-        if (draggedId === '') {
-            return;
-        }
+        const dbResult = getDb();
+        if (!dbResult.ok) { return; }
 
-        // Find the dragged task by ID for unique identification
-        const draggedTask = this.allTasks.find(t => t.id === draggedId && t.tags.includes('quick'));
-        if (draggedTask === undefined) {
-            return;
-        }
+        const orderedIdsResult = getCommandIdsByTag({
+            handle: dbResult.value,
+            tagName: QUICK_TAG
+        });
+        if (!orderedIdsResult.ok) { return; }
 
-        // Determine drop position using task IDs
-        const quickPatterns = this.tagConfig.getTagPatterns('quick');
-        let newIndex: number;
+        const orderedIds = orderedIdsResult.value;
+        const currentIndex = orderedIds.indexOf(draggedTask.id);
+        if (currentIndex === -1) { return; }
 
         const targetTask = target?.task;
-        if (targetTask === undefined || targetTask === null) {
-            // Dropped on empty area or placeholder - move to end
-            newIndex = quickPatterns.length;
-        } else {
-            // Dropped on a task - insert before it (using task ID)
-            const targetIndex = quickPatterns.indexOf(targetTask.id);
-            newIndex = targetIndex === -1 ? quickPatterns.length : targetIndex;
+        const targetIndex = targetTask !== null && targetTask !== undefined
+            ? orderedIds.indexOf(targetTask.id)
+            : orderedIds.length - 1;
+
+        if (targetIndex === -1 || currentIndex === targetIndex) { return; }
+
+        const reordered = [...orderedIds];
+        reordered.splice(currentIndex, 1);
+        reordered.splice(targetIndex, 0, draggedTask.id);
+
+        for (let i = 0; i < reordered.length; i++) {
+            const commandId = reordered[i];
+            if (commandId !== undefined) {
+                dbResult.value.db.run(
+                    `UPDATE command_tags
+                     SET display_order = ?
+                     WHERE command_id = ?
+                     AND tag_id = (SELECT tag_id FROM tags WHERE tag_name = ?)`,
+                    [i, commandId, QUICK_TAG]
+                );
+            }
         }
 
-        // Move the task
-        const result = await this.tagConfig.moveTaskInTag(draggedTask, 'quick', newIndex);
-        if (result.ok) {
-            await this.tagConfig.load();
-            this.allTasks = this.tagConfig.applyTags(this.allTasks);
-            this.onDidChangeTreeDataEmitter.fire(undefined);
-        }
+        this.tagConfig.load();
+        this.allTasks = this.tagConfig.applyTags(this.allTasks);
+        this.onDidChangeTreeDataEmitter.fire(undefined);
+    }
+
+    /**
+     * Extracts the dragged task from a data transfer.
+     */
+    private extractDraggedTask(dataTransfer: vscode.DataTransfer): TaskItem | undefined {
+        const transferItem = dataTransfer.get(QUICK_TASK_MIME_TYPE);
+        if (transferItem === undefined) { return undefined; }
+        const draggedId = transferItem.value as string;
+        if (draggedId === '') { return undefined; }
+        return this.allTasks.find(t => t.id === draggedId && t.tags.includes(QUICK_TAG));
     }
 }

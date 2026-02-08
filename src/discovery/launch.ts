@@ -13,6 +13,8 @@ interface LaunchJson {
 }
 
 /**
+ * SPEC: command-discovery/launch-configurations
+ *
  * Discovers VS Code launch configurations.
  */
 export async function discoverLaunchConfigs(

@@ -3,14 +3,22 @@
   "mochaExplorer.ui": "tdd",
   "mochaExplorer.require": [],
   "typescript.tsserver.experimental.enableProjectDiagnostics": true,
+  "typescript.reportStyleChecksAsErrors": true,
   "eslint.lintTask.enable": true,
   "eslint.run": "onType",
-  "eslint.probe": ["typescript"],
-  "eslint.validate": ["typescript"],
+  "eslint.probe": [
+    "typescript"
+  ],
+  "eslint.validate": [
+    "typescript"
+  ],
   "eslint.useFlatConfig": true,
-  "eslint.workingDirectories": ["."],
+  "eslint.workingDirectories": [
+    "."
+  ],
   "eslint.debug": true,
   "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "explicit"
+    "source.fixAll.eslint": "explicit",
+    "commandtree.enableAiSummaries": "explicit"
   }
 }

@@ -16,6 +16,15 @@ test.describe('Blog', () => {
     await expect(page.locator('h1').first()).toContainText('Introducing CommandTree');
   });
 
+  test('introducing post has hero banner with logo', async ({ page }) => {
+    await page.goto('/blog/introducing-commandtree/');
+    const banner = page.locator('.blog-hero-banner');
+    await expect(banner).toBeVisible();
+    const logo = banner.locator('img.blog-hero-logo');
+    await expect(logo).toBeVisible();
+    await expect(logo).toHaveAttribute('src', '/assets/images/logo.png');
+  });
+
   test('introducing post has problem and solution sections', async ({ page }) => {
     await page.goto('/blog/introducing-commandtree/');
     await expect(page.locator('text=The Problem')).toBeVisible();

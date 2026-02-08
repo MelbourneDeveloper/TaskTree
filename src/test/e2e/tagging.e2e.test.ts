@@ -1,5 +1,5 @@
 /**
- * Spec: tagging/management
+ * SPEC: tagging/management
  * TAGGING E2E TESTS
  *
  * These tests verify command registration and static file structure only.
@@ -11,7 +11,7 @@ import * as vscode from "vscode";
 import * as fs from "fs";
 import { activateExtension, sleep, getExtensionPath } from "../helpers/helpers";
 
-// Spec: tagging/management
+// SPEC: tagging/management
 suite("Tag Context Menu E2E Tests", () => {
   suiteSetup(async function () {
     this.timeout(30000);
@@ -19,7 +19,7 @@ suite("Tag Context Menu E2E Tests", () => {
     await sleep(2000);
   });
 
-  // Spec: tagging/management
+  // SPEC: tagging/management
   suite("Tag Commands Registration", () => {
     test("addTag command is registered", async function () {
       this.timeout(10000);
@@ -40,7 +40,7 @@ suite("Tag Context Menu E2E Tests", () => {
     });
   });
 
-  // Spec: tagging/management
+  // SPEC: tagging/management
   suite("Tag UI Integration (Static Checks)", () => {
     test("addTag and removeTag are in view item context menu", function () {
       this.timeout(10000);
