@@ -139,7 +139,7 @@ suite('Model Selection (resolveModel)', () => {
     });
 });
 
-suite('pickConcreteModel (auto resolution)', () => {
+suite('pickConcreteModel (legacy — no longer used in main flow)', () => {
 
     test('returns specific model when preferredId is not auto', () => {
         const result = pickConcreteModel({ models: ALL_MODELS, preferredId: HAIKU.id });
@@ -174,5 +174,39 @@ suite('pickConcreteModel (auto resolution)', () => {
         const result = pickConcreteModel({ models: ALL_MODELS, preferredId: AUTO_MODEL_ID });
         assert.ok(result, 'Expected a model');
         assert.strictEqual(result.id, OPUS.id, 'Should pick first model when no auto in list');
+    });
+});
+
+suite('Direct model lookup (selectCopilotModel fix)', () => {
+
+    test('auto resolved ID selects auto model — NOT premium', () => {
+        const models = ALL_WITH_AUTO;
+        const resolvedId = AUTO_MODEL_ID;
+
+        const selected = models.find(m => m.id === resolvedId);
+
+        assert.ok(selected, 'Auto model must exist in list');
+        assert.strictEqual(selected.id, AUTO_MODEL_ID, 'Must use auto model directly');
+        assert.notStrictEqual(selected.id, OPUS.id, 'Must NOT resolve to premium opus model');
+    });
+
+    test('specific model ID selects that exact model', () => {
+        const models = ALL_WITH_AUTO;
+        const resolvedId = HAIKU.id;
+
+        const selected = models.find(m => m.id === resolvedId);
+
+        assert.ok(selected, 'Haiku model must be found');
+        assert.strictEqual(selected.id, HAIKU.id);
+        assert.strictEqual(selected.name, HAIKU.name);
+    });
+
+    test('nonexistent model ID returns undefined', () => {
+        const models = ALL_WITH_AUTO;
+        const resolvedId = 'nonexistent';
+
+        const selected = models.find(m => m.id === resolvedId);
+
+        assert.strictEqual(selected, undefined, 'Nonexistent model must not match');
     });
 });
