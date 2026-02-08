@@ -23,6 +23,19 @@ test.describe('Documentation', () => {
     await expect(table).toContainText('VS Code Tasks');
     await expect(table).toContainText('Launch Configs');
     await expect(table).toContainText('Python Scripts');
+    await expect(table).toContainText('PowerShell Scripts');
+    await expect(table).toContainText('Gradle Tasks');
+    await expect(table).toContainText('Cargo Tasks');
+    await expect(table).toContainText('Maven Goals');
+    await expect(table).toContainText('Ant Targets');
+    await expect(table).toContainText('Just Recipes');
+    await expect(table).toContainText('Taskfile Tasks');
+    await expect(table).toContainText('Deno Tasks');
+    await expect(table).toContainText('Rake Tasks');
+    await expect(table).toContainText('Composer Scripts');
+    await expect(table).toContainText('Docker Compose');
+    await expect(table).toContainText('.NET Projects');
+    await expect(table).toContainText('Markdown Files');
   });
 
   test('discovery page loads with all sections', async ({ page }) => {
