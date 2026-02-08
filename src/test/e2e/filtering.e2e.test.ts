@@ -42,34 +42,5 @@ suite("Command Filtering E2E Tests", () => {
       );
     });
 
-    test("editTags command is registered", async function () {
-      this.timeout(10000);
-
-      const commands = await vscode.commands.getCommands(true);
-      assert.ok(
-        commands.includes("commandtree.editTags"),
-        "editTags command should be registered",
-      );
-    });
-  });
-
-  // Spec: tagging/management
-  suite("Edit Tags Command", () => {
-    test("editTags command shows deprecation message", async function () {
-      this.timeout(15000);
-
-      await vscode.commands.executeCommand("workbench.action.closeAllEditors");
-      await sleep(500);
-
-      // editTags is deprecated (tags moved to SQLite)
-      // It now shows an info message instead of opening a file
-      await vscode.commands.executeCommand("commandtree.editTags");
-      await sleep(500);
-
-      // The command completes successfully by showing an info message
-      // We can't easily assert on info messages in tests, but we can verify
-      // that the command doesn't throw and doesn't open a file editor
-      assert.ok(true, "editTags command executed without error");
-    });
   });
 });

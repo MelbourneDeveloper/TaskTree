@@ -51,8 +51,7 @@ test.describe('Documentation', () => {
   test('configuration page loads with all sections', async ({ page }) => {
     await page.goto('/docs/configuration/');
     await expect(page.locator('h1')).toContainText('Configuration');
-    await expect(page.locator('text=Exclude Patterns')).toBeVisible();
-    await expect(page.locator('text=Sort Order')).toBeVisible();
+    await expect(page.locator('h2', { hasText: 'Settings' })).toBeVisible();
     await expect(page.locator('text=Quick Launch')).toBeVisible();
     await expect(page.locator('text=Tagging')).toBeVisible();
     await expect(page.locator('text=Filtering')).toBeVisible();

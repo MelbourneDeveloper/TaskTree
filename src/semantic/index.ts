@@ -17,7 +17,7 @@ import type { EmbeddingRow } from './db';
 import { embedText } from './embedder';
 import { rankBySimilarity, type ScoredCandidate } from './similarity';
 
-export { summariseAllTasks } from './summaryPipeline';
+export { summariseAllTasks, registerAllCommands } from './summaryPipeline';
 export { embedAllPending } from './embeddingPipeline';
 
 const SEARCH_TOP_K = 20;

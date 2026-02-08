@@ -8,6 +8,10 @@ import * as vscode from 'vscode';
 import type { Result } from '../models/TaskItem';
 import { ok, err } from '../models/TaskItem';
 import { logger } from '../utils/logger';
+import { resolveModel } from './modelSelection';
+import type { ModelSelectionDeps } from './modelSelection';
+export type { ModelRef, ModelSelectionDeps } from './modelSelection';
+export { resolveModel } from './modelSelection';
 
 const MAX_CONTENT_LENGTH = 4000;
 const MODEL_RETRY_COUNT = 10;
@@ -47,25 +51,15 @@ async function delay(ms: number): Promise<void> {
 }
 
 /**
- * Attempts to select a Copilot model once.
+ * Fetches Copilot models with retry, optionally filtering by ID.
  */
-async function trySelectModel(): Promise<vscode.LanguageModelChat | null> {
-    const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
-    return models[0] ?? null;
-}
-
-/**
- * Selects a Copilot chat model for summarisation.
- * Retries to allow Copilot time to initialise after VS Code starts.
- */
-export async function selectCopilotModel(): Promise<Result<vscode.LanguageModelChat, string>> {
+async function fetchModels(
+    selector: vscode.LanguageModelChatSelector
+): Promise<readonly vscode.LanguageModelChat[]> {
     for (let attempt = 0; attempt < MODEL_RETRY_COUNT; attempt++) {
         try {
-            const model = await trySelectModel();
-            if (model !== null) {
-                logger.info('Selected Copilot model', { id: model.id, name: model.name });
-                return ok(model);
-            }
+            const models = await vscode.lm.selectChatModels(selector);
+            if (models.length > 0) { return models; }
             logger.info('Copilot not ready, retrying', { attempt });
         } catch (e) {
             const msg = e instanceof Error ? e.message : 'Unknown';
@@ -73,7 +67,86 @@ export async function selectCopilotModel(): Promise<Result<vscode.LanguageModelC
         }
         if (attempt < MODEL_RETRY_COUNT - 1) { await delay(MODEL_RETRY_DELAY_MS); }
     }
-    return err('No Copilot model available after retries');
+    return [];
+}
+
+/**
+ * Formats model metadata for the quickpick detail line.
+ */
+function formatModelDetail(m: vscode.LanguageModelChat): string {
+    const tokens = `${Math.round(m.maxInputTokens / 1000)}k tokens`;
+    const parts = [m.family, m.version, tokens].filter(p => p !== '');
+    return parts.join(' · ');
+}
+
+/**
+ * Shows a quickpick of all available Copilot models with metadata.
+ * Returns the chosen model ref, or undefined if cancelled.
+ */
+async function promptModelPicker(
+    models: readonly vscode.LanguageModelChat[]
+): Promise<vscode.LanguageModelChat | undefined> {
+    const items = models.map(m => ({
+        label: m.name,
+        description: m.id,
+        detail: formatModelDetail(m),
+        model: m
+    }));
+    const picked = await vscode.window.showQuickPick(items, {
+        placeHolder: 'Select a Copilot model for summarisation',
+        title: 'CommandTree: Choose AI Model',
+        ignoreFocusOut: true,
+        matchOnDetail: true
+    });
+    return picked?.model;
+}
+
+/**
+ * Builds the standard ModelSelectionDeps wired to VS Code APIs.
+ */
+function buildVSCodeDeps(): ModelSelectionDeps {
+    const config = vscode.workspace.getConfiguration('commandtree');
+    return {
+        getSavedId: () => config.get<string>('aiModel', ''),
+        fetchById: (id) => fetchModels({ vendor: 'copilot', id }),
+        fetchAll: () => fetchModels({ vendor: 'copilot' }),
+        promptUser: async () => {
+            const all = await fetchModels({ vendor: 'copilot' });
+            const picked = await promptModelPicker(all);
+            return picked !== undefined ? { id: picked.id, name: picked.name } : undefined;
+        },
+        saveId: async (id) => { await config.update('aiModel', id, vscode.ConfigurationTarget.Global); }
+    };
+}
+
+/**
+ * Selects the configured model by ID, or prompts the user to pick one.
+ * Saves the choice to settings so it persists across sessions.
+ */
+export async function selectCopilotModel(): Promise<Result<vscode.LanguageModelChat, string>> {
+    const result = await resolveModel(buildVSCodeDeps());
+    if (!result.ok) { return result; }
+
+    const exactModel = await fetchModels({ vendor: 'copilot', id: result.value.id });
+    if (exactModel.length === 0) { return err('Selected model no longer available'); }
+    return ok(exactModel[0]!);
+}
+
+/**
+ * Forces the model picker open (ignoring saved setting) and saves the choice.
+ * Used by the commandtree.selectModel command.
+ */
+export async function forceSelectModel(): Promise<Result<string, string>> {
+    const all = await fetchModels({ vendor: 'copilot' });
+    if (all.length === 0) { return err('No Copilot models available'); }
+
+    const picked = await promptModelPicker(all);
+    if (picked === undefined) { return err('Model selection cancelled'); }
+
+    const config = vscode.workspace.getConfiguration('commandtree');
+    await config.update('aiModel', picked.id, vscode.ConfigurationTarget.Global);
+    logger.info('Model changed via command', { id: picked.id, name: picked.name });
+    return ok(picked.name);
 }
 
 /**
@@ -101,6 +174,7 @@ async function sendToolRequest(
     prompt: string
 ): Promise<Result<SummaryResult, string>> {
     try {
+        logger.info('sendRequest using model', { id: model.id, name: model.name });
         const messages = [vscode.LanguageModelChatMessage.User(prompt)];
         const options: vscode.LanguageModelChatRequestOptions = {
             tools: [ANALYSIS_TOOL],

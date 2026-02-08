@@ -32,11 +32,12 @@ test.describe('Homepage', () => {
     await expect(installCmd).toContainText('ext install nimblesite.commandtree');
   });
 
-  test('features section shows all 6 feature cards', async ({ page }) => {
+  test('features section shows all 7 feature cards', async ({ page }) => {
     const featureCards = page.locator('.feature-card');
-    await expect(featureCards).toHaveCount(6);
+    await expect(featureCards).toHaveCount(7);
 
     const expectedFeatures = [
+      'AI Summaries',
       'Auto-Discovery',
       'Quick Launch',
       'Tagging',

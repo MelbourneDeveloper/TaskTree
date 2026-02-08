@@ -165,17 +165,6 @@ export class CommandTreeProvider implements vscode.TreeDataProvider<CommandTreeI
     }
 
     /**
-     * DEPRECATED: Tags now stored in SQLite database, not JSON file.
-     * SPEC.md **user-data-storage**: All data in SQLite at {workspaceFolder}/.commandtree/
-     */
-    editTags(): void {
-        vscode.window.showInformationMessage(
-            'Tags are now managed through the UI. Right-click commands to add/remove tags.',
-            { modal: false }
-        );
-    }
-
-    /**
      * Adds a command to a tag.
      */
     async addTaskToTag(task: TaskItem, tagName: string): Promise<Result<void, string>> {

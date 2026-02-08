@@ -10,10 +10,12 @@ import { logger } from './utils/logger';
 import {
     isAiEnabled,
     summariseAllTasks,
+    registerAllCommands,
     initSemanticStore,
     disposeSemanticStore
 } from './semantic';
 import { createVSCodeFileSystem } from './semantic/vscodeAdapters';
+import { forceSelectModel } from './semantic/summariser';
 import { getDb } from './semantic/lifecycle';
 import { addTagToCommand, removeTagFromCommand, getCommandIdsByTag } from './semantic/db';
 
@@ -42,9 +44,25 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
     registerCommands(context, workspaceRoot);
     setupFileWatcher(context, workspaceRoot);
     await syncQuickTasks();
+    await registerDiscoveredCommands(workspaceRoot);
     await syncTagsFromJson(workspaceRoot);
     initAiSummaries(workspaceRoot);
     return { commandTreeProvider: treeProvider, quickTasksProvider };
+}
+
+async function registerDiscoveredCommands(workspaceRoot: string): Promise<void> {
+    const tasks = treeProvider.getAllTasks();
+    if (tasks.length === 0) { return; }
+    const result = await registerAllCommands({
+        tasks,
+        workspaceRoot,
+        fs: createVSCodeFileSystem(),
+    });
+    if (!result.ok) {
+        logger.warn('Command registration failed', { error: result.error });
+    } else {
+        logger.info('Commands registered in DB', { count: result.value });
+    }
 }
 
 async function initSemanticSubsystem(workspaceRoot: string): Promise<void> {
@@ -108,13 +126,21 @@ function registerFilterCommands(context: vscode.ExtensionContext, workspaceRoot:
             updateFilterContext();
         }),
         vscode.commands.registerCommand('commandtree.semanticSearch', async (q?: string) => { await handleSemanticSearch(q, workspaceRoot); }),
-        vscode.commands.registerCommand('commandtree.generateSummaries', async () => { await runSummarisation(workspaceRoot); })
+        vscode.commands.registerCommand('commandtree.generateSummaries', async () => { await runSummarisation(workspaceRoot); }),
+        vscode.commands.registerCommand('commandtree.selectModel', async () => {
+            const result = await forceSelectModel();
+            if (result.ok) {
+                vscode.window.showInformationMessage(`CommandTree: AI model set to ${result.value}`);
+                await runSummarisation(workspaceRoot);
+            } else {
+                vscode.window.showWarningMessage(`CommandTree: ${result.error}`);
+            }
+        })
     );
 }
 
 function registerTagCommands(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
-        vscode.commands.registerCommand('commandtree.editTags', () => { treeProvider.editTags(); }),
         vscode.commands.registerCommand('commandtree.addTag', handleAddTag),
         vscode.commands.registerCommand('commandtree.removeTag', handleRemoveTag)
     );
@@ -147,10 +173,7 @@ function registerQuickCommands(context: vscode.ExtensionContext): void {
 async function handleFilterByTag(): Promise<void> {
     const tags = treeProvider.getAllTags();
     if (tags.length === 0) {
-        const action = await vscode.window.showInformationMessage(
-            'No tags defined. Create tag configuration?', 'Create'
-        );
-        if (action === 'Create') { treeProvider.editTags(); }
+        await vscode.window.showInformationMessage('No tags defined. Right-click commands to add tags.');
         return;
     }
     const items = [

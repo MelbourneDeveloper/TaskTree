@@ -15,8 +15,10 @@ import type { FileSystemAdapter } from './adapters';
 import type { SummaryResult } from './summariser';
 import { selectCopilotModel, summariseScript } from './summariser';
 import { initDb } from './lifecycle';
-import { upsertSummary, getRow } from './db';
+import { upsertSummary, getRow, registerCommand } from './db';
 import type { DbHandle } from './db';
+
+const MAX_CONSECUTIVE_FAILURES = 3;
 
 interface PendingItem {
     readonly task: TaskItem;
@@ -101,8 +103,36 @@ async function processOneSummary(params: {
 }
 
 /**
+ * Registers all discovered commands in SQLite with their content hashes.
+ * Does NOT require Copilot. Preserves existing summaries.
+ */
+export async function registerAllCommands(params: {
+    readonly tasks: readonly TaskItem[];
+    readonly workspaceRoot: string;
+    readonly fs: FileSystemAdapter;
+}): Promise<Result<number, string>> {
+    const dbInit = await initDb(params.workspaceRoot);
+    if (!dbInit.ok) { return err(dbInit.error); }
+
+    let registered = 0;
+    for (const task of params.tasks) {
+        const content = await readTaskContent({ task, fs: params.fs });
+        const hash = computeContentHash(content);
+        const result = registerCommand({
+            handle: dbInit.value,
+            commandId: task.id,
+            contentHash: hash,
+        });
+        if (result.ok) { registered++; }
+    }
+    logger.info('[REGISTER] Commands registered in DB', { registered });
+    return ok(registered);
+}
+
+/**
  * Summarises all tasks that are new or have changed content.
  * Stores summaries in SQLite. Does NOT touch embeddings.
+ * Commands are registered in DB BEFORE Copilot is contacted.
  */
 export async function summariseAllTasks(params: {
     readonly tasks: readonly TaskItem[];
@@ -114,6 +144,14 @@ export async function summariseAllTasks(params: {
         taskCount: params.tasks.length,
     });
 
+    // Step 1: Always register commands in DB (independent of Copilot)
+    const regResult = await registerAllCommands(params);
+    if (!regResult.ok) {
+        logger.error('[SUMMARY] registerAllCommands failed', { error: regResult.error });
+        return err(regResult.error);
+    }
+
+    // Step 2: Try Copilot — if unavailable, commands are still in DB
     const modelResult = await selectCopilotModel();
     if (!modelResult.ok) {
         logger.error('[SUMMARY] Copilot model selection failed', { error: modelResult.error });
@@ -121,10 +159,7 @@ export async function summariseAllTasks(params: {
     }
 
     const dbInit = await initDb(params.workspaceRoot);
-    if (!dbInit.ok) {
-        logger.error('[SUMMARY] initDb failed', { error: dbInit.error });
-        return err(dbInit.error);
-    }
+    if (!dbInit.ok) { return err(dbInit.error); }
 
     const pending = await findPendingSummaries({
         handle: dbInit.value,
@@ -154,6 +189,10 @@ export async function summariseAllTasks(params: {
         } else {
             failed++;
             logger.error('[SUMMARY] Task failed', { id: item.task.id, error: result.error });
+            if (failed >= MAX_CONSECUTIVE_FAILURES) {
+                logger.error('[SUMMARY] Too many failures, aborting', { failed });
+                break;
+            }
         }
         params.onProgress?.(succeeded + failed, pending.length);
     }

@@ -345,6 +345,35 @@ export function importFromJsonStore(params: {
 // ---------------------------------------------------------------------------
 
 /**
+ * Registers a discovered command in the DB with its content hash.
+ * Inserts with empty summary if new; updates only content_hash if existing.
+ * Does NOT touch summary, embedding, or security_warning on existing rows.
+ */
+export function registerCommand(params: {
+  readonly handle: DbHandle;
+  readonly commandId: string;
+  readonly contentHash: string;
+}): Result<void, string> {
+  try {
+    const now = new Date().toISOString();
+    params.handle.db.run(
+      `INSERT INTO ${COMMAND_TABLE}
+             (command_id, content_hash, summary, embedding, security_warning, last_updated)
+             VALUES (?, ?, '', NULL, NULL, ?)
+             ON CONFLICT(command_id) DO UPDATE SET
+               content_hash = excluded.content_hash,
+               last_updated = excluded.last_updated`,
+      [params.commandId, params.contentHash, now],
+    );
+    return ok(undefined);
+  } catch (e) {
+    const msg =
+      e instanceof Error ? e.message : "Failed to register command";
+    return err(msg);
+  }
+}
+
+/**
  * Ensures a command record exists before adding tags to it.
  * Inserts placeholder if needed to maintain referential integrity.
  */
@@ -352,25 +381,11 @@ export function ensureCommandExists(params: {
   readonly handle: DbHandle;
   readonly commandId: string;
 }): Result<void, string> {
-  try {
-    const existing = params.handle.db.get(
-      `SELECT command_id FROM ${COMMAND_TABLE} WHERE command_id = ?`,
-      [params.commandId],
-    );
-    if (existing === null) {
-      params.handle.db.run(
-        `INSERT INTO ${COMMAND_TABLE}
-                 (command_id, content_hash, summary, embedding, security_warning, last_updated)
-                 VALUES (?, '', '', NULL, NULL, ?)`,
-        [params.commandId, new Date().toISOString()],
-      );
-    }
-    return ok(undefined);
-  } catch (e) {
-    const msg =
-      e instanceof Error ? e.message : "Failed to ensure command exists";
-    return err(msg);
-  }
+  return registerCommand({
+    handle: params.handle,
+    commandId: params.commandId,
+    contentHash: "",
+  });
 }
 
 /**

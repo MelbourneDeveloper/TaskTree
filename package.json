@@ -87,10 +87,6 @@
         "icon": "$(clear-all)"
       },
       {
-        "command": "commandtree.editTags",
-        "title": "Edit Tags Configuration"
-      },
-      {
         "command": "commandtree.addToQuick",
         "title": "Add to Quick Launch",
         "icon": "$(star-empty)"
@@ -125,6 +121,10 @@
         "title": "Generate AI Summaries"
       },
       {
+        "command": "commandtree.selectModel",
+        "title": "CommandTree: Select AI Model"
+      },
+      {
         "command": "commandtree.openPreview",
         "title": "Open Preview",
         "icon": "$(open-preview)"
@@ -145,7 +145,7 @@
         {
           "command": "commandtree.semanticSearch",
           "when": "view == commandtree && commandtree.aiSummariesEnabled",
-          "group": "navigation@4"
+          "group": "9_search"
         },
         {
           "command": "commandtree.refresh",
@@ -366,6 +366,11 @@
           "type": "boolean",
           "default": true,
           "description": "Use GitHub Copilot to generate plain-language summaries of scripts, enabling semantic search"
+        },
+        "commandtree.aiModel": {
+          "type": "string",
+          "default": "",
+          "description": "Copilot model ID to use for summaries (e.g. 'gpt-4o-mini'). Leave empty to be prompted on first use."
         }
       }
     },

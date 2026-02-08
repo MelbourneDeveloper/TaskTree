@@ -134,7 +134,6 @@ suite("Commands and UI E2E Tests", () => {
         "commandtree.run",
         "commandtree.filterByTag",
         "commandtree.clearFilter",
-        "commandtree.editTags",
         "commandtree.semanticSearch",
       ];
 
@@ -149,21 +148,6 @@ suite("Commands and UI E2E Tests", () => {
     // NOTE: Tests for executing refresh/clearFilter commands removed
     // These commands should be triggered through UI interaction, not direct calls
     // Testing them via executeCommand masks bugs in the file watcher auto-refresh
-
-    test("editTags command shows deprecation message", async function () {
-      this.timeout(15000);
-
-      // editTags is deprecated (tags moved to SQLite)
-      // It now shows an info message instead of opening a file
-      // This test verifies the command executes without errors
-      await vscode.commands.executeCommand("commandtree.editTags");
-      await sleep(500);
-
-      // The command completes successfully by showing an info message
-      // We can't easily assert on info messages in tests, but we can verify
-      // that the command doesn't throw and doesn't open a file editor
-      assert.ok(true, "editTags command executed without error");
-    });
   });
 
   // TODO: No corresponding section in spec
