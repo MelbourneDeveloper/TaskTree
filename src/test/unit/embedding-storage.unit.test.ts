@@ -2,7 +2,7 @@ import * as assert from 'assert';
 import { embeddingToBytes, bytesToEmbedding } from '../../semantic/db';
 
 /**
- * SPEC: ai-database-schema
+ * SPEC: database-schema
  *
  * UNIT TESTS for embedding serialization and storage.
  * Proves embeddings survive the Float32Array -> bytes -> Float32Array roundtrip

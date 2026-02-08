@@ -1,4 +1,5 @@
 /**
+ * SPEC: database-schema, database-schema/tags-table, database-schema/command-tags-junction, database-schema/tag-operations
  * Embedding serialization and SQLite storage layer.
  * Uses node-sqlite3-wasm for WASM-based SQLite with BLOB embedding storage.
  */
@@ -10,6 +11,10 @@ import { ok, err } from '../models/Result';
 import type { SummaryStoreData } from './store';
 
 import type { Database as SqliteDatabase } from 'node-sqlite3-wasm';
+
+const COMMAND_TABLE = 'commands';
+const TAG_TABLE = 'tags';
+const COMMAND_TAGS_TABLE = 'command_tags';
 
 export interface EmbeddingRow {
     readonly commandId: string;
@@ -46,12 +51,14 @@ export function bytesToEmbedding(bytes: Uint8Array): Float32Array {
 
 /**
  * Opens a SQLite database at the given path.
+ * CRITICAL: Enables foreign key constraints on EVERY connection.
  */
 export async function openDatabase(dbPath: string): Promise<Result<DbHandle, string>> {
     try {
         fs.mkdirSync(path.dirname(dbPath), { recursive: true });
         const mod = await import('node-sqlite3-wasm');
         const db = new mod.default.Database(dbPath);
+        db.exec('PRAGMA foreign_keys = ON');
         return ok({ db, path: dbPath });
     } catch (e) {
         const msg = e instanceof Error ? e.message : 'Failed to open database';
@@ -73,12 +80,14 @@ export function closeDatabase(handle: DbHandle): Result<void, string> {
 }
 
 /**
- * Creates the embeddings and tags tables if they do not exist.
+ * SPEC: database-schema, database-schema/tags-table, database-schema/command-tags-junction
+ * Creates the commands, tags, and command_tags tables if they do not exist.
+ * STRICT referential integrity enforced with CASCADE DELETE.
  */
 export function initSchema(handle: DbHandle): Result<void, string> {
     try {
         handle.db.exec(`
-            CREATE TABLE IF NOT EXISTS embeddings (
+            CREATE TABLE IF NOT EXISTS ${COMMAND_TABLE} (
                 command_id TEXT PRIMARY KEY,
                 content_hash TEXT NOT NULL,
                 summary TEXT NOT NULL,
@@ -86,12 +95,23 @@ export function initSchema(handle: DbHandle): Result<void, string> {
                 last_updated TEXT NOT NULL
             )
         `);
+
         handle.db.exec(`
-            CREATE TABLE IF NOT EXISTS tags (
-                tag_name TEXT NOT NULL,
-                pattern TEXT NOT NULL,
-                sort_order INTEGER NOT NULL DEFAULT 0,
-                PRIMARY KEY (tag_name, pattern)
+            CREATE TABLE IF NOT EXISTS ${TAG_TABLE} (
+                tag_id TEXT PRIMARY KEY,
+                tag_name TEXT NOT NULL UNIQUE,
+                description TEXT
+            )
+        `);
+
+        handle.db.exec(`
+            CREATE TABLE IF NOT EXISTS ${COMMAND_TAGS_TABLE} (
+                command_id TEXT NOT NULL,
+                tag_id TEXT NOT NULL,
+                display_order INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (command_id, tag_id),
+                FOREIGN KEY (command_id) REFERENCES ${COMMAND_TABLE}(command_id) ON DELETE CASCADE,
+                FOREIGN KEY (tag_id) REFERENCES ${TAG_TABLE}(tag_id) ON DELETE CASCADE
             )
         `);
         return ok(undefined);
@@ -102,6 +122,7 @@ export function initSchema(handle: DbHandle): Result<void, string> {
 }
 
 /**
+ * SPEC: database-schema/commands-table
  * Upserts a single embedding record.
  */
 export function upsertRow(params: {
@@ -113,7 +134,7 @@ export function upsertRow(params: {
             ? embeddingToBytes(params.row.embedding)
             : null;
         params.handle.db.run(
-            `INSERT OR REPLACE INTO embeddings
+            `INSERT OR REPLACE INTO ${COMMAND_TABLE}
              (command_id, content_hash, summary, embedding, last_updated)
              VALUES (?, ?, ?, ?, ?)`,
             [
@@ -132,6 +153,7 @@ export function upsertRow(params: {
 }
 
 /**
+ * SPEC: database-schema/commands-table
  * Gets a single record by command ID.
  */
 export function getRow(params: {
@@ -140,7 +162,7 @@ export function getRow(params: {
 }): Result<EmbeddingRow | undefined, string> {
     try {
         const row = params.handle.db.get(
-            'SELECT * FROM embeddings WHERE command_id = ?',
+            `SELECT * FROM ${COMMAND_TABLE} WHERE command_id = ?`,
             [params.commandId]
         );
         if (row === null) {
@@ -154,11 +176,12 @@ export function getRow(params: {
 }
 
 /**
+ * SPEC: database-schema/commands-table
  * Gets all records from the database.
  */
 export function getAllRows(handle: DbHandle): Result<EmbeddingRow[], string> {
     try {
-        const rows = handle.db.all('SELECT * FROM embeddings');
+        const rows = handle.db.all(`SELECT * FROM ${COMMAND_TABLE}`);
         return ok(rows.map(r => rowToEmbeddingRow(r as RawRow)));
     } catch (e) {
         const msg = e instanceof Error ? e.message : 'Failed to get all rows';
@@ -197,7 +220,7 @@ export function importFromJsonStore(params: {
         const records = Object.values(params.jsonData.records);
         for (const record of records) {
             params.handle.db.run(
-                `INSERT OR IGNORE INTO embeddings
+                `INSERT OR IGNORE INTO ${COMMAND_TABLE}
                  (command_id, content_hash, summary, embedding, last_updated)
                  VALUES (?, ?, ?, ?, ?)`,
                 [
@@ -216,169 +239,239 @@ export function importFromJsonStore(params: {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Tag storage
-// ---------------------------------------------------------------------------
-
-export interface TagRow {
-    readonly tagName: string;
-    readonly pattern: string;
-    readonly sortOrder: number;
+/**
+ * Cleans up orphaned records that violate referential integrity.
+ * Deletes command_tags rows where command_id doesn't exist in commands table.
+ * Should be run after enabling FK constraints on existing databases.
+ */
+export function cleanupOrphanedRecords(handle: DbHandle): Result<number, string> {
+    try {
+        const result = handle.db.run(
+            `DELETE FROM ${COMMAND_TAGS_TABLE}
+             WHERE command_id NOT IN (SELECT command_id FROM ${COMMAND_TABLE})`
+        );
+        const changes = result.changes ?? 0;
+        return ok(changes);
+    } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Failed to cleanup orphaned records';
+        return err(msg);
+    }
 }
 
+// ---------------------------------------------------------------------------
+// SPEC: tagging - Junction table operations
+// ---------------------------------------------------------------------------
+
 /**
- * Gets all tag rows ordered by tag name then sort order.
+ * Ensures a command record exists before adding tags to it.
+ * Inserts placeholder if needed to maintain referential integrity.
  */
-export function getAllTagRows(handle: DbHandle): Result<TagRow[], string> {
+export function ensureCommandExists(params: {
+    readonly handle: DbHandle;
+    readonly commandId: string;
+}): Result<void, string> {
     try {
-        const rows = handle.db.all(
-            'SELECT tag_name, pattern, sort_order FROM tags ORDER BY tag_name, sort_order'
+        const existing = params.handle.db.get(
+            `SELECT command_id FROM ${COMMAND_TABLE} WHERE command_id = ?`,
+            [params.commandId]
         );
-        return ok(rows.map(r => ({
-            tagName: (r as RawRow)['tag_name'] as string,
-            pattern: (r as RawRow)['pattern'] as string,
-            sortOrder: Number((r as RawRow)['sort_order']),
-        })));
+        if (existing === null) {
+            params.handle.db.run(
+                `INSERT INTO ${COMMAND_TABLE}
+                 (command_id, content_hash, summary, embedding, last_updated)
+                 VALUES (?, '', '', NULL, ?)`,
+                [params.commandId, new Date().toISOString()]
+            );
+        }
+        return ok(undefined);
     } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Failed to get tag rows';
+        const msg = e instanceof Error ? e.message : 'Failed to ensure command exists';
         return err(msg);
     }
 }
 
 /**
- * Gets ordered patterns for a single tag.
+ * SPEC: database-schema/tag-operations, tagging, tagging/management
+ * Adds a tag to a command with optional display order.
+ * Ensures BOTH tag and command exist before creating junction record.
+ * STRICT referential integrity enforced.
  */
-export function getTagPatterns(params: {
+export function addTagToCommand(params: {
+    readonly handle: DbHandle;
+    readonly commandId: string;
+    readonly tagName: string;
+    readonly displayOrder?: number;
+}): Result<void, string> {
+    try {
+        const cmdResult = ensureCommandExists({
+            handle: params.handle,
+            commandId: params.commandId
+        });
+        if (!cmdResult.ok) {
+            return cmdResult;
+        }
+        const existing = params.handle.db.get(
+            `SELECT tag_id FROM ${TAG_TABLE} WHERE tag_name = ?`,
+            [params.tagName]
+        );
+        const tagId = existing !== null
+            ? (existing as RawRow)['tag_id'] as string
+            : crypto.randomUUID();
+        if (existing === null) {
+            params.handle.db.run(
+                `INSERT INTO ${TAG_TABLE} (tag_id, tag_name, description) VALUES (?, ?, NULL)`,
+                [tagId, params.tagName]
+            );
+        }
+        const order = params.displayOrder ?? 0;
+        params.handle.db.run(
+            `INSERT OR IGNORE INTO ${COMMAND_TAGS_TABLE} (command_id, tag_id, display_order) VALUES (?, ?, ?)`,
+            [params.commandId, tagId, order]
+        );
+        return ok(undefined);
+    } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Failed to add tag to command';
+        return err(msg);
+    }
+}
+
+/**
+ * SPEC: database-schema/tag-operations, tagging, tagging/management
+ * Removes a tag from a command.
+ */
+export function removeTagFromCommand(params: {
+    readonly handle: DbHandle;
+    readonly commandId: string;
+    readonly tagName: string;
+}): Result<void, string> {
+    try {
+        params.handle.db.run(
+            `DELETE FROM ${COMMAND_TAGS_TABLE}
+             WHERE command_id = ?
+             AND tag_id = (SELECT tag_id FROM ${TAG_TABLE} WHERE tag_name = ?)`,
+            [params.commandId, params.tagName]
+        );
+        return ok(undefined);
+    } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Failed to remove tag from command';
+        return err(msg);
+    }
+}
+
+/**
+ * SPEC: database-schema/tag-operations, tagging/filter
+ * Gets all command IDs for a given tag, ordered by display_order.
+ */
+export function getCommandIdsByTag(params: {
     readonly handle: DbHandle;
     readonly tagName: string;
 }): Result<string[], string> {
     try {
         const rows = params.handle.db.all(
-            'SELECT pattern FROM tags WHERE tag_name = ? ORDER BY sort_order',
+            `SELECT ct.command_id
+             FROM ${COMMAND_TAGS_TABLE} ct
+             JOIN ${TAG_TABLE} t ON ct.tag_id = t.tag_id
+             WHERE t.tag_name = ?
+             ORDER BY ct.display_order`,
             [params.tagName]
         );
-        return ok(rows.map(r => (r as RawRow)['pattern'] as string));
+        return ok(rows.map(r => (r as RawRow)['command_id'] as string));
     } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Failed to get tag patterns';
+        const msg = e instanceof Error ? e.message : 'Failed to get command IDs by tag';
         return err(msg);
     }
 }
 
 /**
- * Gets all distinct tag names.
+ * SPEC: database-schema/tag-operations, tagging
+ * Gets all tags for a given command.
  */
-export function getTagNames(handle: DbHandle): Result<string[], string> {
+export function getTagsForCommand(params: {
+    readonly handle: DbHandle;
+    readonly commandId: string;
+}): Result<string[], string> {
     try {
-        const rows = handle.db.all(
-            'SELECT DISTINCT tag_name FROM tags ORDER BY tag_name'
+        const rows = params.handle.db.all(
+            `SELECT t.tag_name
+             FROM ${TAG_TABLE} t
+             JOIN ${COMMAND_TAGS_TABLE} ct ON t.tag_id = ct.tag_id
+             WHERE ct.command_id = ?`,
+            [params.commandId]
         );
         return ok(rows.map(r => (r as RawRow)['tag_name'] as string));
     } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Failed to get tag names';
+        const msg = e instanceof Error ? e.message : 'Failed to get tags for command';
         return err(msg);
     }
 }
 
 /**
- * Adds a pattern to a tag. Appends at the end (max sort_order + 1).
+ * SPEC: database-schema/tag-operations, tagging/filter
+ * Gets all distinct tag names from tags table.
  */
-export function addPatternToTag(params: {
+export function getAllTagNames(handle: DbHandle): Result<string[], string> {
+    try {
+        const rows = handle.db.all(
+            `SELECT tag_name FROM ${TAG_TABLE} ORDER BY tag_name`
+        );
+        return ok(rows.map(r => (r as RawRow)['tag_name'] as string));
+    } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Failed to get all tag names';
+        return err(msg);
+    }
+}
+
+/**
+ * SPEC: database-schema/tag-operations, quick-launch
+ * Updates the display order for a tag assignment in the junction table.
+ */
+export function updateTagDisplayOrder(params: {
     readonly handle: DbHandle;
-    readonly tagName: string;
-    readonly pattern: string;
+    readonly commandId: string;
+    readonly tagId: string;
+    readonly newOrder: number;
 }): Result<void, string> {
     try {
-        const maxRow = params.handle.db.get(
-            'SELECT MAX(sort_order) as max_order FROM tags WHERE tag_name = ?',
-            [params.tagName]
-        );
-        const nextOrder = maxRow !== null
-            ? Number((maxRow as RawRow)['max_order'] ?? -1) + 1
-            : 0;
         params.handle.db.run(
-            'INSERT OR IGNORE INTO tags (tag_name, pattern, sort_order) VALUES (?, ?, ?)',
-            [params.tagName, params.pattern, nextOrder]
+            `UPDATE ${COMMAND_TAGS_TABLE} SET display_order = ? WHERE command_id = ? AND tag_id = ?`,
+            [params.newOrder, params.commandId, params.tagId]
         );
         return ok(undefined);
     } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Failed to add pattern to tag';
+        const msg = e instanceof Error ? e.message : 'Failed to update tag display order';
         return err(msg);
     }
 }
 
 /**
- * Removes a pattern from a tag.
+ * SPEC: quick-launch
+ * Reorders command IDs for a tag by updating display_order for all junction records.
+ * Used for drag-and-drop reordering in Quick Launch.
  */
-export function removePatternFromTag(params: {
+export function reorderTagCommands(params: {
     readonly handle: DbHandle;
     readonly tagName: string;
-    readonly pattern: string;
+    readonly orderedCommandIds: readonly string[];
 }): Result<void, string> {
     try {
-        params.handle.db.run(
-            'DELETE FROM tags WHERE tag_name = ? AND pattern = ?',
-            [params.tagName, params.pattern]
-        );
-        return ok(undefined);
-    } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Failed to remove pattern from tag';
-        return err(msg);
-    }
-}
-
-/**
- * Replaces all patterns for a tag (used for reordering).
- */
-export function replaceTagPatterns(params: {
-    readonly handle: DbHandle;
-    readonly tagName: string;
-    readonly patterns: readonly string[];
-}): Result<void, string> {
-    try {
-        params.handle.db.run(
-            'DELETE FROM tags WHERE tag_name = ?',
+        const tagRow = params.handle.db.get(
+            `SELECT tag_id FROM ${TAG_TABLE} WHERE tag_name = ?`,
             [params.tagName]
         );
-        for (let i = 0; i < params.patterns.length; i++) {
-            const pattern = params.patterns[i];
-            if (pattern === undefined) { continue; }
+        if (tagRow === null) {
+            return err(`Tag "${params.tagName}" not found`);
+        }
+        const tagId = (tagRow as RawRow)['tag_id'] as string;
+        params.orderedCommandIds.forEach((commandId, index) => {
             params.handle.db.run(
-                'INSERT INTO tags (tag_name, pattern, sort_order) VALUES (?, ?, ?)',
-                [params.tagName, pattern, i]
+                `UPDATE ${COMMAND_TAGS_TABLE} SET display_order = ? WHERE command_id = ? AND tag_id = ?`,
+                [index, commandId, tagId]
             );
-        }
+        });
         return ok(undefined);
     } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Failed to replace tag patterns';
+        const msg = e instanceof Error ? e.message : 'Failed to reorder tag commands';
         return err(msg);
     }
 }
 
-/**
- * Imports tag definitions from a parsed JSON config into SQLite.
- * Replaces all existing tags.
- */
-export function importTagsFromConfig(params: {
-    readonly handle: DbHandle;
-    readonly tags: Record<string, Array<string | Record<string, string | undefined>>>;
-}): Result<number, string> {
-    try {
-        params.handle.db.run('DELETE FROM tags');
-        let count = 0;
-        for (const [tagName, patterns] of Object.entries(params.tags)) {
-            for (let i = 0; i < patterns.length; i++) {
-                const raw = patterns[i];
-                const pattern = typeof raw === 'string' ? raw : JSON.stringify(raw);
-                params.handle.db.run(
-                    'INSERT INTO tags (tag_name, pattern, sort_order) VALUES (?, ?, ?)',
-                    [tagName, pattern, i]
-                );
-                count++;
-            }
-        }
-        return ok(count);
-    } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Failed to import tags from config';
-        return err(msg);
-    }
-}

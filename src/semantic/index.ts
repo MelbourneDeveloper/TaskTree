@@ -13,7 +13,7 @@ import { computeContentHash } from './store';
 import type { FileSystemAdapter } from './adapters';
 import { selectCopilotModel, summariseScript } from './summariser';
 import { initDb, getDb, getOrCreateEmbedder, disposeSemantic } from './lifecycle';
-import { getAllRows, upsertRow, getRow, importFromJsonStore } from './db';
+import { getAllRows, upsertRow, getRow, importFromJsonStore, cleanupOrphanedRecords } from './db';
 import type { EmbeddingRow, DbHandle } from './db';
 import { embedText } from './embedder';
 import { rankBySimilarity, type ScoredCandidate } from './similarity';
@@ -37,10 +37,16 @@ export function isAiEnabled(enabled: boolean): boolean {
 
 /**
  * Initialises the semantic search subsystem.
+ * Cleans up any orphaned records from before FK enforcement.
  */
 export async function initSemanticStore(workspaceRoot: string): Promise<Result<void, string>> {
     const result = await initDb(workspaceRoot);
-    return result.ok ? ok(undefined) : err(result.error);
+    if (!result.ok) { return err(result.error); }
+    const cleanup = cleanupOrphanedRecords(result.value);
+    if (cleanup.ok && cleanup.value > 0) {
+        logger.info('Cleaned up orphaned command_tags records', { count: cleanup.value });
+    }
+    return ok(undefined);
 }
 
 /**
@@ -52,6 +58,7 @@ export async function disposeSemanticStore(): Promise<void> {
 
 /**
  * Migrates legacy JSON store to SQLite if needed.
+ * Cleans up any orphaned records after migration.
  */
 export async function migrateIfNeeded(params: {
     readonly workspaceRoot: string;
@@ -73,6 +80,10 @@ export async function migrateIfNeeded(params: {
     if (!importResult.ok) { return err(importResult.error); }
 
     logger.info('Migrated JSON store to SQLite', { count: importResult.value });
+    const cleanup = cleanupOrphanedRecords(dbResult.value);
+    if (cleanup.ok && cleanup.value > 0) {
+        logger.info('Cleaned up orphaned records after migration', { count: cleanup.value });
+    }
     const deleteResult = await deleteLegacyJsonStore(params.workspaceRoot);
     if (!deleteResult.ok) {
         logger.warn('Could not delete legacy store', { error: deleteResult.error });
@@ -176,17 +187,33 @@ export async function summariseAllTasks(params: {
     readonly fs: FileSystemAdapter;
     readonly onProgress?: (done: number, total: number) => void;
 }): Promise<Result<number, string>> {
+    logger.info('[DIAG] summariseAllTasks START', {
+        taskCount: params.tasks.length,
+        workspaceRoot: params.workspaceRoot,
+        taskIds: params.tasks.slice(0, 3).map(t => t.id)
+    });
+
     const modelResult = await selectCopilotModel();
-    if (!modelResult.ok) { return err(modelResult.error); }
+    if (!modelResult.ok) {
+        logger.error('[DIAG] Copilot model selection failed', { error: modelResult.error });
+        return err(modelResult.error);
+    }
+    logger.info('[DIAG] Copilot model selected', { model: modelResult.value.id });
 
     const dbInit = await initDb(params.workspaceRoot);
-    if (!dbInit.ok) { return err(dbInit.error); }
+    if (!dbInit.ok) {
+        logger.error('[DIAG] initDb failed', { error: dbInit.error });
+        return err(dbInit.error);
+    }
+    logger.info('[DIAG] Database initialized', { path: dbInit.value.path });
 
     const pending = await findPending({
         handle: dbInit.value,
         tasks: params.tasks,
         fs: params.fs
     });
+    logger.info('[DIAG] findPending complete', { pendingCount: pending.length });
+
     if (pending.length === 0) {
         logger.info('All summaries up to date');
         return ok(0);
@@ -197,6 +224,7 @@ export async function summariseAllTasks(params: {
     let failed = 0;
 
     for (const item of pending) {
+        logger.info('[DIAG] Processing task', { id: item.task.id, label: item.task.label });
         const result = await processOneTask({
             model: modelResult.value,
             task: item.task,
@@ -204,9 +232,17 @@ export async function summariseAllTasks(params: {
             hash: item.hash,
             workspaceRoot: params.workspaceRoot
         });
-        if (result.ok) { succeeded++; } else { failed++; }
+        if (result.ok) {
+            succeeded++;
+            logger.info('[DIAG] Task processing succeeded', { id: item.task.id });
+        } else {
+            failed++;
+            logger.error('[DIAG] Task processing failed', { id: item.task.id, error: result.error });
+        }
         params.onProgress?.(succeeded + failed, pending.length);
     }
+
+    logger.info('[DIAG] summariseAllTasks COMPLETE', { succeeded, failed });
 
     if (succeeded === 0 && failed > 0) {
         return err(`All ${failed} tasks failed to embed`);

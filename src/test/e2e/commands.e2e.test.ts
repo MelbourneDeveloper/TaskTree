@@ -15,7 +15,7 @@
  * ILLEGAL actions - DO NOT USE:
  * - ❌ executeCommand('commandtree.refresh') - refresh should be AUTOMATIC via file watcher
  * - ❌ executeCommand('commandtree.clearFilter') - filter state manipulation
- * - ❌ provider.refresh(), provider.setTextFilter(), provider.clearFilters()
+ * - ❌ provider.refresh(), provider.clearFilters()
  * - ❌ assert.ok(true, ...) - FAKE TESTS ARE ILLEGAL
  * - ❌ Any command that manipulates internal state without UI interaction
  */
@@ -132,10 +132,10 @@ suite("Commands and UI E2E Tests", () => {
       const expectedCommands = [
         "commandtree.refresh",
         "commandtree.run",
-        "commandtree.filter",
         "commandtree.filterByTag",
         "commandtree.clearFilter",
         "commandtree.editTags",
+        "commandtree.semanticSearch",
       ];
 
       for (const cmd of expectedCommands) {
@@ -224,12 +224,12 @@ suite("Commands and UI E2E Tests", () => {
 
       const commands = taskTreeMenus.map((m) => m.command);
       assert.ok(
-        commands.includes("commandtree.filter"),
-        "Should have filter in menu",
-      );
-      assert.ok(
         commands.includes("commandtree.filterByTag"),
         "Should have filterByTag in menu",
+      );
+      assert.ok(
+        commands.includes("commandtree.semanticSearch"),
+        "Should have semanticSearch in menu",
       );
       assert.ok(
         commands.includes("commandtree.clearFilter"),
@@ -346,7 +346,7 @@ suite("Commands and UI E2E Tests", () => {
       );
     });
 
-    test("commandtree view has exactly 5 title bar icons", function () {
+    test("commandtree view has exactly 4 title bar icons", function () {
       this.timeout(10000);
 
       const packageJson = readPackageJson();
@@ -360,12 +360,11 @@ suite("Commands and UI E2E Tests", () => {
 
       assert.strictEqual(
         taskTreeMenus.length,
-        5,
-        `Expected exactly 5 view/title items for commandtree, got ${taskTreeMenus.length}: ${taskTreeMenus.map((m) => m.command).join(", ")}`,
+        4,
+        `Expected exactly 4 view/title items for commandtree, got ${taskTreeMenus.length}: ${taskTreeMenus.map((m) => m.command).join(", ")}`,
       );
 
       const expectedCommands = [
-        "commandtree.filter",
         "commandtree.filterByTag",
         "commandtree.clearFilter",
         "commandtree.semanticSearch",
@@ -379,7 +378,7 @@ suite("Commands and UI E2E Tests", () => {
       }
     });
 
-    test("commandtree-quick view has exactly 4 title bar icons", function () {
+    test("commandtree-quick view has exactly 3 title bar icons", function () {
       this.timeout(10000);
 
       const packageJson = readPackageJson();
@@ -391,12 +390,11 @@ suite("Commands and UI E2E Tests", () => {
 
       assert.strictEqual(
         quickMenus.length,
-        4,
-        `Expected exactly 4 view/title items for commandtree-quick, got ${quickMenus.length}: ${quickMenus.map((m) => m.command).join(", ")}`,
+        3,
+        `Expected exactly 3 view/title items for commandtree-quick, got ${quickMenus.length}: ${quickMenus.map((m) => m.command).join(", ")}`,
       );
 
       const expectedCommands = [
-        "commandtree.filter",
         "commandtree.filterByTag",
         "commandtree.clearFilter",
         "commandtree.refreshQuick",
@@ -428,10 +426,10 @@ suite("Commands and UI E2E Tests", () => {
       const runCmd = commands.find((c) => c.command === "commandtree.run");
       assert.ok(runCmd?.icon === "$(play)", "Run should have play icon");
 
-      const filterCmd = commands.find((c) => c.command === "commandtree.filter");
+      const semanticSearchCmd = commands.find((c) => c.command === "commandtree.semanticSearch");
       assert.ok(
-        filterCmd?.icon === "$(search)",
-        "Filter should have search icon",
+        semanticSearchCmd?.icon === "$(search)",
+        "SemanticSearch should have search icon",
       );
 
       const tagFilterCmd = commands.find(

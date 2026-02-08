@@ -122,9 +122,17 @@ export class CommandTreeItem extends vscode.TreeItem {
             this.id = task.id;
             const isQuick = task.tags.includes('quick');
             const isMarkdown = task.type === 'markdown';
-            this.contextValue = isMarkdown
-                ? (isQuick ? 'task-markdown-quick' : 'task-markdown')
-                : (isQuick ? 'task-quick' : 'task');
+
+            if (isMarkdown && isQuick) {
+                this.contextValue = 'task-markdown-quick';
+            } else if (isMarkdown) {
+                this.contextValue = 'task-markdown';
+            } else if (isQuick) {
+                this.contextValue = 'task-quick';
+            } else {
+                this.contextValue = 'task';
+            }
+
             this.tooltip = this.buildTooltip(task);
             this.iconPath = this.getIcon(task.type);
             const tagStr = task.tags.length > 0 ? ` [${task.tags.join(', ')}]` : '';
@@ -145,9 +153,8 @@ export class CommandTreeItem extends vscode.TreeItem {
         const md = new vscode.MarkdownString();
         md.appendMarkdown(`**${task.label}**\n\n`);
         if (task.summary !== undefined && task.summary !== '') {
-            const hasSecurityWarning = this.containsSecurityKeywords(task.summary);
-            const warningPrefix = hasSecurityWarning ? '⚠️ ' : '';
-            md.appendMarkdown(`> ${warningPrefix}${task.summary}\n\n`);
+            // SPEC.md **ai-summary-generation**: LLM adds ⚠️ prefix, no need for code to duplicate
+            md.appendMarkdown(`> ${task.summary}\n\n`);
             md.appendMarkdown(`---\n\n`);
         }
         md.appendMarkdown(`Type: \`${task.type}\`\n\n`);
@@ -160,12 +167,6 @@ export class CommandTreeItem extends vscode.TreeItem {
         }
         md.appendMarkdown(`Source: \`${task.filePath}\``);
         return md;
-    }
-
-    private containsSecurityKeywords(text: string): boolean {
-        const keywords = ['danger', 'unsafe', 'caution', 'warning', 'security', 'risk', 'vulnerability'];
-        const lower = text.toLowerCase();
-        return keywords.some(k => lower.includes(k));
     }
 
     private getIcon(type: TaskType): vscode.ThemeIcon {

@@ -24,6 +24,7 @@ You are working with many other agents. Make sure there is effective cooperation
 
 ### Typescript
 - **TypeScript strict mode** - No `any`, no implicit types, turn all lints up to error
+- **Regularly run the linter** - Fix lint errors IMMEDIATELY
 - **Decouple providers from the VSCODE SDK** - No vscode sdk use within the providers
 - **Ignoring lints = ⛔️ illegal** - Fix violations immediately
 - **No throwing** - Only return `Result<T,E>`

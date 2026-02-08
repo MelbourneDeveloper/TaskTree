@@ -1,7 +1,9 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs';
 import * as path from 'path';
 import { CommandTreeProvider } from './CommandTreeProvider';
-import type { CommandTreeItem } from './models/TaskItem';
+import { CommandTreeItem } from './models/TaskItem';
+import type { TaskItem } from './models/TaskItem';
 import { TaskRunner } from './runners/TaskRunner';
 import { QuickTasksProvider } from './QuickTasksProvider';
 import { logger } from './utils/logger';
@@ -13,9 +15,9 @@ import {
     disposeSemanticStore,
     migrateIfNeeded
 } from './semantic';
-import { initDb } from './semantic/lifecycle';
-import { replaceTagPatterns } from './semantic/db';
 import { createVSCodeFileSystem } from './semantic/vscodeAdapters';
+import { getDb } from './semantic/lifecycle';
+import { addTagToCommand, removeTagFromCommand, getCommandIdsByTag } from './semantic/db';
 
 let treeProvider: CommandTreeProvider;
 let quickTasksProvider: QuickTasksProvider;
@@ -42,6 +44,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
     registerCommands(context, workspaceRoot);
     setupFileWatcher(context, workspaceRoot);
     await syncQuickTasks(workspaceRoot);
+    await syncTagsFromJson(workspaceRoot);
     initAiSummaries(workspaceRoot);
     return { commandTreeProvider: treeProvider, quickTasksProvider };
 }
@@ -104,7 +107,6 @@ function registerCoreCommands(context: vscode.ExtensionContext): void {
 
 function registerFilterCommands(context: vscode.ExtensionContext, workspaceRoot: string): void {
     context.subscriptions.push(
-        vscode.commands.registerCommand('commandtree.filter', handleFilter),
         vscode.commands.registerCommand('commandtree.filterByTag', handleFilterByTag),
         vscode.commands.registerCommand('commandtree.clearFilter', () => {
             treeProvider.clearFilters();
@@ -125,16 +127,18 @@ function registerTagCommands(context: vscode.ExtensionContext): void {
 
 function registerQuickCommands(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
-        vscode.commands.registerCommand('commandtree.addToQuick', async (item: CommandTreeItem | undefined) => {
-            if (item !== undefined && item.task !== null) {
-                quickTasksProvider.addToQuick(item.task);
+        vscode.commands.registerCommand('commandtree.addToQuick', async (item: CommandTreeItem | TaskItem | undefined) => {
+            const task = item instanceof CommandTreeItem ? item.task : item;
+            if (task !== undefined && task !== null) {
+                quickTasksProvider.addToQuick(task);
                 await treeProvider.refresh();
                 quickTasksProvider.updateTasks(treeProvider.getAllTasks());
             }
         }),
-        vscode.commands.registerCommand('commandtree.removeFromQuick', async (item: CommandTreeItem | undefined) => {
-            if (item !== undefined && item.task !== null) {
-                quickTasksProvider.removeFromQuick(item.task);
+        vscode.commands.registerCommand('commandtree.removeFromQuick', async (item: CommandTreeItem | TaskItem | undefined) => {
+            const task = item instanceof CommandTreeItem ? item.task : item;
+            if (task !== undefined && task !== null) {
+                quickTasksProvider.removeFromQuick(task);
                 await treeProvider.refresh();
                 quickTasksProvider.updateTasks(treeProvider.getAllTasks());
             }
@@ -143,18 +147,6 @@ function registerQuickCommands(context: vscode.ExtensionContext): void {
             quickTasksProvider.refresh();
         })
     );
-}
-
-async function handleFilter(): Promise<void> {
-    const filter = await vscode.window.showInputBox({
-        prompt: 'Filter commands by name, path, or description',
-        placeHolder: 'Type to filter...',
-        value: ''
-    });
-    if (filter !== undefined) {
-        treeProvider.setTextFilter(filter);
-        updateFilterContext();
-    }
 }
 
 async function handleFilterByTag(): Promise<void> {
@@ -179,28 +171,32 @@ async function handleFilterByTag(): Promise<void> {
     }
 }
 
-async function handleAddTag(item: CommandTreeItem | undefined): Promise<void> {
-    const task = item?.task;
+async function handleAddTag(item: CommandTreeItem | TaskItem | undefined, tagNameArg?: string): Promise<void> {
+    const task = item instanceof CommandTreeItem ? item.task : item;
     if (task === undefined || task === null) { return; }
-    const tagName = await pickOrCreateTag(treeProvider.getAllTags(), task.label);
-    if (tagName === undefined) { return; }
+    const tagName = tagNameArg ?? await pickOrCreateTag(treeProvider.getAllTags(), task.label);
+    if (tagName === undefined || tagName === '') { return; }
     await treeProvider.addTaskToTag(task, tagName);
     quickTasksProvider.updateTasks(treeProvider.getAllTasks());
 }
 
-async function handleRemoveTag(item: CommandTreeItem | undefined): Promise<void> {
-    const task = item?.task;
+async function handleRemoveTag(item: CommandTreeItem | TaskItem | undefined, tagNameArg?: string): Promise<void> {
+    const task = item instanceof CommandTreeItem ? item.task : item;
     if (task === undefined || task === null) { return; }
-    if (task.tags.length === 0) {
+    if (task.tags.length === 0 && tagNameArg === undefined) {
         vscode.window.showInformationMessage('This command has no tags');
         return;
     }
-    const options = task.tags.map(t => ({ label: `$(tag) ${t}`, tag: t }));
-    const selected = await vscode.window.showQuickPick(options, {
-        placeHolder: `Remove tag from "${task.label}"`
-    });
-    if (selected === undefined) { return; }
-    await treeProvider.removeTaskFromTag(task, selected.tag);
+    let tagToRemove = tagNameArg;
+    if (tagToRemove === undefined) {
+        const options = task.tags.map(t => ({ label: `$(tag) ${t}`, tag: t }));
+        const selected = await vscode.window.showQuickPick(options, {
+            placeHolder: `Remove tag from "${task.label}"`
+        });
+        if (selected === undefined) { return; }
+        tagToRemove = selected.tag;
+    }
+    await treeProvider.removeTaskFromTag(task, tagToRemove);
     quickTasksProvider.updateTasks(treeProvider.getAllTasks());
 }
 
@@ -225,7 +221,7 @@ async function handleSemanticSearch(queryArg: string | undefined, workspaceRoot:
 
 function setupFileWatcher(context: vscode.ExtensionContext, workspaceRoot: string): void {
     const watcher = vscode.workspace.createFileSystemWatcher(
-        '**/{package.json,Makefile,makefile,tasks.json,launch.json,commandtree.json,*.sh,*.py}'
+        '**/{package.json,Makefile,makefile,tasks.json,launch.json,*.sh,*.py}'
     );
     let debounceTimer: NodeJS.Timeout | undefined;
     const onFileChange = (): void => {
@@ -242,49 +238,27 @@ function setupFileWatcher(context: vscode.ExtensionContext, workspaceRoot: strin
     watcher.onDidCreate(onFileChange);
     watcher.onDidDelete(onFileChange);
     context.subscriptions.push(watcher);
-}
 
-async function syncTagsFromJson(workspaceRoot: string): Promise<void> {
-    const configPath = path.join(workspaceRoot, '.vscode', 'commandtree.json');
-    try {
-        const uri = vscode.Uri.file(configPath);
-        const bytes = await vscode.workspace.fs.readFile(uri);
-        const content = new TextDecoder().decode(bytes);
-        const config = JSON.parse(content) as { tags?: Record<string, Array<string | Record<string, string>>> };
-        if (config.tags === undefined) {
-            logger.config('No tags in commandtree.json', {});
-            return;
+    const configWatcher = vscode.workspace.createFileSystemWatcher('**/.vscode/commandtree.json');
+    let configDebounceTimer: NodeJS.Timeout | undefined;
+    const onConfigChange = (): void => {
+        if (configDebounceTimer !== undefined) {
+            clearTimeout(configDebounceTimer);
         }
-        const dbResult = await initDb(workspaceRoot);
-        if (!dbResult.ok) {
-            logger.error('Failed to init DB for tag sync', { error: dbResult.error });
-            return;
-        }
-        for (const [tagName, patterns] of Object.entries(config.tags)) {
-            const stringPatterns = patterns.map(p => typeof p === 'string' ? p : JSON.stringify(p));
-            const result = replaceTagPatterns({
-                handle: dbResult.value,
-                tagName,
-                patterns: stringPatterns
+        configDebounceTimer = setTimeout(() => {
+            syncTagsFromJson(workspaceRoot).catch((e: unknown) => {
+                logger.error('Config sync failed', { error: e instanceof Error ? e.message : 'Unknown' });
             });
-            if (!result.ok) {
-                logger.error('Failed to sync tag patterns', { tagName, error: result.error });
-            }
-        }
-        logger.config('Synced tags from commandtree.json to DB', {
-            tags: config.tags
-        });
-    } catch (e) {
-        logger.config('Failed to sync tags from commandtree.json', {
-            path: configPath,
-            error: e instanceof Error ? e.message : 'Unknown'
-        });
-    }
+        }, 1000);
+    };
+    configWatcher.onDidChange(onConfigChange);
+    configWatcher.onDidCreate(onConfigChange);
+    configWatcher.onDidDelete(onConfigChange);
+    context.subscriptions.push(configWatcher);
 }
 
 async function syncQuickTasks(workspaceRoot: string): Promise<void> {
     logger.info('syncQuickTasks START');
-    await syncTagsFromJson(workspaceRoot);
     await treeProvider.refresh();
     const allTasks = treeProvider.getAllTasks();
     logger.info('syncQuickTasks after refresh', {
@@ -298,6 +272,86 @@ async function syncQuickTasks(workspaceRoot: string): Promise<void> {
         runSummarisation(workspaceRoot).catch((e: unknown) => {
             logger.error('Re-summarisation failed', { error: e instanceof Error ? e.message : 'Unknown' });
         });
+    }
+}
+
+interface TagPattern {
+    readonly id?: string;
+    readonly type?: string;
+    readonly label?: string;
+}
+
+function matchesPattern(task: TaskItem, pattern: string | TagPattern): boolean {
+    if (typeof pattern === 'string') {
+        return task.id === pattern;
+    }
+    if (pattern.type !== undefined && task.type !== pattern.type) {
+        return false;
+    }
+    if (pattern.label !== undefined && task.label !== pattern.label) {
+        return false;
+    }
+    if (pattern.id !== undefined && task.id !== pattern.id) {
+        return false;
+    }
+    return true;
+}
+
+async function syncTagsFromJson(workspaceRoot: string): Promise<void> {
+    logger.info('syncTagsFromJson START', { workspaceRoot });
+    const configPath = path.join(workspaceRoot, '.vscode', 'commandtree.json');
+    if (!fs.existsSync(configPath)) {
+        logger.info('No commandtree.json found, skipping tag sync', { configPath });
+        return;
+    }
+    const dbResult = getDb();
+    if (!dbResult.ok) {
+        logger.warn('DB not available, skipping tag sync', { error: dbResult.error });
+        return;
+    }
+    try {
+        const content = fs.readFileSync(configPath, 'utf8');
+        logger.info('Read commandtree.json', { contentLength: content.length });
+        const config = JSON.parse(content) as { tags?: Record<string, Array<string | TagPattern>> };
+        if (config.tags === undefined) {
+            logger.info('No tags in config, skipping');
+            return;
+        }
+        const allTasks = treeProvider.getAllTasks();
+        logger.info('Got all tasks for pattern matching', { taskCount: allTasks.length });
+        for (const [tagName, patterns] of Object.entries(config.tags)) {
+            logger.info('Processing tag', { tagName, patternCount: patterns.length });
+            const existingIds = getCommandIdsByTag({ handle: dbResult.value, tagName });
+            const currentIds = existingIds.ok ? new Set(existingIds.value) : new Set<string>();
+            const matchedIds = new Set<string>();
+            for (const pattern of patterns) {
+                logger.info('Processing pattern', { tagName, pattern });
+                for (const task of allTasks) {
+                    if (matchesPattern(task, pattern)) {
+                        logger.info('Pattern matched task', { tagName, pattern, taskId: task.id, taskLabel: task.label });
+                        matchedIds.add(task.id);
+                    }
+                }
+            }
+            logger.info('Pattern matching complete', { tagName, matchedCount: matchedIds.size, currentCount: currentIds.size });
+            for (const id of currentIds) {
+                if (!matchedIds.has(id)) {
+                    logger.info('Removing tag from command', { tagName, commandId: id });
+                    removeTagFromCommand({ handle: dbResult.value, commandId: id, tagName });
+                }
+            }
+            for (const id of matchedIds) {
+                if (!currentIds.has(id)) {
+                    logger.info('Adding tag to command', { tagName, commandId: id });
+                    addTagToCommand({ handle: dbResult.value, commandId: id, tagName });
+                }
+            }
+        }
+        await treeProvider.refresh();
+        quickTasksProvider.updateTasks(treeProvider.getAllTasks());
+        logger.info('Tag sync completed successfully');
+    } catch (e) {
+        logger.error('Tag sync failed', { error: e instanceof Error ? e.message : 'Unknown', stack: e instanceof Error ? e.stack : undefined });
     }
 }
 
@@ -334,13 +388,17 @@ function initAiSummaries(workspaceRoot: string): void {
 
 async function runSummarisation(workspaceRoot: string): Promise<void> {
     const tasks = treeProvider.getAllTasks();
-    if (tasks.length === 0) { return; }
+    logger.info('[DIAG] runSummarisation called', { taskCount: tasks.length, workspaceRoot });
+    if (tasks.length === 0) {
+        logger.warn('[DIAG] No tasks to summarise, returning early');
+        return;
+    }
     logger.info('Starting AI summarisation', { taskCount: tasks.length });
-    const fs = createVSCodeFileSystem();
+    const fileSystem = createVSCodeFileSystem();
     const result = await summariseAllTasks({
         tasks,
         workspaceRoot,
-        fs,
+        fs: fileSystem,
         onProgress: (done, total) => {
             logger.info('Summarisation progress', { done, total });
         }

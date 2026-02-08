@@ -7,8 +7,9 @@
  * It selects a Copilot model, sends a real prompt, and verifies
  * a real streamed response comes back.
  *
- * YOU MUST manually accept the Copilot consent dialog when it appears.
- * The test will wait up to 60 seconds for model selection (consent + init).
+ * These tests require GitHub Copilot to be authenticated and available.
+ * In CI/automated environments without Copilot, the suite is skipped.
+ * To run manually: authenticate Copilot, accept consent dialog when prompted.
  */
 
 import * as assert from "assert";
@@ -20,10 +21,47 @@ const MODEL_MAX_ATTEMPTS = 30;
 const COPILOT_VENDOR = "copilot";
 
 suite("Copilot Language Model API E2E", () => {
+  let copilotAvailable = false;
+
   suiteSetup(async function () {
-    this.timeout(30000);
+    this.timeout(120000);
     await activateExtension();
     await sleep(3000);
+
+    // Check if Copilot is available (authenticated + consent granted)
+    for (let i = 0; i < MODEL_MAX_ATTEMPTS; i++) {
+      const models = await vscode.lm.selectChatModels({ vendor: COPILOT_VENDOR });
+      if (models.length > 0) {
+        // Try to actually use the model to confirm we have permission
+        try {
+          const testModel = models[0];
+          if (testModel === undefined) { continue; }
+          const testResponse = await testModel.sendRequest(
+            [vscode.LanguageModelChatMessage.User("test")],
+            {},
+            new vscode.CancellationTokenSource().token
+          );
+          // Consume response to verify it's actually usable
+          const chunks: string[] = [];
+          for await (const chunk of testResponse.text) {
+            chunks.push(chunk);
+          }
+          if (chunks.length === 0) { continue; }
+          copilotAvailable = true;
+          break;
+        } catch (e) {
+          // Permission denied or authentication failed
+          if (e instanceof vscode.LanguageModelError && e.message.includes("cannot be used")) {
+            break; // No point retrying permission errors
+          }
+        }
+      }
+      await sleep(MODEL_WAIT_MS);
+    }
+
+    if (!copilotAvailable) {
+      this.skip();
+    }
   });
 
   test("selectChatModels returns at least one Copilot model", async function () {

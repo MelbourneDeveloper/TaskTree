@@ -1,4 +1,5 @@
 /**
+ * SPEC: database-schema
  * Singleton lifecycle management for the semantic search subsystem.
  * Manages database and embedder handles via cached promises
  * to avoid race conditions on module-level state.

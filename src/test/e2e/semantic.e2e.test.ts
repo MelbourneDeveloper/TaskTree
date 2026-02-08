@@ -1,5 +1,5 @@
 /**
- * SPEC: ai-semantic-search, ai-summary-generation, ai-embedding-generation, ai-database-schema, ai-search-implementation
+ * SPEC: ai-semantic-search, ai-summary-generation, ai-embedding-generation, database-schema, ai-search-implementation
  *
  * VECTOR EMBEDDING SEARCH — FULL E2E TESTS
  * Pipeline: Copilot summary → MiniLM embedding → SQLite BLOB → cosine similarity
@@ -96,20 +96,20 @@ async function queryEmbeddingStats(dbPath: string): Promise<{
   const db = new mod.default.Database(dbPath);
   try {
     const total = db.get(
-      "SELECT COUNT(*) as cnt FROM embeddings",
+      "SELECT COUNT(*) as cnt FROM commands",
     ) as SqlRow | null;
     const embedded = db.get(
-      "SELECT COUNT(*) as cnt FROM embeddings WHERE embedding IS NOT NULL",
+      "SELECT COUNT(*) as cnt FROM commands WHERE embedding IS NOT NULL",
     ) as SqlRow | null;
     const nulls = db.get(
-      "SELECT COUNT(*) as cnt FROM embeddings WHERE embedding IS NULL",
+      "SELECT COUNT(*) as cnt FROM commands WHERE embedding IS NULL",
     ) as SqlRow | null;
     const wrongSize = db.get(
-      "SELECT COUNT(*) as cnt FROM embeddings WHERE embedding IS NOT NULL AND LENGTH(embedding) != ?",
+      "SELECT COUNT(*) as cnt FROM commands WHERE embedding IS NOT NULL AND LENGTH(embedding) != ?",
       [EMBEDDING_BLOB_BYTES],
     ) as SqlRow | null;
     const sample = db.get(
-      "SELECT embedding FROM embeddings WHERE embedding IS NOT NULL LIMIT 1",
+      "SELECT embedding FROM commands WHERE embedding IS NOT NULL LIMIT 1",
     ) as SqlRow | null;
     return {
       rowCount: Number(total?.["cnt"] ?? 0),
@@ -143,6 +143,10 @@ suite("Vector Embedding Search E2E", () => {
     await activateExtension();
     provider = getCommandTreeProvider();
     await sleep(3000);
+
+    // DEBUG: Log workspace root
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    console.log(`[DEBUG] Workspace root: ${workspaceRoot}`);
 
     // Snapshot total task count before any filtering
     totalTaskCount = (await collectLeafTasks(provider)).length;
@@ -180,22 +184,36 @@ suite("Vector Embedding Search E2E", () => {
       .update("enableAiSummaries", true, vscode.ConfigurationTarget.Workspace);
     await sleep(SHORT_SETTLE_MS);
 
+    // DEBUG: Log task count before generating summaries
+    const tasksBeforeGen = await collectLeafTasks(provider);
+    console.log(`[DEBUG] Tasks before generateSummaries: ${tasksBeforeGen.length}`);
+    console.log(`[DEBUG] First 3 task IDs: ${tasksBeforeGen.slice(0, 3).map(t => t.id).join(", ")}`);
+
     // Trigger the REAL pipeline: Copilot summaries → MiniLM embeddings → SQLite
     await vscode.commands.executeCommand("commandtree.generateSummaries");
     await sleep(5000);
+
+    // DEBUG: Log task count after generating summaries
+    const tasksAfterGen = await collectLeafTasks(provider);
+    console.log(`[DEBUG] Tasks after generateSummaries: ${tasksAfterGen.length}`);
 
     // GATE: Verify the pipeline actually produced real embeddings.
     // If generateSummaries silently failed (e.g. Copilot auth expired mid-run),
     // we catch it HERE — not in individual tests with confusing errors.
     const dbPath = getFixturePath(path.join(COMMANDTREE_DIR, DB_FILENAME));
+    console.log(`[DEBUG] Database path: ${dbPath}`);
+    console.log(`[DEBUG] Database exists: ${fs.existsSync(dbPath)}`);
+
     assert.ok(
       fs.existsSync(dbPath),
       "GATE FAILED: SQLite DB does not exist after generateSummaries. Pipeline did not fire.",
     );
     const gateStats = await queryEmbeddingStats(dbPath);
+    console.log(`[DEBUG] Gate stats: rowCount=${gateStats.rowCount}, embeddedCount=${gateStats.embeddedCount}, nullCount=${gateStats.nullCount}`);
+
     assert.ok(
       gateStats.embeddedCount > 0,
-      `GATE FAILED: 0/${gateStats.rowCount} rows have real embedding BLOBs. The LM API call succeeded but the pipeline produced nothing.`,
+      `GATE FAILED: ${gateStats.embeddedCount}/${gateStats.rowCount} rows have real embedding BLOBs. The LM API call succeeded but the pipeline produced nothing.`,
     );
   });
 
@@ -213,7 +231,18 @@ suite("Vector Embedding Search E2E", () => {
     }
   });
 
-  // SPEC.md **ai-embedding-generation**, **ai-database-schema**
+  // SPEC.md **ai-search-implementation** line 553: "User invokes semantic search through magnifying glass icon in the UI"
+  test("semanticSearch command is registered and invokable", async function () {
+    this.timeout(10000);
+
+    const commands = await vscode.commands.getCommands(true);
+    assert.ok(
+      commands.includes("commandtree.semanticSearch"),
+      "semanticSearch command must be registered for UI icon to work"
+    );
+  });
+
+  // SPEC.md **ai-embedding-generation**, **database-schema**
   test("embedding pipeline fires and writes REAL 384-dim vectors to SQLite", async function () {
     this.timeout(15000);
 
@@ -263,7 +292,7 @@ suite("Vector Embedding Search E2E", () => {
     const db = new mod.default.Database(dbPath);
     try {
       const row = db.get(
-        "SELECT embedding FROM embeddings WHERE embedding IS NOT NULL LIMIT 1",
+        "SELECT embedding FROM commands WHERE embedding IS NOT NULL LIMIT 1",
       ) as SqlRow | null;
       const blob = row?.["embedding"] as Uint8Array | undefined;
       assert.ok(blob !== undefined, "Could not read sample BLOB");

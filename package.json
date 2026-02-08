@@ -77,11 +77,6 @@
         "icon": "$(play-circle)"
       },
       {
-        "command": "commandtree.filter",
-        "title": "Filter Commands",
-        "icon": "$(search)"
-      },
-      {
         "command": "commandtree.filterByTag",
         "title": "Filter by Tag",
         "icon": "$(tag)"
@@ -123,7 +118,7 @@
       {
         "command": "commandtree.semanticSearch",
         "title": "Semantic Search",
-        "icon": "$(sparkle)"
+        "icon": "$(search)"
       },
       {
         "command": "commandtree.generateSummaries",
@@ -137,11 +132,6 @@
     ],
     "menus": {
       "view/title": [
-        {
-          "command": "commandtree.filter",
-          "when": "view == commandtree",
-          "group": "navigation@1"
-        },
         {
           "command": "commandtree.filterByTag",
           "when": "view == commandtree",
@@ -161,11 +151,6 @@
           "command": "commandtree.refresh",
           "when": "view == commandtree",
           "group": "navigation@5"
-        },
-        {
-          "command": "commandtree.filter",
-          "when": "view == commandtree-quick",
-          "group": "navigation@1"
         },
         {
           "command": "commandtree.filterByTag",
@@ -379,7 +364,7 @@
         },
         "commandtree.enableAiSummaries": {
           "type": "boolean",
-          "default": false,
+          "default": true,
           "description": "Use GitHub Copilot to generate plain-language summaries of scripts, enabling semantic search"
         }
       }

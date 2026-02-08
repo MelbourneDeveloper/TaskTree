@@ -7,7 +7,7 @@ import { openDatabase, closeDatabase, initSchema, upsertRow, getAllRows } from '
 import { rankBySimilarity, cosineSimilarity } from '../../semantic/similarity.js';
 
 /**
- * SPEC: ai-embedding-generation, ai-database-schema, ai-search-implementation
+ * SPEC: ai-embedding-generation, database-schema, ai-search-implementation
  *
  * EMBEDDING PROVIDER TESTS — NO MOCKS, REAL MODEL ONLY
  * Tests the REAL HuggingFace all-MiniLM-L6-v2 model + SQLite storage + cosine similarity search.

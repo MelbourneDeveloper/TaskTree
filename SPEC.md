@@ -221,12 +221,23 @@ Examples:
 
 **How it works:**
 1. User right-clicks a command and selects "Add Tag"
-2. The `tags` table stores a junction record: `(tag_id UUID, command_id, tag_name)`
-3. The `command_id` is the exact ID string from above (e.g., `npm:/path/to/package.json:build`)
-4. To filter by tag: `SELECT * FROM commands c INNER JOIN tags t ON c.command_id = t.command_id WHERE t.tag_name = 'build'`
-5. Display the matching commands in the tree view
+2. Tag is created in `tags` table if it doesn't exist: `(tag_id UUID, tag_name, description)`
+3. Junction record is created in `command_tags` table: `(command_id, tag_id, display_order)`
+4. The `command_id` is the exact ID string from above (e.g., `npm:/path/to/package.json:build`)
+5. To filter by tag: `SELECT c.* FROM commands c JOIN command_tags ct ON c.command_id = ct.command_id JOIN tags t ON ct.tag_id = t.tag_id WHERE t.tag_name = 'build'`
+6. Display the matching commands in the tree view
 
-**No pattern matching, no wildcards** - just exact `command_id` matching via a straightforward database JOIN.
+**No pattern matching, no wildcards** - just exact `command_id` matching via straightforward database JOINs across the 3-table schema.
+
+**Database Operations** (implemented in `src/semantic/db.ts`):
+**database-schema/tag-operations**
+
+- `addTagToCommand(params)` - Creates tag in `tags` table if needed, then adds junction record
+- `removeTagFromCommand(params)` - Removes junction record from `command_tags`
+- `getCommandIdsByTag(params)` - Returns all command IDs for a tag (ordered by `display_order`)
+- `getTagsForCommand(params)` - Returns all tags assigned to a command
+- `getAllTagNames(handle)` - Returns all distinct tag names from `tags` table
+- `updateTagDisplayOrder(params)` - Updates display order in `command_tags` for drag-and-drop
 
 ### Managing Tags
 **tagging/management**
@@ -244,7 +255,7 @@ Pick a tag from the toolbar picker (`commandtree.filterByTag`) to show only comm
 
 Remove all active filters via toolbar button or `commandtree.clearFilter` command.
 
-All tag assignments are stored in the SQLite database (`tags` table).
+All tag assignments are stored in the SQLite database (`tags` master table + `command_tags` junction table).
 
 ## RAG search
 **ragsearch**
@@ -384,11 +395,11 @@ All settings are configured via VS Code settings (`Cmd+,` / `Ctrl+,`).
 ## Database Schema
 **database-schema**
 
-Two tables store AI enrichment data and tag assignments:
+Three tables store AI enrichment data, tag definitions, and tag assignments
 
 ```sql
 -- COMMANDS TABLE
--- ENRICHMENT CACHE: Stores AI-generated summaries and embeddings for discovered commands
+-- Stores AI-generated summaries and embeddings for discovered commands
 -- NOTE: This is NOT the source of truth - commands are discovered from filesystem
 -- This table only adds AI features (summaries, semantic search) to the tree view
 CREATE TABLE IF NOT EXISTS commands (
@@ -404,19 +415,42 @@ CREATE TABLE IF NOT EXISTS commands (
 );
 
 -- TAGS TABLE
--- Links tags to specific commands (many-to-many relationship via junction table)
+-- Master list of available tags
 CREATE TABLE IF NOT EXISTS tags (
     tag_id TEXT PRIMARY KEY,            -- UUID primary key
-    command_id TEXT NOT NULL,           -- Foreign key referencing commands.command_id
-    tag_name TEXT NOT NULL,             -- Tag identifier (e.g., "quick", "deploy", "test")
-    UNIQUE (command_id, tag_name),      -- Ensures each command can have a tag only once
-    FOREIGN KEY (command_id) REFERENCES commands(command_id) ON DELETE CASCADE
+    tag_name TEXT NOT NULL UNIQUE,      -- Tag identifier (e.g., "quick", "deploy", "test")
+    description TEXT                    -- Optional tag description
+);
+
+-- COMMAND_TAGS JUNCTION TABLE
+-- Many-to-many relationship between commands and tags
+-- STRICT REFERENTIAL INTEGRITY ENFORCED: Both FKs have CASCADE DELETE
+-- When a command is deleted, all its tag assignments are automatically removed
+-- When a tag is deleted, all command assignments are automatically removed
+CREATE TABLE IF NOT EXISTS command_tags (
+    command_id TEXT NOT NULL,           -- Foreign key to commands.command_id with CASCADE DELETE
+    tag_id TEXT NOT NULL,               -- Foreign key to tags.tag_id with CASCADE DELETE
+    display_order INTEGER NOT NULL DEFAULT 0,  -- Display order for drag-and-drop reordering
+    PRIMARY KEY (command_id, tag_id),
+    FOREIGN KEY (command_id) REFERENCES commands(command_id) ON DELETE CASCADE,
+    FOREIGN KEY (tag_id) REFERENCES tags(tag_id) ON DELETE CASCADE
 );
 ```
 
 **Implementation**: SQLite via `node-sqlite3-wasm`
 - **Location**: `{workspaceFolder}/.commandtree/commandtree.sqlite3`
 - **Runtime**: Pure WASM, no native compilation (~1.3 MB)
+- **CRITICAL**: `PRAGMA foreign_keys = ON;` MUST be executed on EVERY database connection
+  - SQLite disables FK constraints by default - this is a SQLite design flaw
+  - Implementation: `openDatabase()` in `db.ts` runs this pragma immediately after opening
+  - Without this pragma, FK constraints are SILENTLY IGNORED and orphaned records can be created
+- **Orphan Cleanup**: `cleanupOrphanedRecords()` removes any pre-existing orphaned command_tags rows
+  - Runs automatically during `initSemanticStore()` (every startup)
+  - Runs automatically during `migrateIfNeeded()` (legacy migration)
+- **Orphan Prevention**: `ensureCommandExists()` inserts placeholder command rows before adding tags
+  - Called automatically by `addTagToCommand()` before creating junction records
+  - Placeholder rows have empty summary/content_hash and NULL embedding
+  - Ensures FK constraints are always satisfied - no orphaned tag assignments possible
 - **API**: Synchronous, no async overhead for reads
 - **Persistence**: Automatic file-based storage
 
@@ -437,14 +471,31 @@ CREATE TABLE IF NOT EXISTS tags (
 - **`last_updated`**: ISO 8601 timestamp of last summary/embedding generation (NOT NULL)
 
 ### Tags Table Columns
+**database-schema/tags-table**
+
+Master list of available tags:
 
 - **`tag_id`**: UUID primary key
+- **`tag_name`**: Tag identifier (e.g., "quick", "deploy", "test") (NOT NULL, UNIQUE)
+- **`description`**: Optional human-readable tag description (TEXT, nullable)
+
+### Command Tags Junction Table Columns
+**database-schema/command-tags-junction**
+
+Many-to-many relationship between commands and tags with STRICT referential integrity:
+
 - **`command_id`**: Foreign key referencing `commands.command_id` (NOT NULL)
   - Stores the exact command ID string (e.g., `npm:/path/to/package.json:build`)
-  - Used for exact matching via JOIN - no pattern matching involved
-- **`tag_name`**: Tag identifier (e.g., "quick", "deploy", "test") (NOT NULL)
-- **Unique Constraint**: `(command_id, tag_name)` ensures each command can have a tag only once
-- **Cascade Delete**: When a command is deleted, all its tag assignments are automatically removed
+  - **FK CONSTRAINT ENFORCED**: `FOREIGN KEY (command_id) REFERENCES commands(command_id) ON DELETE CASCADE`
+  - Used for exact matching - no pattern matching involved
+  - `ensureCommandExists()` creates placeholder command rows if needed before tagging
+- **`tag_id`**: Foreign key referencing `tags.tag_id` (NOT NULL)
+  - **FK CONSTRAINT ENFORCED**: `FOREIGN KEY (tag_id) REFERENCES tags(tag_id) ON DELETE CASCADE`
+- **`display_order`**: Integer for ordering commands within a tag (NOT NULL, default 0)
+  - Used for drag-and-drop reordering in Quick Launch
+- **Primary Key**: `(command_id, tag_id)` ensures each command-tag pair is unique
+- **Cascade Delete**: When a command OR tag is deleted, junction records are automatically removed
+- **Orphan Prevention**: Cannot insert junction records for non-existent commands or tags
 
 --
 

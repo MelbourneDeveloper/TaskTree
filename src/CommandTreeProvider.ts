@@ -35,6 +35,8 @@ const CATEGORY_DEFS: readonly CategoryDef[] = [
     { type: 'rake', label: 'Rake Tasks' },
     { type: 'composer', label: 'Composer Scripts' },
     { type: 'docker', label: 'Docker Compose' },
+    { type: 'dotnet', label: '.NET Projects' },
+    { type: 'markdown', label: 'Markdown Files' },
 ];
 
 /**
@@ -46,7 +48,6 @@ export class CommandTreeProvider implements vscode.TreeDataProvider<CommandTreeI
 
     private tasks: TaskItem[] = [];
     private discoveryResult: DiscoveryResult | null = null;
-    private textFilter = '';
     private tagFilter: string | null = null;
     private semanticFilter: ReadonlyMap<string, number> | null = null;
     private summaries: ReadonlyMap<string, EmbeddingRow> = new Map();
@@ -104,14 +105,6 @@ export class CommandTreeProvider implements vscode.TreeDataProvider<CommandTreeI
     }
 
     /**
-     * Sets text filter and refreshes tree.
-     */
-    setTextFilter(filter: string): void {
-        this.textFilter = filter.toLowerCase();
-        this._onDidChangeTreeData.fire(undefined);
-    }
-
-    /**
      * Sets tag filter and refreshes tree.
      */
     setTagFilter(tag: string | null): void {
@@ -137,7 +130,6 @@ export class CommandTreeProvider implements vscode.TreeDataProvider<CommandTreeI
      * Clears all filters.
      */
     clearFilters(): void {
-        this.textFilter = '';
         this.tagFilter = null;
         this.semanticFilter = null;
         this._onDidChangeTreeData.fire(undefined);
@@ -147,7 +139,7 @@ export class CommandTreeProvider implements vscode.TreeDataProvider<CommandTreeI
      * Returns whether any filter is active.
      */
     hasFilter(): boolean {
-        return this.textFilter.length > 0 || this.tagFilter !== null || this.semanticFilter !== null;
+        return this.tagFilter !== null || this.semanticFilter !== null;
     }
 
     /**
@@ -305,6 +297,15 @@ export class CommandTreeProvider implements vscode.TreeDataProvider<CommandTreeI
     }
 
     private getComparator(): (a: TaskItem, b: TaskItem) => number {
+        // SPEC.md **ai-search-implementation**: Sort by score when semantic filter is active
+        if (this.semanticFilter !== null) {
+            const scoreMap = this.semanticFilter;
+            return (a, b) => {
+                const scoreA = scoreMap.get(a.id) ?? 0;
+                const scoreB = scoreMap.get(b.id) ?? 0;
+                return scoreB - scoreA;
+            };
+        }
         const order = this.getSortOrder();
         if (order === 'folder') {
             return (a, b) => a.category.localeCompare(b.category) || a.label.localeCompare(b.label);
@@ -316,27 +317,15 @@ export class CommandTreeProvider implements vscode.TreeDataProvider<CommandTreeI
     }
 
     /**
-     * Applies text, tag, and semantic filters in sequence.
+     * Applies tag and semantic filters in sequence.
      */
     private applyFilters(tasks: TaskItem[]): TaskItem[] {
         logger.filter('applyFilters START', { inputCount: tasks.length });
         let result = tasks;
-        result = this.applyTextFilter(result);
         result = this.applyTagFilter(result);
         result = this.applySemanticFilter(result);
         logger.filter('applyFilters END', { outputCount: result.length });
         return result;
-    }
-
-    private applyTextFilter(tasks: TaskItem[]): TaskItem[] {
-        if (this.textFilter === '') { return tasks; }
-        const q = this.textFilter;
-        return tasks.filter(t =>
-            t.label.toLowerCase().includes(q) ||
-            t.category.toLowerCase().includes(q) ||
-            t.filePath.toLowerCase().includes(q) ||
-            (t.description?.toLowerCase().includes(q) ?? false)
-        );
     }
 
     private applyTagFilter(tasks: TaskItem[]): TaskItem[] {

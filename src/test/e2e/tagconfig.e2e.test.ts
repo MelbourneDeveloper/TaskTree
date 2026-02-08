@@ -1,252 +1,190 @@
 /**
- * Spec: tagging/config-file, quick-launch
- * E2E TESTS for TagConfig -> Command Tagging -> Filtering Flow
+ * SPEC: tagging
+ * E2E tests for junction table tagging system.
+ * Tests exact command ID matching via SQLite junction table.
  *
- * Tests the COMPLETE flow through VS Code:
- * - Write config file
- * - File watcher auto-syncs
- * - Tags applied to commands
- * - Filtering works correctly
+ * Black-box testing through VS Code UI commands only.
  */
 
 import * as assert from 'assert';
-import * as fs from 'fs';
+import * as vscode from 'vscode';
 import {
     activateExtension,
     sleep,
-    getFixturePath,
     getCommandTreeProvider,
-    getQuickTasksProvider
 } from '../helpers/helpers';
-import type { CommandTreeProvider, QuickTasksProvider, CommandTreeItem } from '../helpers/helpers';
+import type { CommandTreeProvider } from '../helpers/helpers';
+import { getDb } from '../../semantic/lifecycle';
+import { getCommandIdsByTag, getTagsForCommand } from '../../semantic/db';
 
-interface TagPattern {
-    id?: string;
-    type?: string;
-    label?: string;
-}
-
-interface CommandTreeConfig {
-    tags?: Record<string, Array<string | TagPattern>>;
-}
-
-function writeConfig(config: CommandTreeConfig): void {
-    const configPath = getFixturePath('.vscode/commandtree.json');
-    fs.writeFileSync(configPath, JSON.stringify(config, null, 4));
-}
-
-async function findTreeItemById(
-    categories: CommandTreeItem[],
-    taskId: string,
-    provider: CommandTreeProvider
-): Promise<CommandTreeItem | undefined> {
-    for (const cat of categories) {
-        const children = await provider.getChildren(cat);
-        for (const child of children) {
-            if (child.task?.id === taskId) { return child; }
-            const grandChildren = await provider.getChildren(child);
-            for (const gc of grandChildren) {
-                if (gc.task?.id === taskId) { return gc; }
-            }
-        }
-    }
-    return undefined;
-}
-
-// Spec: tagging/config-file, quick-launch
-suite('TagConfig E2E Flow Tests', () => {
-    let originalConfig: string;
+// SPEC: tagging
+suite('Junction Table Tagging E2E Tests', () => {
     let treeProvider: CommandTreeProvider;
-    let quickProvider: QuickTasksProvider;
 
     suiteSetup(async function () {
         this.timeout(30000);
         await activateExtension();
         treeProvider = getCommandTreeProvider();
-        quickProvider = getQuickTasksProvider();
-
-        // Save original config
-        const configPath = getFixturePath('.vscode/commandtree.json');
-        if (fs.existsSync(configPath)) {
-            originalConfig = fs.readFileSync(configPath, 'utf8');
-        } else {
-            originalConfig = JSON.stringify({ tags: {} }, null, 4);
-        }
-
         await sleep(2000);
     });
 
-    suiteTeardown(async function () {
-        this.timeout(10000);
-        fs.writeFileSync(getFixturePath('.vscode/commandtree.json'), originalConfig);
-        await sleep(3000);
+    // SPEC: database-schema/command-tags-junction
+    test('E2E: Add tag via UI → exact ID stored in junction table', async function () {
+        this.timeout(15000);
+
+        const allTasks = treeProvider.getAllTasks();
+        assert.ok(allTasks.length > 0, 'Must have tasks to test tagging');
+        const task = allTasks[0];
+        assert.ok(task !== undefined, 'First task must exist');
+
+        const testTag = 'test-tag-e2e';
+
+        // Add tag via UI command (passing tag name for automated testing)
+        await vscode.commands.executeCommand('commandtree.addTag', task, testTag);
+        await sleep(500);
+
+        // Verify tag stored in database with exact command ID
+        const dbResult = getDb();
+        assert.ok(dbResult.ok, 'Database must be available');
+
+        const tagsResult = getTagsForCommand({
+            handle: dbResult.value,
+            commandId: task.id
+        });
+        assert.ok(tagsResult.ok, 'Should get tags for command');
+        assert.ok(tagsResult.value.length > 0, 'Task should have at least one tag');
+        assert.ok(tagsResult.value.includes(testTag), `Task should have tag "${testTag}"`);
+
+        // Clean up
+        await vscode.commands.executeCommand('commandtree.removeTag', task, testTag);
+        await sleep(500);
     });
 
-    // Spec: tagging/config-file, tagging/pattern-syntax, quick-launch
-    suite('Complete Tag Flow', () => {
-        test('E2E: type pattern config -> auto-sync -> tags applied -> filter works', async function () {
-            this.timeout(30000);
+    // SPEC: database-schema/command-tags-junction
+    test('E2E: Remove tag via UI → junction record deleted', async function () {
+        this.timeout(15000);
 
-            // GIVEN: Config with type pattern for npm tasks
-            const config: CommandTreeConfig = {
-                tags: {
-                    'quick': [{ type: 'npm' }],
-                    'build': [{ label: 'build' }]
-                }
-            };
-            writeConfig(config);
+        const allTasks = treeProvider.getAllTasks();
+        const task = allTasks[0];
+        assert.ok(task !== undefined, 'First task must exist');
 
-            // WAIT: File watcher auto-syncs
-            await sleep(3000);
+        const testTag = 'test-remove-tag';
 
-            // VERIFY: Tags applied correctly
-            const allTasks = treeProvider.getAllTasks();
-            const npmTasks = allTasks.filter(t => t.type === 'npm');
-            const buildLabelTasks = allTasks.filter(t => t.label === 'build');
+        // Add tag first
+        await vscode.commands.executeCommand('commandtree.addTag', task, testTag);
+        await sleep(500);
 
-            assert.ok(npmTasks.length > 0, 'Fixture MUST have npm tasks');
-            assert.ok(buildLabelTasks.length > 0, 'Fixture MUST have build tasks');
+        const dbResult = getDb();
+        assert.ok(dbResult.ok, 'Database must be available');
 
-            // All npm tasks should have 'quick' tag
-            for (const task of npmTasks) {
-                assert.ok(
-                    task.tags.includes('quick'),
-                    `NPM task "${task.label}" MUST have quick tag. Has: [${task.tags.join(', ')}]`
-                );
-            }
+        // Verify tag exists
+        let tagsResult = getTagsForCommand({
+            handle: dbResult.value,
+            commandId: task.id
+        });
+        assert.ok(tagsResult.ok && tagsResult.value.length > 0, 'Tag should exist before removal');
+        assert.ok(tagsResult.value.includes(testTag), `Task should have tag "${testTag}"`);
 
-            // All 'build' label tasks should have 'build' tag
-            for (const task of buildLabelTasks) {
-                assert.ok(
-                    task.tags.includes('build'),
-                    `Build task "${task.label}" (${task.type}) MUST have build tag. Has: [${task.tags.join(', ')}]`
-                );
-            }
+        // Remove tag via UI
+        await vscode.commands.executeCommand('commandtree.removeTag', task, testTag);
+        await sleep(500);
 
-            // npm:build should have BOTH tags
-            const npmBuildTask = allTasks.find(t => t.type === 'npm' && t.label === 'build');
-            if (npmBuildTask !== undefined) {
-                assert.ok(npmBuildTask.tags.includes('quick'), 'npm:build MUST have quick tag');
-                assert.ok(npmBuildTask.tags.includes('build'), 'npm:build MUST have build tag');
-            }
+        // Verify tag removed from database
+        tagsResult = getTagsForCommand({
+            handle: dbResult.value,
+            commandId: task.id
+        });
+        assert.ok(tagsResult.ok, 'Should get tags for command');
+        assert.ok(
+            !tagsResult.value.includes(testTag),
+            `Tag "${testTag}" should be removed from command ${task.id}`
+        );
+    });
+
+    // SPEC: database-schema/command-tags-junction
+    test('E2E: Cannot add same tag twice (UNIQUE constraint)', async function () {
+        this.timeout(15000);
+
+        const allTasks = treeProvider.getAllTasks();
+        const task = allTasks[0];
+        assert.ok(task !== undefined, 'First task must exist');
+
+        const testTag = 'test-unique-tag';
+
+        // Add tag once
+        await vscode.commands.executeCommand('commandtree.addTag', task, testTag);
+        await sleep(500);
+
+        const dbResult = getDb();
+        assert.ok(dbResult.ok, 'Database must be available');
+
+        const tagsResult1 = getTagsForCommand({
+            handle: dbResult.value,
+            commandId: task.id
+        });
+        assert.ok(tagsResult1.ok && tagsResult1.value.length > 0, 'Should have one tag');
+        const initialCount = tagsResult1.value.length;
+
+        // Try to add same tag again (should be ignored by INSERT OR IGNORE)
+        await vscode.commands.executeCommand('commandtree.addTag', task, testTag);
+        await sleep(500);
+
+        const tagsResult2 = getTagsForCommand({
+            handle: dbResult.value,
+            commandId: task.id
+        });
+        assert.ok(tagsResult2.ok, 'Should get tags for command');
+        assert.strictEqual(
+            tagsResult2.value.length,
+            initialCount,
+            'Tag count should not increase when adding duplicate'
+        );
+
+        // Clean up
+        await vscode.commands.executeCommand('commandtree.removeTag', task, testTag);
+        await sleep(500);
+    });
+
+    // SPEC: database-schema/tag-operations
+    test('E2E: Filter by tag → only exact ID matches shown', async function () {
+        this.timeout(15000);
+
+        const allTasks = treeProvider.getAllTasks();
+        assert.ok(allTasks.length >= 2, 'Need at least 2 tasks for filtering test');
+
+        const task1 = allTasks[0];
+        const task2 = allTasks[1];
+        assert.ok(task1 !== undefined && task2 !== undefined, 'Both tasks must exist');
+
+        const testTag = 'filter-test-tag';
+
+        // Tag only task1
+        await vscode.commands.executeCommand('commandtree.addTag', task1, testTag);
+        await sleep(500);
+
+        // Verify database has exact ID for task1 only
+        const dbResult = getDb();
+        assert.ok(dbResult.ok, 'Database must be available');
+
+        const commandIdsResult = getCommandIdsByTag({
+            handle: dbResult.value,
+            tagName: testTag
         });
 
-        test('E2E: exact ID pattern -> auto-sync -> only that task tagged', async function () {
-            this.timeout(30000);
+        assert.ok(commandIdsResult.ok, 'Should get command IDs for tag');
+        assert.ok(commandIdsResult.value.length > 0, 'Should have at least one tagged command');
+        const taggedIds = commandIdsResult.value;
+        assert.ok(
+            taggedIds.includes(task1.id),
+            `Tagged IDs should include task1 (${task1.id})`
+        );
+        assert.ok(
+            !taggedIds.includes(task2.id),
+            `Tagged IDs should NOT include task2 (${task2.id})`
+        );
 
-            // Get a real task ID first
-            const allTasks = treeProvider.getAllTasks();
-            assert.ok(allTasks.length > 0, 'Must have tasks');
-
-            const targetTask = allTasks[0];
-            assert.ok(targetTask !== undefined, 'First task must exist');
-
-            // GIVEN: Config with exact ID pattern
-            const config: CommandTreeConfig = {
-                tags: {
-                    'exact-match': [targetTask.id]
-                }
-            };
-            writeConfig(config);
-
-            // WAIT: File watcher auto-syncs
-            await sleep(3000);
-
-            // VERIFY: Only that task has the tag
-            const refreshedTasks = treeProvider.getAllTasks();
-            const taggedTasks = refreshedTasks.filter(t => t.tags.includes('exact-match'));
-
-            assert.strictEqual(
-                taggedTasks.length,
-                1,
-                `Exact ID pattern should match exactly 1 task, got ${taggedTasks.length}`
-            );
-
-            const taggedTask = taggedTasks[0];
-            assert.ok(taggedTask !== undefined, 'Tagged task must exist');
-            assert.strictEqual(taggedTask.id, targetTask.id, 'Must be the correct task');
-
-            // VERIFY: Tree item description MUST show the tag visually
-            const categories = await treeProvider.getChildren();
-            const treeItem = await findTreeItemById(categories, targetTask.id, treeProvider);
-            assert.ok(treeItem !== undefined, 'Tagged task must appear in tree view');
-            assert.ok(
-                typeof treeItem.description === 'string' && treeItem.description.includes('exact-match'),
-                `Tree item description MUST show the tag. Got: "${String(treeItem.description)}"`
-            );
-        });
-
-        test('E2E: quick tag -> tasks appear in QuickTasksProvider', async function () {
-            this.timeout(30000);
-
-            // Get a task to add to quick
-            const allTasks = treeProvider.getAllTasks();
-            const targetTask = allTasks[0];
-            assert.ok(targetTask !== undefined, 'Must have task');
-
-            // GIVEN: Config with task in quick tag
-            const config: CommandTreeConfig = {
-                tags: {
-                    'quick': [targetTask.id]
-                }
-            };
-            writeConfig(config);
-
-            // WAIT: File watcher auto-syncs
-            await sleep(3000);
-
-            // VERIFY: Task appears in QuickTasksProvider
-            const quickChildren = quickProvider.getChildren(undefined);
-            const taskInQuick = quickChildren.find(c => c.task?.id === targetTask.id);
-
-            assert.ok(
-                taskInQuick !== undefined,
-                `Task "${targetTask.label}" with quick tag MUST appear in QuickTasksProvider. ` +
-                `Quick view contains: [${quickChildren.map(c => c.task?.id ?? 'placeholder').join(', ')}]`
-            );
-
-            // VERIFY: Tree item in main view MUST have contextValue 'task-quick' (filled star icon)
-            const categories = await treeProvider.getChildren();
-            const treeItem = await findTreeItemById(categories, targetTask.id, treeProvider);
-            assert.ok(treeItem !== undefined, 'Quick-tagged task must appear in main tree');
-            assert.strictEqual(
-                treeItem.contextValue,
-                'task-quick',
-                `Task with quick tag MUST have contextValue 'task-quick' for filled star. Got: "${treeItem.contextValue}"`
-            );
-        });
-
-        test('E2E: remove from quick tag -> task disappears from QuickTasksProvider', async function () {
-            this.timeout(30000);
-
-            // Get a task
-            const allTasks = treeProvider.getAllTasks();
-            const targetTask = allTasks[0];
-            assert.ok(targetTask !== undefined, 'Must have task');
-
-            // Add to quick first
-            writeConfig({ tags: { quick: [targetTask.id] } });
-            await sleep(3000);
-
-            // Verify it's there
-            let quickChildren = quickProvider.getChildren(undefined);
-            let taskInQuick = quickChildren.find(c => c.task?.id === targetTask.id);
-            assert.ok(taskInQuick !== undefined, 'Task must be in quick before removal');
-
-            // GIVEN: Remove from quick config
-            writeConfig({ tags: { quick: [] } });
-
-            // WAIT: File watcher auto-syncs
-            await sleep(3000);
-
-            // VERIFY: Task no longer in QuickTasksProvider
-            quickChildren = quickProvider.getChildren(undefined);
-            taskInQuick = quickChildren.find(c => c.task?.id === targetTask.id);
-
-            assert.ok(
-                taskInQuick === undefined,
-                `Task "${targetTask.label}" removed from quick config MUST NOT appear in QuickTasksProvider`
-            );
-        });
+        // Clean up
+        await vscode.commands.executeCommand('commandtree.removeTag', task1, testTag);
+        await sleep(500);
     });
 });
