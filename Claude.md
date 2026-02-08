@@ -11,9 +11,10 @@ You are working with many other agents. Make sure there is effective cooperation
 
 - **Zero duplication - TOP PRIORITY** - Always search for existing code before adding. Move; don't copy files. Add assertions to tests rather than duplicating tests. AIM FOR LESS CODE!
 - **No string literals** - Named constants only, and it ONE location
+- DO NOT USE GIT
 - **Functional style** - Prefer pure functions, avoid classes where possible
 - **No suppressing warnings** - Fix them properly
-- **No REGEX** It is absolutely ⛔️ illegal
+- **No REGEX** It is absolutely ⛔️ illegal, and no text matching in general
 - **Don't run long runnings tasks** like docker builds, tests. Ask the user to do it!!
 - **Expressions over assignments** - Prefer const and immutable patterns
 - **Named parameters** - Use object params for functions with 3+ args
@@ -23,6 +24,7 @@ You are working with many other agents. Make sure there is effective cooperation
 
 ### Typescript
 - **TypeScript strict mode** - No `any`, no implicit types, turn all lints up to error
+- **Decouple providers from the VSCODE SDK** - No vscode sdk use within the providers
 - **Ignoring lints = ⛔️ illegal** - Fix violations immediately
 - **No throwing** - Only return `Result<T,E>`
 
@@ -36,7 +38,6 @@ You are working with many other agents. Make sure there is effective cooperation
 
 #### Rules
 - **Prefer e2e tests over unit tests** - only unit tests for isolating bugs
-- DO NOT USE GIT
 - Separate e2e tests from unit tests by file. They should not be in the same file together.
 - Prefer adding assertions to existing tests rather than adding new tests
 - Test files in `src/test/suite/*.test.ts`

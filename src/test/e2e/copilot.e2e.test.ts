@@ -1,4 +1,6 @@
 /**
+ * SPEC: ai-summary-generation
+ *
  * COPILOT LANGUAGE MODEL API — REAL E2E TEST
  *
  * This test ACTUALLY hits the VS Code Language Model API.
@@ -51,58 +53,96 @@ suite("Copilot Language Model API E2E", () => {
   test("sendRequest returns a streamed response from Copilot", async function () {
     this.timeout(120000);
 
-    // Select model (should already be consented from previous test)
-    const models = await vscode.lm.selectChatModels({ vendor: COPILOT_VENDOR });
-    assert.ok(models.length > 0, "No Copilot models available");
-    const model = models[0];
-    assert.ok(model !== undefined, "First model is undefined");
+    // Get all available models
+    const allModels = await vscode.lm.selectChatModels({ vendor: COPILOT_VENDOR });
+    assert.ok(allModels.length > 0, "No Copilot models available");
 
-    // Send a real request
-    const messages = [
-      vscode.LanguageModelChatMessage.User("Reply with exactly: HELLO_COMMANDTREE"),
-    ];
-    const tokenSource = new vscode.CancellationTokenSource();
+    // Try each model until we find one that works
+    let lastError: Error | undefined;
+    let successfulResponse: vscode.LanguageModelChatResponse | undefined;
 
-    let response: vscode.LanguageModelChatResponse;
-    try {
-      response = await model.sendRequest(messages, {}, tokenSource.token);
-    } catch (e) {
-      if (e instanceof vscode.LanguageModelError) {
-        assert.fail(`LanguageModelError: ${e.message} (code: ${e.code})`);
+    for (const model of allModels) {
+      const messages = [
+        vscode.LanguageModelChatMessage.User("Reply with exactly: HELLO_COMMANDTREE"),
+      ];
+      const tokenSource = new vscode.CancellationTokenSource();
+
+      try {
+        const response = await model.sendRequest(messages, {}, tokenSource.token);
+        successfulResponse = response;
+        tokenSource.dispose();
+        break;
+      } catch (e) {
+        lastError = e as Error;
+        tokenSource.dispose();
+        continue;
       }
-      throw e;
     }
+
+    assert.ok(
+      successfulResponse !== undefined,
+      `No usable model found. Last error: ${lastError?.message}`,
+    );
+
+    assert.ok(
+      typeof successfulResponse.text[Symbol.asyncIterator] === "function",
+      "Response.text must be async iterable",
+    );
 
     // Collect the streamed text
     const chunks: string[] = [];
-    for await (const chunk of response.text) {
+    for await (const chunk of successfulResponse.text) {
+      assert.ok(typeof chunk === "string", `Each chunk must be a string, got ${typeof chunk}`);
       chunks.push(chunk);
     }
     const fullResponse = chunks.join("").trim();
+
+    assert.ok(chunks.length > 0, "Must receive at least one chunk from stream");
 
     assert.ok(fullResponse.length > 0, "Response must not be empty");
     assert.ok(
       fullResponse.includes("HELLO_COMMANDTREE"),
       `Response should contain HELLO_COMMANDTREE, got: "${fullResponse}"`,
     );
-
-    tokenSource.dispose();
   });
 
   test("LanguageModelError is thrown for invalid requests", async function () {
     this.timeout(120000);
 
-    const models = await vscode.lm.selectChatModels({ vendor: COPILOT_VENDOR });
-    assert.ok(models.length > 0, "No Copilot models available");
-    const model = models[0];
-    assert.ok(model !== undefined, "First model is undefined");
+    // Get all available models and find one that works
+    const allModels = await vscode.lm.selectChatModels({ vendor: COPILOT_VENDOR });
+    assert.ok(allModels.length > 0, "No Copilot models available");
+
+    let usableModel: vscode.LanguageModelChat | undefined;
+    for (const model of allModels) {
+      const testToken = new vscode.CancellationTokenSource();
+      try {
+        await model.sendRequest(
+          [vscode.LanguageModelChatMessage.User("test")],
+          {},
+          testToken.token,
+        );
+        usableModel = model;
+        testToken.dispose();
+        break;
+      } catch (e) {
+        testToken.dispose();
+        if (e instanceof vscode.LanguageModelError && e.message.includes("cannot be used")) {
+          continue;
+        }
+        usableModel = model;
+        break;
+      }
+    }
+
+    assert.ok(usableModel !== undefined, "No usable Copilot model found");
 
     // Send with an already-cancelled token to trigger an error
     const tokenSource = new vscode.CancellationTokenSource();
     tokenSource.cancel();
 
     try {
-      await model.sendRequest(
+      await usableModel.sendRequest(
         [vscode.LanguageModelChatMessage.User("test")],
         {},
         tokenSource.token,
@@ -112,7 +152,7 @@ suite("Copilot Language Model API E2E", () => {
       // Verify it's the correct error type from the API
       assert.ok(
         e instanceof vscode.LanguageModelError || e instanceof vscode.CancellationError,
-        `Expected LanguageModelError or CancellationError, got: ${e}`,
+        `Expected LanguageModelError or CancellationError, got: ${String(e)}`,
       );
     }
 

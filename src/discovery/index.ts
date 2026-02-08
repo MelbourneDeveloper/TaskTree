@@ -17,6 +17,7 @@ import { discoverDenoTasks } from './deno';
 import { discoverRakeTasks } from './rake';
 import { discoverComposerScripts } from './composer';
 import { discoverDockerComposeServices } from './docker';
+import { discoverDotnetProjects } from './dotnet';
 import { logger } from '../utils/logger';
 
 export interface DiscoveryResult {
@@ -37,6 +38,7 @@ export interface DiscoveryResult {
     rake: TaskItem[];
     composer: TaskItem[];
     docker: TaskItem[];
+    dotnet: TaskItem[];
 }
 
 /**
@@ -52,7 +54,7 @@ export async function discoverAllTasks(
     const [
         shell, npm, make, launch, vscodeTasks, python,
         powershell, gradle, cargo, maven, ant, just,
-        taskfile, deno, rake, composer, docker
+        taskfile, deno, rake, composer, docker, dotnet
     ] = await Promise.all([
         discoverShellScripts(workspaceRoot, excludePatterns),
         discoverNpmScripts(workspaceRoot, excludePatterns),
@@ -70,7 +72,8 @@ export async function discoverAllTasks(
         discoverDenoTasks(workspaceRoot, excludePatterns),
         discoverRakeTasks(workspaceRoot, excludePatterns),
         discoverComposerScripts(workspaceRoot, excludePatterns),
-        discoverDockerComposeServices(workspaceRoot, excludePatterns)
+        discoverDockerComposeServices(workspaceRoot, excludePatterns),
+        discoverDotnetProjects(workspaceRoot, excludePatterns)
     ]);
 
     const result = {
@@ -90,13 +93,14 @@ export async function discoverAllTasks(
         deno,
         rake,
         composer,
-        docker
+        docker,
+        dotnet
     };
 
     const totalCount = shell.length + npm.length + make.length + launch.length +
         vscodeTasks.length + python.length + powershell.length + gradle.length +
         cargo.length + maven.length + ant.length + just.length + taskfile.length +
-        deno.length + rake.length + composer.length + docker.length;
+        deno.length + rake.length + composer.length + docker.length + dotnet.length;
 
     logger.info('Discovery complete', {
         totalCount,
@@ -106,6 +110,7 @@ export async function discoverAllTasks(
         launch: launch.length,
         vscode: vscodeTasks.length,
         python: python.length,
+        dotnet: dotnet.length,
         shellTaskIds: shell.map(t => t.id)
     });
 
@@ -133,7 +138,8 @@ export function flattenTasks(result: DiscoveryResult): TaskItem[] {
         ...result.deno,
         ...result.rake,
         ...result.composer,
-        ...result.docker
+        ...result.docker,
+        ...result.dotnet
     ];
 }
 

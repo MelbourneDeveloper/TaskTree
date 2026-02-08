@@ -1,8 +1,8 @@
-import * as vscode from 'vscode';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import type { Result } from '../models/TaskItem';
-import { ok, err } from '../models/TaskItem';
+import type { Result } from '../models/Result.js';
+import { ok, err } from '../models/Result.js';
 
 /**
  * Summary record for a single discovered command.
@@ -46,16 +46,15 @@ export function needsUpdate(
 
 /**
  * Reads the summary store from disk.
+ * NO VS CODE DEPENDENCY - uses Node.js fs for unit testing.
  */
 export async function readSummaryStore(
     workspaceRoot: string
 ): Promise<Result<SummaryStoreData, string>> {
     const storePath = path.join(workspaceRoot, '.vscode', STORE_FILENAME);
-    const uri = vscode.Uri.file(storePath);
 
     try {
-        const bytes = await vscode.workspace.fs.readFile(uri);
-        const content = new TextDecoder().decode(bytes);
+        const content = await fs.readFile(storePath, 'utf-8');
         const parsed = JSON.parse(content) as SummaryStoreData;
         return ok(parsed);
     } catch {
@@ -65,20 +64,19 @@ export async function readSummaryStore(
 
 /**
  * Writes the summary store to disk.
+ * NO VS CODE DEPENDENCY - uses Node.js fs for unit testing.
  */
 export async function writeSummaryStore(
     workspaceRoot: string,
     data: SummaryStoreData
 ): Promise<Result<void, string>> {
     const storePath = path.join(workspaceRoot, '.vscode', STORE_FILENAME);
-    const uri = vscode.Uri.file(storePath);
     const content = JSON.stringify(data, null, 2);
 
     try {
-        await vscode.workspace.fs.writeFile(
-            uri,
-            new TextEncoder().encode(content)
-        );
+        const dir = path.dirname(storePath);
+        await fs.mkdir(dir, { recursive: true });
+        await fs.writeFile(storePath, content, 'utf-8');
         return ok(undefined);
     } catch (e) {
         const message = e instanceof Error ? e.message : 'Failed to write summary store';
@@ -121,16 +119,15 @@ export function getAllRecords(store: SummaryStoreData): SummaryRecord[] {
 /**
  * Reads the legacy JSON store for migration to SQLite.
  * Returns empty array if the file does not exist.
+ * NO VS CODE DEPENDENCY - uses Node.js fs for unit testing.
  */
 export async function readLegacyJsonStore(
     workspaceRoot: string
 ): Promise<SummaryRecord[]> {
     const storePath = path.join(workspaceRoot, '.vscode', STORE_FILENAME);
-    const uri = vscode.Uri.file(storePath);
 
     try {
-        const bytes = await vscode.workspace.fs.readFile(uri);
-        const content = new TextDecoder().decode(bytes);
+        const content = await fs.readFile(storePath, 'utf-8');
         const parsed = JSON.parse(content) as SummaryStoreData;
         return Object.values(parsed.records);
     } catch {
@@ -140,15 +137,15 @@ export async function readLegacyJsonStore(
 
 /**
  * Deletes the legacy JSON store after successful migration.
+ * NO VS CODE DEPENDENCY - uses Node.js fs for unit testing.
  */
 export async function deleteLegacyJsonStore(
     workspaceRoot: string
 ): Promise<Result<void, string>> {
     const storePath = path.join(workspaceRoot, '.vscode', STORE_FILENAME);
-    const uri = vscode.Uri.file(storePath);
 
     try {
-        await vscode.workspace.fs.delete(uri);
+        await fs.unlink(storePath);
         return ok(undefined);
     } catch (e) {
         const msg = e instanceof Error ? e.message : 'Failed to delete legacy store';
@@ -158,15 +155,15 @@ export async function deleteLegacyJsonStore(
 
 /**
  * Checks whether the legacy JSON store file exists.
+ * NO VS CODE DEPENDENCY - uses Node.js fs for unit testing.
  */
 export async function legacyStoreExists(
     workspaceRoot: string
 ): Promise<boolean> {
     const storePath = path.join(workspaceRoot, '.vscode', STORE_FILENAME);
-    const uri = vscode.Uri.file(storePath);
 
     try {
-        await vscode.workspace.fs.stat(uri);
+        await fs.access(storePath);
         return true;
     } catch {
         return false;

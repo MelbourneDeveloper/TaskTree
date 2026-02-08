@@ -76,6 +76,21 @@ Reads task definitions from `.vscode/tasks.json`, including support for `${input
 
 Discovers files with a `.py` extension.
 
+### .NET Projects
+**command-discovery/dotnet-projects**
+
+Discovers .NET projects (`.csproj`, `.fsproj`) and automatically creates tasks based on project type:
+
+- **All projects**: `build`, `clean`
+- **Test projects** (containing `Microsoft.NET.Test.Sdk` or test frameworks): `test` with optional filter parameter
+- **Executable projects** (OutputType = Exe/WinExe): `run` with optional runtime arguments
+
+**Parameter Support**:
+- `dotnet run`: Accepts runtime arguments passed after `--` separator
+- `dotnet test`: Accepts `--filter` expression for selective test execution
+
+**Debugging**: Use VS Code's built-in .NET debugging by creating launch configurations in `.vscode/launch.json`. These are automatically discovered via Launch Configuration discovery.
+
 ## Command Execution
 **command-execution**
 
@@ -94,7 +109,74 @@ Sends the command to the currently active terminal. Triggered by the circle-play
 ### Debug
 **command-execution/debug**
 
-Launches the command using the VS Code debugger. Only applicable to launch configurations. Triggered by the bug button or `commandtree.debug` command.
+Launches the command using the VS Code debugger. Triggered by the bug button or `commandtree.debug` command.
+
+**Debugging Strategy**: CommandTree leverages VS Code's native debugging capabilities through launch configurations rather than implementing custom debug logic for each language.
+
+#### Setting Up Debugging
+**command-execution/debug-setup**
+
+To debug projects discovered by CommandTree:
+
+1. **Create Launch Configuration**: Add a `.vscode/launch.json` file to your workspace
+2. **Auto-Discovery**: CommandTree automatically discovers and displays all launch configurations
+3. **Click to Debug**: Click the debug button (🐛) next to any launch configuration to start debugging
+
+#### Language-Specific Debug Examples
+**command-execution/debug-examples**
+
+**.NET Projects**:
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": ".NET Core Launch (console)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/bin/Debug/net8.0/MyApp.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "stopAtEntry": false
+    }
+  ]
+}
+```
+
+**Node.js/TypeScript**:
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch Node",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/dist/index.js",
+      "preLaunchTask": "npm: build"
+    }
+  ]
+}
+```
+
+**Python**:
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python: Current File",
+      "type": "python",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal"
+    }
+  ]
+}
+```
+
+**Note**: VS Code's IntelliSense provides language-specific templates when creating launch.json files. Press `Ctrl+Space` (or `Cmd+Space` on Mac) to see available configuration types for installed debuggers.
 
 ## Quick Launch
 **quick-launch**
@@ -150,17 +232,108 @@ Remove all active filters via toolbar button or `commandtree.clearFilter` comman
 ## Parameterized Commands
 **parameterized-commands**
 
-Shell scripts with parameter comments prompt the user for input before execution:
+Commands can accept user input at runtime through a flexible parameter system that adapts to different tool requirements.
 
-```bash
-#!/bin/bash
-# @description Deploy to environment
-# @param environment Target environment (staging, production)
+### Parameter Definition
+**parameterized-commands/definition**
 
-deploy_to "$1"
+Parameters are defined during discovery with metadata describing how they should be collected and formatted:
+
+```typescript
+{
+    name: 'filter',           // Parameter identifier
+    description: 'Test filter expression',  // User prompt
+    default: '',              // Optional default value
+    options: ['option1', 'option2'],  // Optional dropdown choices
+    format: 'flag',           // How to format in command (see below)
+    flag: '--filter'          // Flag name (when format is 'flag' or 'flag-equals')
+}
 ```
 
-VS Code tasks using `${input:*}` variables prompt automatically via the built-in input UI.
+### Parameter Formats
+**parameterized-commands/formats**
+
+The `format` field controls how parameter values are inserted into commands:
+
+| Format | Example Input | Example Output | Use Case |
+|--------|--------------|----------------|----------|
+| `positional` (default) | `value` | `command "value"` | Shell scripts, Python positional args |
+| `flag` | `value` | `command --flag "value"` | Named options (npm, dotnet test) |
+| `flag-equals` | `value` | `command --flag=value` | Equals-style flags (some CLIs) |
+| `dashdash-args` | `arg1 arg2` | `command -- arg1 arg2` | Runtime args (dotnet run, npm run) |
+
+**Empty value behavior**: All formats skip adding anything to the command if the user provides an empty value, making all parameters effectively optional.
+
+### Language-Specific Examples
+**parameterized-commands/examples**
+
+#### .NET Projects
+```typescript
+// dotnet run with runtime arguments
+{
+    name: 'args',
+    format: 'dashdash-args',
+    description: 'Runtime arguments (optional, space-separated)'
+}
+// Result: dotnet run -- arg1 arg2
+
+// dotnet test with filter
+{
+    name: 'filter',
+    format: 'flag',
+    flag: '--filter',
+    description: 'Test filter expression'
+}
+// Result: dotnet test --filter "FullyQualifiedName~MyTest"
+```
+
+#### Shell Scripts
+```bash
+#!/bin/bash
+# @param environment Target environment (staging, production)
+# @param verbose Enable verbose output (default: false)
+```
+```typescript
+// Discovered as:
+[
+    { name: 'environment', format: 'positional' },
+    { name: 'verbose', format: 'positional', default: 'false' }
+]
+// Result: ./script.sh "staging" "false"
+```
+
+#### Python Scripts
+```python
+# @param config Config file path
+# @param debug Enable debug mode (default: False)
+```
+```typescript
+// Discovered as:
+[
+    { name: 'config', format: 'positional' },
+    { name: 'debug', format: 'positional', default: 'False' }
+]
+// Result: python script.py "config.json" "False"
+```
+
+#### NPM Scripts
+```json
+{
+  "scripts": {
+    "start": "node server.js"
+  }
+}
+```
+For runtime args, use `dashdash-args` format to pass arguments through to the underlying script:
+```typescript
+{ name: 'args', format: 'dashdash-args' }
+// Result: npm run start -- --port=3000
+```
+
+### VS Code Tasks
+**parameterized-commands/vscode-tasks**
+
+VS Code tasks using `${input:*}` variables prompt automatically via the built-in input UI. These are handled natively by VS Code's task system.
 
 ## Settings
 **settings**
@@ -243,8 +416,9 @@ CREATE TABLE IF NOT EXISTS embeddings (
 
 CREATE TABLE IF NOT EXISTS tags (
     tag_name TEXT NOT NULL,
-    command_pattern TEXT NOT NULL,
-    PRIMARY KEY (tag_name, command_pattern)
+    pattern TEXT NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (tag_name, pattern)
 );
 ```
 
@@ -257,14 +431,23 @@ CREATE TABLE IF NOT EXISTS tags (
 
 **`tags` columns**:
 - **`tag_name`**: Tag identifier (e.g., "quick", "deploy", "test")
-- **`command_pattern`**: Pattern matching commands (e.g., "npm:build", "type:shell:*")
+- **`pattern`**: Pattern matching commands (e.g., "npm:build", "type:shell:*")
+- **`sort_order`**: Display order for patterns within a tag (default: 0)
 
 ### Search Implementation
 **ai-search-implementation**
 
-1. User types natural-language query in filter bar (`commandtree.filter`)
-2. Query embedded using `all-MiniLM-L6-v2` (~10ms)
-3. Results ranked by cosine similarity against stored embeddings
-4. Tree view updates with ordered results
+Semantic search ranks and displays commands by vector proximity.
 
-**Fallback**: Text-match on summaries if embeddings unavailable, text-match on command names if no summaries exist.
+1. User invokes semantic search (`commandtree.semanticSearch`)
+2. Query embedded using `all-MiniLM-L6-v2` (~10ms)
+3. All commands ranked by cosine similarity (0.0-1.0) against stored embeddings
+4. Commands sorted by descending similarity score
+5. Match percentage displayed next to each command (e.g., "build (87%)")
+6. Low-scoring commands filtered out using **permissive threshold** (err on side of showing more)
+   - Default threshold: 0.3 (30% similarity)
+   - Better to show irrelevant results than hide relevant ones
+
+**Score Display**: Similarity scores must be preserved and displayed to user. Never discard scores after ranking.
+
+**Note**: Tag filtering (`commandtree.filterByTag`) is separate and filters by tag membership.

@@ -3,7 +3,7 @@
  * No VS Code dependencies — testable in isolation.
  */
 
-interface ScoredCandidate {
+export interface ScoredCandidate {
     readonly id: string;
     readonly score: number;
 }

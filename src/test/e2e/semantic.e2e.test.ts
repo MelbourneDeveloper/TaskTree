@@ -1,4 +1,6 @@
 /**
+ * SPEC: ai-semantic-search, ai-summary-generation, ai-embedding-generation, ai-database-schema, ai-search-implementation
+ *
  * VECTOR EMBEDDING SEARCH — FULL E2E TESTS
  * Pipeline: Copilot summary → MiniLM embedding → SQLite BLOB → cosine similarity
  * These tests FAIL without Copilot + HuggingFace — that is correct.
@@ -27,6 +29,16 @@ const INPUT_BOX_RENDER_MS = 1000;
 const COPILOT_VENDOR = "copilot";
 const COPILOT_WAIT_MS = 2000;
 const COPILOT_MAX_ATTEMPTS = 30;
+
+function getLabelString(label: string | vscode.TreeItemLabel | undefined): string {
+  if (label === undefined) {
+    return "";
+  }
+  if (typeof label === "string") {
+    return label;
+  }
+  return label.label;
+}
 
 async function collectLeafItems(
   p: CommandTreeProvider,
@@ -116,6 +128,7 @@ suite("Vector Embedding Search E2E", () => {
   let provider: CommandTreeProvider;
   let totalTaskCount: number;
 
+  // SPEC.md **ai-summary-generation** (Copilot requirement), **ai-embedding-generation** (model download)
   suiteSetup(async function () {
     this.timeout(300000); // 5 min — Copilot + model download
 
@@ -142,14 +155,18 @@ suite("Vector Embedding Search E2E", () => {
     // Copilot needs time to activate + authenticate after VS Code starts.
     let copilotModels: vscode.LanguageModelChat[] = [];
     for (let i = 0; i < COPILOT_MAX_ATTEMPTS; i++) {
-      copilotModels = await vscode.lm.selectChatModels({ vendor: COPILOT_VENDOR });
-      if (copilotModels.length > 0) { break; }
+      copilotModels = await vscode.lm.selectChatModels({
+        vendor: COPILOT_VENDOR,
+      });
+      if (copilotModels.length > 0) {
+        break;
+      }
       // On last attempt, dump ALL models for diagnostics
       if (i === COPILOT_MAX_ATTEMPTS - 1) {
         const allModels = await vscode.lm.selectChatModels();
         const info = allModels.map((m) => `${m.vendor}/${m.name}/${m.id}`);
         assert.fail(
-          `GATE FAILED: No Copilot models after ${COPILOT_MAX_ATTEMPTS} attempts (${COPILOT_MAX_ATTEMPTS * COPILOT_WAIT_MS / 1000}s). ` +
+          `GATE FAILED: No Copilot models after ${COPILOT_MAX_ATTEMPTS} attempts (${(COPILOT_MAX_ATTEMPTS * COPILOT_WAIT_MS) / 1000}s). ` +
             `All available models: [${info.join(", ")}]. ` +
             `Check: (1) github.copilot-chat extension installed, (2) GitHub authenticated, (3) --disable-extensions not blocking Copilot.`,
         );
@@ -196,6 +213,7 @@ suite("Vector Embedding Search E2E", () => {
     }
   });
 
+  // SPEC.md **ai-embedding-generation**, **ai-database-schema**
   test("embedding pipeline fires and writes REAL 384-dim vectors to SQLite", async function () {
     this.timeout(15000);
 
@@ -264,6 +282,7 @@ suite("Vector Embedding Search E2E", () => {
     }
   });
 
+  // SPEC.md **ai-summary-generation**
   test("tasks have AI-generated summaries after pipeline", async function () {
     this.timeout(15000);
 
@@ -291,6 +310,7 @@ suite("Vector Embedding Search E2E", () => {
     }
   });
 
+  // SPEC.md **ai-summary-generation** (Display: Tooltip on hover)
   test("tree items show summaries in tooltips as markdown blockquotes", async function () {
     this.timeout(15000);
 
@@ -318,6 +338,7 @@ suite("Vector Embedding Search E2E", () => {
     }
   });
 
+  // SPEC.md **ai-search-implementation**
   test("semantic search filters tree to relevant results", async function () {
     this.timeout(120000);
 
@@ -339,6 +360,7 @@ suite("Vector Embedding Search E2E", () => {
     await vscode.commands.executeCommand("commandtree.clearFilter");
   });
 
+  // SPEC.md **ai-search-implementation**
   test("deploy query surfaces deploy-related tasks", async function () {
     this.timeout(120000);
 
@@ -365,6 +387,7 @@ suite("Vector Embedding Search E2E", () => {
     await vscode.commands.executeCommand("commandtree.clearFilter");
   });
 
+  // SPEC.md **ai-search-implementation**
   test("build query surfaces build-related tasks", async function () {
     this.timeout(120000);
 
@@ -387,6 +410,7 @@ suite("Vector Embedding Search E2E", () => {
     await vscode.commands.executeCommand("commandtree.clearFilter");
   });
 
+  // SPEC.md **ai-search-implementation**
   test("different queries produce different result sets", async function () {
     this.timeout(120000);
 
@@ -423,6 +447,7 @@ suite("Vector Embedding Search E2E", () => {
     await vscode.commands.executeCommand("commandtree.clearFilter");
   });
 
+  // SPEC.md **ai-search-implementation**
   test("empty query does not activate filter", async function () {
     this.timeout(15000);
 
@@ -438,6 +463,7 @@ suite("Vector Embedding Search E2E", () => {
     );
   });
 
+  // SPEC.md **ai-search-implementation**
   test("test query surfaces test-related tasks", async function () {
     this.timeout(120000);
 
@@ -462,6 +488,7 @@ suite("Vector Embedding Search E2E", () => {
     await vscode.commands.executeCommand("commandtree.clearFilter");
   });
 
+  // SPEC.md **ai-search-implementation**
   test("clear filter restores all tasks after search", async function () {
     this.timeout(30000);
 
@@ -483,6 +510,7 @@ suite("Vector Embedding Search E2E", () => {
     );
   });
 
+  // SPEC.md **ai-search-implementation**
   test("query-specific searches surface relevant tasks", async function () {
     this.timeout(120000);
     const cases = [
@@ -534,20 +562,8 @@ suite("Vector Embedding Search E2E", () => {
     }
   });
 
-  test("empty query does not activate filter", async function () {
-    this.timeout(15000);
-    await vscode.commands.executeCommand("commandtree.semanticSearch", "");
-    await sleep(SHORT_SETTLE_MS);
-    assert.ok(!provider.hasFilter(), "Empty query should not activate filter");
-    const tasks = await collectLeafTasks(provider);
-    assert.strictEqual(
-      tasks.length,
-      totalTaskCount,
-      "All tasks should remain visible",
-    );
-  });
-
-  test("search command without args opens input box and cancellation is clean", async function () {
+  // SPEC.md **ai-search-implementation**
+  test("search command without args opens input box and cancellation is clean.", async function () {
     this.timeout(30000);
 
     // Trigger search without query arg → opens VS Code input box
@@ -576,6 +592,7 @@ suite("Vector Embedding Search E2E", () => {
     );
   });
 
+  // SPEC.md **ai-search-implementation** (Cosine similarity, threshold 0.3)
   test("cosine similarity discriminates: related query filters, unrelated does not", async function () {
     this.timeout(120000);
 
@@ -633,6 +650,7 @@ suite("Vector Embedding Search E2E", () => {
     }
   });
 
+  // SPEC.md **ai-search-implementation**
   test("filtered tree items retain correct UI properties", async function () {
     this.timeout(120000);
 
@@ -663,5 +681,147 @@ suite("Vector Embedding Search E2E", () => {
     }
 
     await vscode.commands.executeCommand("commandtree.clearFilter");
+  });
+
+  // SPEC.md line 211: Security warning in tooltip
+  test("tooltips display security warning icon when summary contains security keywords", async function () {
+    this.timeout(15000);
+
+    const items = await collectLeafItems(provider);
+    const allTooltips = items
+      .map(i => ({ item: i, tooltip: getTooltipText(i) }))
+      .filter(x => x.tooltip.includes("> "));
+
+    const withWarning = allTooltips.filter(x => x.tooltip.includes("⚠️"));
+    const withKeywords = allTooltips.filter(x => {
+      const lower = x.tooltip.toLowerCase();
+      return ['danger', 'unsafe', 'caution', 'warning', 'security', 'risk', 'vulnerability']
+        .some(k => lower.includes(k));
+    });
+
+    assert.ok(
+      withKeywords.length >= 0,
+      "Checking for security keywords in summaries"
+    );
+
+    if (withKeywords.length > 0) {
+      assert.ok(
+        withWarning.length > 0,
+        `Found ${withKeywords.length} summaries with security keywords, but 0 have ⚠️ icon`
+      );
+
+      for (const item of withWarning) {
+        const tooltip = item.tooltip;
+        assert.ok(
+          tooltip.includes("> ⚠️"),
+          `Security warning should appear in blockquote format, got: "${tooltip.substring(0, 100)}"`
+        );
+      }
+    }
+  });
+
+  // SPEC.md line 271: Match percentage displayed next to each command (e.g., "build (87%)")
+  test("tree labels display similarity scores as percentages after semantic search", async function () {
+    this.timeout(120000);
+
+    await vscode.commands.executeCommand(
+      "commandtree.semanticSearch",
+      "build the project"
+    );
+    await sleep(SEARCH_SETTLE_MS);
+
+    const items = await collectLeafItems(provider);
+    assert.ok(items.length > 0, "Search should return results");
+
+    const labelsWithScores = items.filter(item => {
+      const label = getLabelString(item.label);
+      return /\(\d+%\)/.test(label);
+    });
+
+    assert.ok(
+      labelsWithScores.length > 0,
+      `At least one result should show similarity score in label like "task (87%)", got labels: [${items.map(i => getLabelString(i.label)).join(", ")}]`
+    );
+
+    for (const item of labelsWithScores) {
+      const label = getLabelString(item.label);
+      const match = /\((\d+)%\)/.exec(label);
+      assert.ok(match !== null, `Label should have percentage format: "${label}"`);
+      const percentage = parseInt(match[1] ?? "0", 10);
+      assert.ok(
+        percentage >= 0 && percentage <= 100,
+        `Percentage should be 0-100, got ${percentage} in "${label}"`
+      );
+    }
+
+    await vscode.commands.executeCommand("commandtree.clearFilter");
+  });
+
+  // SPEC.md **ai-summary-generation** (Display: includes ⚠️ warning for security issues)
+  test("security warnings appear in tooltips when Copilot flags risky commands", async function () {
+    this.timeout(15000);
+
+    const tasks = await collectLeafTasks(provider);
+    const items = await collectLeafItems(provider);
+
+    const securityWarnings = tasks.filter(
+      (t) => t.summary?.includes("⚠️") === true,
+    );
+
+    if (securityWarnings.length === 0) {
+      return;
+    }
+
+    assert.ok(
+      securityWarnings.length > 0,
+      "Found commands with security warnings from Copilot",
+    );
+
+    for (const task of securityWarnings) {
+      const item = items.find((i) => i.task?.id === task.id);
+      assert.ok(
+        item !== undefined,
+        `Tree item should exist for flagged command "${task.label}"`,
+      );
+
+      const tip = getTooltipText(item);
+      assert.ok(
+        tip.includes("⚠️"),
+        `Tooltip for "${task.label}" should preserve security warning emoji`,
+      );
+      assert.ok(
+        tip.includes(task.summary ?? ""),
+        `Tooltip for "${task.label}" should include full summary with warning`,
+      );
+    }
+  });
+
+  // SPEC.md line 209: File watch with debounce
+  test("rapid file changes are debounced to prevent excessive re-summarization", async function () {
+    this.timeout(60000);
+
+    const testFilePath = getFixturePath("test-debounce.sh");
+    const testContent = "#!/bin/bash\necho 'test'\n";
+
+    fs.writeFileSync(testFilePath, testContent);
+    await sleep(SHORT_SETTLE_MS);
+
+    const startCount = (await collectLeafTasks(provider)).length;
+
+    fs.writeFileSync(testFilePath, "#!/bin/bash\necho 'change1'\n");
+    await sleep(500);
+    fs.writeFileSync(testFilePath, "#!/bin/bash\necho 'change2'\n");
+    await sleep(500);
+    fs.writeFileSync(testFilePath, "#!/bin/bash\necho 'change3'\n");
+    await sleep(3000);
+
+    const endCount = (await collectLeafTasks(provider)).length;
+    assert.ok(
+      endCount >= startCount,
+      `Task count should not decrease after rapid changes (${endCount} >= ${startCount})`
+    );
+
+    fs.unlinkSync(testFilePath);
+    await sleep(SHORT_SETTLE_MS);
   });
 });

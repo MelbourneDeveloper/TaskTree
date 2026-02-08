@@ -376,7 +376,12 @@
     },
     "configurationDefaults": {
       "workbench.tree.indent": 16
-    }
+    },
+    "languageModels": [
+      {
+        "vendor": "copilot"
+      }
+    ]
   },
   "scripts": {
     "compile": "tsc -p ./",

@@ -5,6 +5,8 @@ import { generateTaskId, simplifyPath } from '../models/TaskItem';
 import { readFile } from '../utils/fileUtils';
 
 /**
+ * SPEC: command-discovery/python-scripts
+ *
  * Discovers Python scripts (.py files) in the workspace.
  */
 export async function discoverPythonScripts(

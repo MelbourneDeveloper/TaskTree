@@ -5,6 +5,8 @@ import { generateTaskId, simplifyPath } from '../models/TaskItem';
 import { readFile } from '../utils/fileUtils';
 
 /**
+ * SPEC: command-discovery/makefile-targets
+ *
  * Discovers make targets from Makefiles.
  */
 export async function discoverMakeTargets(

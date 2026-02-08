@@ -1,41 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-
-/**
- * Success variant of Result.
- */
-export interface Ok<T> {
-    readonly ok: true;
-    readonly value: T;
-}
-
-/**
- * Error variant of Result.
- */
-export interface Err<E> {
-    readonly ok: false;
-    readonly error: E;
-}
-
-/**
- * Result type for operations that can fail.
- * Use instead of throwing errors.
- */
-export type Result<T, E> = Ok<T> | Err<E>;
-
-/**
- * Creates a success result.
- */
-export function ok<T>(value: T): Ok<T> {
-    return { ok: true, value };
-}
-
-/**
- * Creates an error result.
- */
-export function err<E>(error: E): Err<E> {
-    return { ok: false, error };
-}
+export type { Result, Ok, Err } from './Result';
+export { ok, err } from './Result';
 
 /**
  * Command type identifiers.
@@ -57,7 +23,17 @@ export type TaskType =
     | 'deno'
     | 'rake'
     | 'composer'
-    | 'docker';
+    | 'docker'
+    | 'dotnet';
+
+/**
+ * Parameter format types for flexible argument handling across different tools.
+ */
+export type ParamFormat =
+    | 'positional'       // Append as quoted arg: "value"
+    | 'flag'             // Append as flag: --flag "value"
+    | 'flag-equals'      // Append as flag with equals: --flag=value
+    | 'dashdash-args';   // Prepend with --: -- value1 value2
 
 /**
  * Parameter definition for commands requiring input.
@@ -67,6 +43,8 @@ export interface ParamDef {
     readonly description?: string;
     readonly default?: string;
     readonly options?: readonly string[];
+    readonly format?: ParamFormat;
+    readonly flag?: string;
 }
 
 /**
@@ -77,6 +55,8 @@ export interface MutableParamDef {
     description?: string;
     default?: string;
     options?: string[];
+    format?: ParamFormat;
+    flag?: string;
 }
 
 /**
@@ -121,10 +101,16 @@ export class CommandTreeItem extends vscode.TreeItem {
         public readonly task: TaskItem | null,
         public readonly categoryLabel: string | null,
         public readonly children: CommandTreeItem[] = [],
-        parentId?: string
+        parentId?: string,
+        similarityScore?: number
     ) {
+        const baseLabel = task?.label ?? categoryLabel ?? '';
+        const labelWithScore = similarityScore !== undefined
+            ? `${baseLabel} (${Math.round(similarityScore * 100)}%)`
+            : baseLabel;
+
         super(
-            task?.label ?? categoryLabel ?? '',
+            labelWithScore,
             children.length > 0
                 ? vscode.TreeItemCollapsibleState.Collapsed
                 : vscode.TreeItemCollapsibleState.None
@@ -154,7 +140,9 @@ export class CommandTreeItem extends vscode.TreeItem {
         const md = new vscode.MarkdownString();
         md.appendMarkdown(`**${task.label}**\n\n`);
         if (task.summary !== undefined && task.summary !== '') {
-            md.appendMarkdown(`> ${task.summary}\n\n`);
+            const hasSecurityWarning = this.containsSecurityKeywords(task.summary);
+            const warningPrefix = hasSecurityWarning ? '⚠️ ' : '';
+            md.appendMarkdown(`> ${warningPrefix}${task.summary}\n\n`);
             md.appendMarkdown(`---\n\n`);
         }
         md.appendMarkdown(`Type: \`${task.type}\`\n\n`);
@@ -167,6 +155,12 @@ export class CommandTreeItem extends vscode.TreeItem {
         }
         md.appendMarkdown(`Source: \`${task.filePath}\``);
         return md;
+    }
+
+    private containsSecurityKeywords(text: string): boolean {
+        const keywords = ['danger', 'unsafe', 'caution', 'warning', 'security', 'risk', 'vulnerability'];
+        const lower = text.toLowerCase();
+        return keywords.some(k => lower.includes(k));
     }
 
     private getIcon(type: TaskType): vscode.ThemeIcon {
@@ -221,6 +215,13 @@ export class CommandTreeItem extends vscode.TreeItem {
             }
             case 'docker': {
                 return new vscode.ThemeIcon('server-environment', new vscode.ThemeColor('terminal.ansiBlue'));
+            }
+            case 'dotnet': {
+                return new vscode.ThemeIcon('circuit-board', new vscode.ThemeColor('terminal.ansiMagenta'));
+            }
+            default: {
+                const exhaustiveCheck: never = type;
+                return exhaustiveCheck;
             }
         }
     }
@@ -277,6 +278,9 @@ export class CommandTreeItem extends vscode.TreeItem {
         }
         if (lower.includes('docker')) {
             return new vscode.ThemeIcon('server-environment', new vscode.ThemeColor('terminal.ansiBlue'));
+        }
+        if (lower.includes('dotnet') || lower.includes('.net') || lower.includes('csharp') || lower.includes('fsharp')) {
+            return new vscode.ThemeIcon('circuit-board', new vscode.ThemeColor('terminal.ansiMagenta'));
         }
         return new vscode.ThemeIcon('folder');
     }

@@ -23,6 +23,8 @@ interface TasksJsonConfig {
 }
 
 /**
+ * SPEC: command-discovery/vscode-tasks
+ *
  * Discovers VS Code tasks from tasks.json.
  */
 export async function discoverVsCodeTasks(

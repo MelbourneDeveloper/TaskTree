@@ -5,8 +5,8 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import type { Result } from '../models/TaskItem';
-import { ok, err } from '../models/TaskItem';
+import type { Result } from '../models/Result';
+import { ok, err } from '../models/Result';
 import type { SummaryStoreData } from './store';
 
 import type { Database as SqliteDatabase } from 'node-sqlite3-wasm';

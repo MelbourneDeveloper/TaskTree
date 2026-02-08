@@ -1,3 +1,8 @@
+/**
+ * SPEC: ai-summary-generation
+ *
+ * GitHub Copilot integration for generating command summaries.
+ */
 import * as vscode from 'vscode';
 import type { Result } from '../models/TaskItem';
 import { ok, err } from '../models/TaskItem';
@@ -87,6 +92,7 @@ function buildSummaryPrompt(params: {
 
     return [
         `Summarise this ${params.type} command in 1-2 sentences.`,
+        `If the command contains security risks (writes credentials, deletes files, modifies system config, runs untrusted code, etc.), prefix your summary with ⚠️.`,
         `Name: ${params.label}`,
         `Command: ${params.command}`,
         '',

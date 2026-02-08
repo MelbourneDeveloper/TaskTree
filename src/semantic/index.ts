@@ -1,20 +1,22 @@
 /**
+ * SPEC: ai-semantic-search
+ *
  * Semantic search orchestration.
  * Coordinates LLM summarisation, embedding generation, and SQLite storage.
  */
 
-import * as vscode from 'vscode';
+import type * as vscode from 'vscode';
 import type { TaskItem, Result } from '../models/TaskItem';
 import { ok, err } from '../models/TaskItem';
 import { logger } from '../utils/logger';
-import { readFile } from '../utils/fileUtils';
 import { computeContentHash } from './store';
+import type { FileSystemAdapter } from './adapters';
 import { selectCopilotModel, summariseScript } from './summariser';
 import { initDb, getDb, getOrCreateEmbedder, disposeSemantic } from './lifecycle';
 import { getAllRows, upsertRow, getRow, importFromJsonStore } from './db';
-import type { EmbeddingRow } from './db';
+import type { EmbeddingRow, DbHandle } from './db';
 import { embedText } from './embedder';
-import { rankBySimilarity } from './similarity';
+import { rankBySimilarity, type ScoredCandidate } from './similarity';
 import {
     legacyStoreExists,
     readSummaryStore,
@@ -26,11 +28,11 @@ const SEARCH_SIMILARITY_THRESHOLD = 0.3;
 
 /**
  * Checks if the user has enabled AI summaries.
+ * ABSTRACTION: Accepts enabled flag instead of reading VS Code config directly.
+ * Call site (extension.ts) reads from VS Code and passes the value.
  */
-export function isAiEnabled(): boolean {
-    return vscode.workspace
-        .getConfiguration('commandtree')
-        .get<boolean>('enableAiSummaries', false);
+export function isAiEnabled(enabled: boolean): boolean {
+    return enabled;
 }
 
 /**
@@ -79,12 +81,15 @@ export async function migrateIfNeeded(params: {
 }
 
 /**
- * Reads script content for a task.
+ * Reads script content for a task using the provided file system adapter.
+ * If file read fails, falls back to task.command.
  */
-async function readTaskContent(task: TaskItem): Promise<string> {
-    const uri = vscode.Uri.file(task.filePath);
-    const result = await readFile(uri);
-    return result.ok ? result.value : task.command;
+async function readTaskContent(params: {
+    readonly task: TaskItem;
+    readonly fs: FileSystemAdapter;
+}): Promise<string> {
+    const result = await params.fs.readFile(params.task.filePath);
+    return result.ok ? result.value : params.task.command;
 }
 
 /**
@@ -168,6 +173,7 @@ async function embedOrFail(params: {
 export async function summariseAllTasks(params: {
     readonly tasks: readonly TaskItem[];
     readonly workspaceRoot: string;
+    readonly fs: FileSystemAdapter;
     readonly onProgress?: (done: number, total: number) => void;
 }): Promise<Result<number, string>> {
     const modelResult = await selectCopilotModel();
@@ -176,7 +182,11 @@ export async function summariseAllTasks(params: {
     const dbInit = await initDb(params.workspaceRoot);
     if (!dbInit.ok) { return err(dbInit.error); }
 
-    const pending = await findPending(params.tasks);
+    const pending = await findPending({
+        handle: dbInit.value,
+        tasks: params.tasks,
+        fs: params.fs
+    });
     if (pending.length === 0) {
         logger.info('All summaries up to date');
         return ok(0);
@@ -213,15 +223,16 @@ interface PendingItem {
 /**
  * Finds tasks that need summarisation (new or changed).
  */
-async function findPending(tasks: readonly TaskItem[]): Promise<PendingItem[]> {
-    const dbResult = getDb();
-    if (!dbResult.ok) { return []; }
-
+async function findPending(params: {
+    readonly handle: DbHandle;
+    readonly tasks: readonly TaskItem[];
+    readonly fs: FileSystemAdapter;
+}): Promise<PendingItem[]> {
     const pending: PendingItem[] = [];
-    for (const task of tasks) {
-        const content = await readTaskContent(task);
+    for (const task of params.tasks) {
+        const content = await readTaskContent({ task, fs: params.fs });
         const hash = computeContentHash(content);
-        const existing = getRow({ handle: dbResult.value, commandId: task.id });
+        const existing = getRow({ handle: params.handle, commandId: task.id });
         const needsWork = !existing.ok
             || existing.value?.contentHash !== hash
             || existing.value.embedding === null;
@@ -235,12 +246,12 @@ async function findPending(tasks: readonly TaskItem[]): Promise<PendingItem[]> {
 /**
  * Performs semantic search using cosine similarity on stored embeddings.
  * NO FALLBACK: if embedder fails, returns error. No dumb text matching.
- * fallbackTextSearch was string.includes() on metadata — pure fraud.
+ * SPEC.md **ai-search-implementation**: Scores must be preserved and displayed.
  */
 export async function semanticSearch(params: {
     readonly query: string;
     readonly workspaceRoot: string;
-}): Promise<Result<string[], string>> {
+}): Promise<Result<ScoredCandidate[], string>> {
     const dbInit = await initDb(params.workspaceRoot);
     if (!dbInit.ok) { return err(dbInit.error); }
 
@@ -267,7 +278,7 @@ export async function semanticSearch(params: {
         threshold: SEARCH_SIMILARITY_THRESHOLD
     });
 
-    return ok(ranked.map(r => r.id));
+    return ok(ranked);
 }
 
 /**

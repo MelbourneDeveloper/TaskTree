@@ -22,15 +22,16 @@ export class QuickTasksProvider implements vscode.TreeDataProvider<CommandTreeIt
     private allTasks: TaskItem[] = [];
 
     constructor() {
+        // SPEC.md **user-data-storage**: Tags stored in SQLite, not .vscode/commandtree.json
         this.tagConfig = new TagConfig();
     }
 
     /**
      * Updates the list of all tasks and refreshes the view.
      */
-    async updateTasks(tasks: TaskItem[]): Promise<void> {
+    updateTasks(tasks: TaskItem[]): void {
         logger.quick('updateTasks called', { taskCount: tasks.length });
-        await this.tagConfig.load();
+        this.tagConfig.load();
         this.allTasks = this.tagConfig.applyTags(tasks);
         const quickCount = this.allTasks.filter(t => t.tags.includes(QUICK_TAG)).length;
         logger.quick('updateTasks complete', {
@@ -44,10 +45,10 @@ export class QuickTasksProvider implements vscode.TreeDataProvider<CommandTreeIt
     /**
      * Adds a command to the quick list.
      */
-    async addToQuick(task: TaskItem): Promise<Result<void, string>> {
-        const result = await this.tagConfig.addTaskToTag(task, QUICK_TAG);
+    addToQuick(task: TaskItem): Result<void, string> {
+        const result = this.tagConfig.addTaskToTag(task, QUICK_TAG);
         if (result.ok) {
-            await this.tagConfig.load();
+            this.tagConfig.load();
             this.allTasks = this.tagConfig.applyTags(this.allTasks);
             this.onDidChangeTreeDataEmitter.fire(undefined);
         }
@@ -57,10 +58,10 @@ export class QuickTasksProvider implements vscode.TreeDataProvider<CommandTreeIt
     /**
      * Removes a command from the quick list.
      */
-    async removeFromQuick(task: TaskItem): Promise<Result<void, string>> {
-        const result = await this.tagConfig.removeTaskFromTag(task, QUICK_TAG);
+    removeFromQuick(task: TaskItem): Result<void, string> {
+        const result = this.tagConfig.removeTaskFromTag(task, QUICK_TAG);
         if (result.ok) {
-            await this.tagConfig.load();
+            this.tagConfig.load();
             this.allTasks = this.tagConfig.applyTags(this.allTasks);
             this.onDidChangeTreeDataEmitter.fire(undefined);
         }
@@ -131,13 +132,13 @@ export class QuickTasksProvider implements vscode.TreeDataProvider<CommandTreeIt
     /**
      * Called when dropping.
      */
-    async handleDrop(target: CommandTreeItem | undefined, dataTransfer: vscode.DataTransfer): Promise<void> {
+    handleDrop(target: CommandTreeItem | undefined, dataTransfer: vscode.DataTransfer): void {
         const draggedTask = this.extractDraggedTask(dataTransfer);
         if (draggedTask === undefined) { return; }
         const newIndex = this.computeDropIndex(target);
-        const result = await this.tagConfig.moveTaskInTag(draggedTask, QUICK_TAG, newIndex);
+        const result = this.tagConfig.moveTaskInTag(draggedTask, QUICK_TAG, newIndex);
         if (result.ok) {
-            await this.tagConfig.load();
+            this.tagConfig.load();
             this.allTasks = this.tagConfig.applyTags(this.allTasks);
             this.onDidChangeTreeDataEmitter.fire(undefined);
         }

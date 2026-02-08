@@ -48,13 +48,14 @@ export class CommandTreeProvider implements vscode.TreeDataProvider<CommandTreeI
     private discoveryResult: DiscoveryResult | null = null;
     private textFilter = '';
     private tagFilter: string | null = null;
-    private semanticFilter: string[] | null = null;
+    private semanticFilter: ReadonlyMap<string, number> | null = null;
     private summaries: ReadonlyMap<string, EmbeddingRow> = new Map();
     private readonly tagConfig: TagConfig;
     private readonly workspaceRoot: string;
 
     constructor(workspaceRoot: string) {
         this.workspaceRoot = workspaceRoot;
+        // SPEC.md **user-data-storage**: Tags stored in SQLite, not .vscode/commandtree.json
         this.tagConfig = new TagConfig();
     }
 
@@ -62,7 +63,7 @@ export class CommandTreeProvider implements vscode.TreeDataProvider<CommandTreeI
      * Refreshes all commands.
      */
     async refresh(): Promise<void> {
-        await this.tagConfig.load();
+        this.tagConfig.load();
         const excludePatterns = getExcludePatterns();
         this.discoveryResult = await discoverAllTasks(this.workspaceRoot, excludePatterns);
         this.tasks = this.tagConfig.applyTags(flattenTasks(this.discoveryResult));
@@ -120,10 +121,15 @@ export class CommandTreeProvider implements vscode.TreeDataProvider<CommandTreeI
     }
 
     /**
-     * Sets semantic filter with ordered command IDs from search.
+     * Sets semantic filter with command IDs and their similarity scores.
+     * SPEC.md **ai-search-implementation**: Scores preserved for display.
      */
-    setSemanticFilter(commandIds: string[]): void {
-        this.semanticFilter = commandIds;
+    setSemanticFilter(results: ReadonlyArray<{ readonly id: string; readonly score: number }>): void {
+        const map = new Map<string, number>();
+        for (const r of results) {
+            map.set(r.id, r.score);
+        }
+        this.semanticFilter = map;
         this._onDidChangeTreeData.fire(undefined);
     }
 
@@ -162,26 +168,21 @@ export class CommandTreeProvider implements vscode.TreeDataProvider<CommandTreeI
     }
 
     /**
-     * Opens the tag config file.
+     * DEPRECATED: Tags now stored in SQLite database, not JSON file.
+     * SPEC.md **user-data-storage**: All data in SQLite at {workspaceFolder}/.commandtree/
      */
-    async editTags(): Promise<void> {
-        const configUri = vscode.Uri.joinPath(
-            vscode.Uri.file(this.workspaceRoot), '.vscode', 'commandtree.json'
+    editTags(): void {
+        vscode.window.showInformationMessage(
+            'Tags are now managed through the UI. Right-click commands to add/remove tags.',
+            { modal: false }
         );
-        try {
-            await vscode.workspace.fs.stat(configUri);
-        } catch {
-            const template = Buffer.from(JSON.stringify({ tags: {} }, null, 4));
-            await vscode.workspace.fs.writeFile(configUri, template);
-        }
-        await vscode.window.showTextDocument(configUri);
     }
 
     /**
      * Adds a command to a tag.
      */
     async addTaskToTag(task: TaskItem, tagName: string): Promise<Result<void, string>> {
-        const result = await this.tagConfig.addTaskToTag(task, tagName);
+        const result = this.tagConfig.addTaskToTag(task, tagName);
         if (result.ok) {
             await this.refresh();
         }
@@ -192,7 +193,7 @@ export class CommandTreeProvider implements vscode.TreeDataProvider<CommandTreeI
      * Removes a command from a tag.
      */
     async removeTaskFromTag(task: TaskItem, tagName: string): Promise<Result<void, string>> {
-        const result = await this.tagConfig.removeTaskFromTag(task, tagName);
+        const result = this.tagConfig.removeTaskFromTag(task, tagName);
         if (result.ok) {
             await this.refresh();
         }
@@ -256,7 +257,8 @@ export class CommandTreeProvider implements vscode.TreeDataProvider<CommandTreeI
             tasks,
             workspaceRoot: this.workspaceRoot,
             categoryId: name,
-            sortTasks: (t) => this.sortTasks(t)
+            sortTasks: (t) => this.sortTasks(t),
+            getScore: (id: string) => this.getSemanticScore(id)
         });
         return new CommandTreeItem(null, `${name} (${tasks.length})`, children);
     }
@@ -267,8 +269,22 @@ export class CommandTreeProvider implements vscode.TreeDataProvider<CommandTreeI
     private buildFlatCategory(name: string, tasks: TaskItem[]): CommandTreeItem {
         const sorted = this.sortTasks(tasks);
         const categoryId = name;
-        const children = sorted.map(t => new CommandTreeItem(t, null, [], categoryId));
+        const children = sorted.map(t => new CommandTreeItem(
+            t,
+            null,
+            [],
+            categoryId,
+            this.getSemanticScore(t.id)
+        ));
         return new CommandTreeItem(null, `${name} (${tasks.length})`, children);
+    }
+
+    /**
+     * Gets similarity score for a task if semantic filtering is active.
+     * SPEC.md **ai-search-implementation**: Scores displayed as percentages.
+     */
+    private getSemanticScore(taskId: string): number | undefined {
+        return this.semanticFilter?.get(taskId);
     }
 
     /**
@@ -331,7 +347,7 @@ export class CommandTreeProvider implements vscode.TreeDataProvider<CommandTreeI
 
     private applySemanticFilter(tasks: TaskItem[]): TaskItem[] {
         if (this.semanticFilter === null) { return tasks; }
-        const ids = this.semanticFilter;
-        return tasks.filter(t => ids.includes(t.id));
+        const scoreMap = this.semanticFilter;
+        return tasks.filter(t => scoreMap.has(t.id));
     }
 }

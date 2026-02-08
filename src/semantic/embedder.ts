@@ -3,9 +3,8 @@
  * Uses dynamic import() for ESM compatibility from CJS extension.
  */
 
-import type { Result } from '../models/TaskItem';
-import { ok, err } from '../models/TaskItem';
-import { logger } from '../utils/logger';
+import type { Result } from '../models/Result';
+import { ok, err } from '../models/Result';
 
 interface Pipeline {
     (text: string, options: { pooling: string; normalize: boolean }): Promise<{ data: Float32Array }>;
@@ -37,7 +36,6 @@ export async function createEmbedder(params: {
             opts
         );
 
-        logger.info('Embedder model loaded', { cacheDir: params.modelCacheDir });
         return ok({ pipeline: pipe as unknown as Pipeline });
     } catch (e) {
         const msg = e instanceof Error ? e.message : 'Failed to load embedding model';

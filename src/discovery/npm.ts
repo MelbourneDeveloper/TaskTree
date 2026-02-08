@@ -9,6 +9,8 @@ interface PackageJson {
 }
 
 /**
+ * SPEC: command-discovery/npm-scripts
+ *
  * Discovers npm scripts from package.json files.
  */
 export async function discoverNpmScripts(

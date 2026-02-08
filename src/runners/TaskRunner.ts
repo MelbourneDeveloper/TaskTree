@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import type { TaskItem, ParamDef } from '../models/TaskItem';
 
 /**
+ * SPEC: command-execution, parameterized-commands
+ *
  * Shows error message without blocking (fire and forget).
  */
 function showError(message: string): void {
@@ -38,19 +40,19 @@ export class TaskRunner {
     }
 
     /**
-     * Collects parameter values from user.
+     * Collects parameter values from user with their definitions.
      */
     private async collectParams(
         params?: readonly ParamDef[]
-    ): Promise<Map<string, string> | null> {
-        const values = new Map<string, string>();
-        if (params === undefined || params.length === 0) { return values; }
+    ): Promise<Array<{ def: ParamDef; value: string }> | null> {
+        const collected: Array<{ def: ParamDef; value: string }> = [];
+        if (params === undefined || params.length === 0) { return collected; }
         for (const param of params) {
             const value = await this.promptForParam(param);
             if (value === undefined) { return null; }
-            values.set(param.name, value);
+            collected.push({ def: param, value });
         }
-        return values;
+        return collected;
     }
 
     private async promptForParam(param: ParamDef): Promise<string | undefined> {
@@ -107,7 +109,10 @@ export class TaskRunner {
     /**
      * Runs a command in a new terminal.
      */
-    private runInNewTerminal(task: TaskItem, params: Map<string, string>): void {
+    private runInNewTerminal(
+        task: TaskItem,
+        params: Array<{ def: ParamDef; value: string }>
+    ): void {
         const command = this.buildCommand(task, params);
         const terminalOptions: vscode.TerminalOptions = {
             name: `CommandTree: ${task.label}`
@@ -123,7 +128,10 @@ export class TaskRunner {
     /**
      * Runs a command in the current (active) terminal.
      */
-    private runInCurrentTerminal(task: TaskItem, params: Map<string, string>): void {
+    private runInCurrentTerminal(
+        task: TaskItem,
+        params: Array<{ def: ParamDef; value: string }>
+    ): void {
         const command = this.buildCommand(task, params);
         let terminal = vscode.window.activeTerminal;
 
@@ -180,16 +188,48 @@ export class TaskRunner {
     }
 
     /**
-     * Builds the full command string with parameters.
+     * Builds the full command string with formatted parameters.
      */
-    private buildCommand(task: TaskItem, params: Map<string, string>): string {
+    private buildCommand(
+        task: TaskItem,
+        params: Array<{ def: ParamDef; value: string }>
+    ): string {
         let command = task.command;
-        if (params.size > 0) {
-            const args = Array.from(params.values())
-                .map(v => `"${v}"`)
-                .join(' ');
-            command = `${command} ${args}`;
+        const parts: string[] = [];
+
+        for (const { def, value } of params) {
+            if (value === '') { continue; }
+            const formatted = this.formatParam(def, value);
+            if (formatted !== '') { parts.push(formatted); }
+        }
+
+        if (parts.length > 0) {
+            command = `${command} ${parts.join(' ')}`;
         }
         return command;
+    }
+
+    /**
+     * Formats a parameter value according to its format type.
+     */
+    private formatParam(def: ParamDef, value: string): string {
+        const format = def.format ?? 'positional';
+
+        switch (format) {
+            case 'positional': {
+                return `"${value}"`;
+            }
+            case 'flag': {
+                const flagName = def.flag ?? `--${def.name}`;
+                return `${flagName} "${value}"`;
+            }
+            case 'flag-equals': {
+                const flagName = def.flag ?? `--${def.name}`;
+                return `${flagName}=${value}`;
+            }
+            case 'dashdash-args': {
+                return `-- ${value}`;
+            }
+        }
     }
 }

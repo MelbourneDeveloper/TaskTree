@@ -2,7 +2,8 @@ import * as assert from 'assert';
 import { cosineSimilarity, rankBySimilarity } from '../../semantic/similarity';
 
 /**
- * Spec: semantic-search/search-ux
+ * SPEC: ai-search-implementation
+ *
  * UNIT TESTS for cosine similarity vector math.
  * Proves that vector proximity search actually works correctly.
  * Pure math - no VS Code, no I/O.

@@ -2,7 +2,8 @@ import * as assert from 'assert';
 import { embeddingToBytes, bytesToEmbedding } from '../../semantic/db';
 
 /**
- * Spec: semantic-search/data-structure
+ * SPEC: ai-database-schema
+ *
  * UNIT TESTS for embedding serialization and storage.
  * Proves embeddings survive the Float32Array -> bytes -> Float32Array roundtrip
  * and that the SQLite storage layer correctly persists vector data.

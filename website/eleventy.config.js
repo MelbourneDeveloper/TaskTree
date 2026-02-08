@@ -6,6 +6,7 @@ export default function(eleventyConfig) {
       name: "CommandTree",
       url: "https://commandtree.dev",
       description: "One sidebar. Every command in your workspace.",
+      stylesheet: "/assets/css/styles.css",
     },
     features: {
       blog: true,
@@ -41,6 +42,14 @@ export default function(eleventyConfig) {
     }
     const cleaned = content.split("\n").filter(l => !isIconLink(l)).join("\n");
     return cleaned.replace("</head>", faviconLinks + "\n</head>");
+  });
+
+  eleventyConfig.addTransform("customScripts", function(content) {
+    if (!this.page.outputPath?.endsWith(".html")) {
+      return content;
+    }
+    const customScript = '\n  <script src="/assets/js/custom.js"></script>\n';
+    return content.replace("</body>", customScript + "</body>");
   });
 
   return {
